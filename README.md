@@ -7,10 +7,15 @@
 ### 环境
 
 node  v16.13.2
+
 npm config edit
-# 该命令会打开npm的配置文件，请在空白处添加
+
+该命令会打开npm的配置文件，请在空白处添加
+
 registry=https://registry.npmmirror.com
+
 ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+
 ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
 
 ### 1. clone this repository
