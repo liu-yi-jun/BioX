@@ -20,19 +20,13 @@ ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
 ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
 
 ```
-### 2. clone this repository
-
-```bash
-git clone https://github.com/Yukun-Guo/vite-vue3-electron-ts-template.git
-```
-
-### 3. install packages
+### 2. install packages
 
 ```bash
 npm i
 ```
 
-### 4. run
+### 3.  run
 
 ```bash
 npm run app:dev
