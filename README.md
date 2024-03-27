@@ -6,13 +6,13 @@
 
 ### 1.环境
 
-## node  v16.13.2
+#### node  v16.13.2
 
 ```bash
 npm config edit
 ```
 
-## 该命令会打开npm的配置文件，请在空白处添加
+#### 该命令会打开npm的配置文件，请在空白处添加
 
 ```bash
 registry=https://registry.npmmirror.com
