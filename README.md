@@ -31,3 +31,11 @@ npm i
 ```bash
 npm run app:dev
 ```
+
+
+
+### 注
+```
+shims.d文件
+解决router 找不到模块“XXX.vue”或其相应的类型声明。ts(2307)(发生在rrouter.ts)
+```

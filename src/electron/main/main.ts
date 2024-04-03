@@ -24,6 +24,7 @@ function createWindow() {
             preload: join(__dirname, '../preload/preload.js'),
         },
     });
+    mainWindow.setFullScreen(true);
 
     // and load the index.html of the app.
     if (isDev) {
