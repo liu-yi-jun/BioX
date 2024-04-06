@@ -50,9 +50,15 @@
               </div>
               <div v-else class="editable-cell-text-wrapper">
                 <p>
-                  <a Href="javascript:;" @click="lookRecord(record.id)">{{
-                    text || " "
-                  }}</a>
+                  <a
+                    v-if="column.dataIndex === 'name'"
+                    Href="javascript:;"
+                    @click="lookRecord(record.id)"
+                    >{{ text || " " }}</a
+                  >
+                  <span v-else>
+                    {{ text || " " }}
+                  </span>
                   <edit-outlined
                     class="editable-cell-icon"
                     @click="edit(record.id, column.dataIndex)"
@@ -140,8 +146,8 @@ const deleteRow = (record: DataItem) => {
   Modal.confirm({
     title: "确认删除数据？",
     content: `确认要删除数据：${record.name}吗？`,
-    okText: '确认',
-    cancelText: '取消',
+    okText: "确认",
+    cancelText: "取消",
     onOk() {
       db.delete("record", { id: record.id }).then(() => {
         recordList.value = recordList.value.filter(
@@ -178,7 +184,7 @@ const save = (id: number, dataIndex) => {
 const lookRecord = (id) => {
   indexStore.playIndex = 0;
   indexStore.recordId = id;
-  router.push('/EEG');
+  router.push("/EEG");
 };
 </script>
 
