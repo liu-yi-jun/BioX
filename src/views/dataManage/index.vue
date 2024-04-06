@@ -137,9 +137,11 @@ onMounted(async () => {
 });
 
 const deleteRow = (record: DataItem) => {
-  Modal.warning({
+  Modal.confirm({
     title: "确认删除数据？",
     content: `确认要删除数据：${record.name}吗？`,
+    okText: '确认',
+    cancelText: '取消',
     onOk() {
       db.delete("record", { id: record.id }).then(() => {
         recordList.value = recordList.value.filter(
