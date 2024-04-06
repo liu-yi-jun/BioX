@@ -8,8 +8,9 @@
           <div class="filter-right">
             <a-space>
               <a-select
-                v-model:value="showTime"
+                v-model:value="seriesStep"
                 style="width: 100px"
+                @change="handleChangeSeriesStep"
                 aria-placeholder="Show Time"
                 :options="showTimeOptions"
                 size="small"
@@ -75,8 +76,16 @@
               </a-space>
             </div>
           </div>
-          <div v-if="spectrumType === 'PSD'" id="psd" style="width: 100%; height: 100%"></div>
-          <div v-if="spectrumType === 'Heatmap'" id="heatmap" style="width: 100%; height: 100%"></div>
+          <div
+            v-if="spectrumType === 'PSD'"
+            id="psd"
+            style="width: 100%; height: 100%"
+          ></div>
+          <div
+            v-if="spectrumType === 'Heatmap'"
+            id="heatmap"
+            style="width: 100%; height: 100%"
+          ></div>
         </div>
       </div>
       <div class="eig-card">
@@ -112,8 +121,9 @@
                 ></a-select>
                 <a-select
                   v-if="bandsType === 'Time Series'"
-                  v-model:value="showTime"
+                  v-model:value="barnsTimeStep"
                   style="width: 100px"
+                  @change="handleChangeBarnsTimeStep"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -139,8 +149,6 @@
         </div>
       </div>
     </div>
-
-    <record></record>
   </div>
 </template>
 
@@ -153,14 +161,20 @@ import {
   nextTick,
   getCurrentInstance,
   ComponentInternalInstance,
+  onBeforeUnmount,
+  watch,
 } from "vue";
 import type { SelectProps } from "ant-design-vue";
-import record from "../../components/record.vue";
 
 import { HighchartsKey } from "../../types";
 
-const showTime = ref("5 sec");
-const spectrumShowTime = ref("5 sec");
+const seriesStep = ref(30);
+const seriesMaxStep = 30;
+const spectrumShowTime = ref(30);
+const relatedStep = ref(30);
+
+const barnsTimeStep = ref(30);
+const barnsTimeMaxStep = 30;
 const channel = ref(["chan1"]);
 const psdChannel = ref(["chan1"]);
 const heatmapChannel = ref("chan1");
@@ -171,18 +185,27 @@ const bandsType = ref("Absolute Power");
 import * as echarts from "echarts";
 const Highcharts = inject(HighchartsKey);
 import HeatMap from "highcharts/modules/heatmap";
+import { CustomBluetooth } from "../../utils/bluetooth";
+import { CustomDatabase } from "../../utils/db";
+import { useIndexStore } from "../../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
+const db = new CustomDatabase();
+let sourceData;
+let timerPlay, timer;
 HeatMap(Highcharts);
 const showTimeOptionsData = [
   {
-    value: "5 sec",
+    value: 5,
     label: "5 sec",
   },
   {
-    value: "10 sec",
+    value: 10,
     label: "10 sec",
   },
   {
-    value: "30 sec",
+    value: 30,
     label: "30 sec",
   },
 ];
@@ -241,9 +264,177 @@ const handleChange = (value: string[]) => {
   console.log(`selected ${value}`);
 };
 
-onMounted(function () {
-  // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+let seriesChart, psdChart, absoluteChart, relatedChart, barnsTimeChart;
 
+// Series data
+let seriesData: any[] = [],
+  psdObj: any = {},
+  absoluteObj: any = {},
+  relatedObj: any = {
+    γ: [],
+    β: [],
+    α: [],
+    θ: [],
+    δ: [],
+  },
+  barnsTimeObj: any = {
+    EEG: [],
+    DELTA: [],
+    THETA: [],
+    ALPHA: [],
+    BETA: [],
+    GAMMA: [],
+  };
+
+watch(
+  play,
+  (newValue) => {
+    if (newValue) {
+      timerPlay = setInterval(() => {
+        if (sourceData) {
+          if (playIndex.value >= sourceData.length) {
+            timerPlay && clearInterval(timerPlay);
+            return;
+          }
+          handleRealTimeData({
+            series: sourceData[playIndex.value].series,
+            psd: sourceData[playIndex.value].psd,
+            absolute: sourceData[playIndex.value].absolute,
+            related: sourceData[playIndex.value].related,
+            barnsTime: sourceData[playIndex.value].barnsTime,
+          });
+        }
+      }, 250);
+    } else {
+      timerPlay && clearInterval(timerPlay);
+    }
+  },
+  {
+    immediate: true,
+  }
+);
+
+watch(isDragSlider, (newValue) => {
+  // 拖拽了进度条更改渲染数据
+  if (newValue) {
+    indexStore.isDragSlider = false;
+    handleOldData();
+  }
+});
+
+
+
+watch(
+  recordId,
+  (value) => {
+    if (value !== undefined) {
+      initialize();
+    }
+  },
+);
+
+onMounted(function () {
+  initialize();
+  // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+  // const bluetooth = new CustomBluetooth();
+  // bluetooth.addNotice((data) => {});
+});
+
+onBeforeUnmount(() => {
+  timer && clearInterval(timer);
+  timerPlay && clearInterval(timerPlay);
+});
+
+const initialize = () => {
+  sourceData = [];
+  seriesData = [];
+  if (!recordId.value) {
+    timer && clearInterval(timer);
+    timer = setInterval(() => {
+      handleRealTimeData({
+        series: Math.random() * 150,
+        psd: {
+          AF3: [
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+          ],
+          F3: [
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+          ],
+          P7: [
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+          ],
+          F7: [
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+          ],
+          AF4: [
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+            Math.random() * 100,
+          ],
+        },
+        absolute: {
+          0: Math.random() * 20 + 80,
+          1: Math.random() * 20 + 80,
+          2: Math.random() * 20 + 80,
+          3: Math.random() * 20 + 80,
+          4: Math.random() * 20 + 80,
+        },
+        related: {
+          γ: 100,
+          β: Math.random() * 20 + 60,
+          α: Math.random() * 20 + 40,
+          θ: Math.random() * 20 + 20,
+          δ: Math.random() * 20 + 0,
+        },
+        barnsTime: {
+          EEG: Math.random() * 20 + 80,
+          DELTA: Math.random() * 20 + 80,
+          THETA: Math.random() * 20 + 80,
+          ALPHA: Math.random() * 20 + 80,
+          BETA: Math.random() * 20 + 80,
+          GAMMA: Math.random() * 20 + 80,
+        },
+      });
+    }, 250);
+  } else {
+    db.get(`select sourceData from record where id = ${recordId.value}`).then(
+      (res) => {
+        sourceData = JSON.parse(res.sourceData);
+        if (playIndex.value > 0) {
+          // X轴与时间相关的才需要把之前的数据加进去
+          handleOldData();
+        }
+      }
+    );
+  }
   nextTick(() => {
     // initHeatmap();
     initSeries();
@@ -252,54 +443,193 @@ onMounted(function () {
     initAbsolute();
     // initBarnsTime();
   });
+};
 
-  // Highcharts.chart("chart-container", {
-  //   chart: {
-  //     type: "line",
-  //   },
-  //   title: {
-  //     text: "My Chart",
-  //   },
-  //   series: [
-  //     {
-  //       data: [1, 2, 3, 4, 5, 6, 7],
-  //     },
-  //   ],
-  // });
-});
+// 处理之前数据-1
+const handleOldData = () => {
+  let tempPlayIndex = playIndex.value;
+  handleBeforeData({
+    seriesArr: sourceData
+      .slice(0, tempPlayIndex)
+      .slice(-seriesMaxStep * 4)
+      .map((item) => item.series),
+    psd: sourceData[tempPlayIndex].psd,
+    absolute: sourceData[tempPlayIndex].absolute,
+    relatedArr: sourceData
+      .slice(0, tempPlayIndex)
+      .slice(-relatedStep.value * 4)
+      .map((item) => item.related),
+    barnsTimeArr: sourceData
+      .slice(0, tempPlayIndex)
+      .slice(-barnsTimeMaxStep * 4)
+      .map((item) => item.barnsTime),
+  });
+  updateRenderRealSeriesData();
+  undateRenderPsd();
+  undateRenderAbsoule();
+  updateRenderRelated();
+  updateRenderBarnsTime();
+};
+// 处理之前数据-2
+const handleBeforeData = (obj) => {
+  // series
+  seriesData = [];
+  seriesData = obj.seriesArr.map((item) => {
+    return {
+      value: [(seriesData.length + 1) * 250, item],
+    };
+  });
+  relatedObj.γ = [];
+  relatedObj.β = [];
+  relatedObj.α = [];
+  relatedObj.θ = [];
+  relatedObj.δ = [];
+  // psd
+  psdObj = obj.psd;
+  // absolute
+  absoluteObj = obj.absolute;
+  // related
+  obj.relatedArr.forEach((item) => {
+    relatedObj.γ.push({
+      value: [(relatedObj.γ.length + 1) * 250, item.γ],
+    });
+    relatedObj.β.push({
+      value: [(relatedObj.β.length + 1) * 250, item.β],
+    });
+    relatedObj.α.push({
+      value: [(relatedObj.α.length + 1) * 250, item.α],
+    });
+    relatedObj.θ.push({
+      value: [(relatedObj.θ.length + 1) * 250, item.θ],
+    });
+    relatedObj.δ.push({
+      value: [(relatedObj.δ.length + 1) * 250, item.δ],
+    });
+  });
+  // barnsTime
+  barnsTimeObj.EEG = [];
+  barnsTimeObj.DELTA = [];
+  barnsTimeObj.THETA = [];
+  barnsTimeObj.ALPHA = [];
+  barnsTimeObj.BETA = [];
+  barnsTimeObj.GAMMA = [];
+  obj.barnsTimeArr.forEach((item) => {
+    barnsTimeObj.EEG.push({
+      value: [(barnsTimeObj.EEG.length + 1) * 250, item.EEG],
+    });
+    barnsTimeObj.DELTA.push({
+      value: [(barnsTimeObj.DELTA.length + 1) * 250, item.DELTA],
+    });
+    barnsTimeObj.THETA.push({
+      value: [(barnsTimeObj.THETA.length + 1) * 250, item.THETA],
+    });
+    barnsTimeObj.ALPHA.push({
+      value: [(barnsTimeObj.ALPHA.length + 1) * 250, item.ALPHA],
+    });
+    barnsTimeObj.BETA.push({
+      value: [(barnsTimeObj.BETA.length + 1) * 250, item.BETA],
+    });
+    barnsTimeObj.GAMMA.push({
+      value: [(barnsTimeObj.GAMMA.length + 1) * 250, item.GAMMA],
+    });
+  });
+};
+// 处理实时数据
+const handleRealTimeData = (obj) => {
+  // series
+
+  seriesData.push({
+    value: [(seriesData.length + 1) * 250, obj.series],
+  });
+  if (seriesData.length > seriesMaxStep * 4) {
+    seriesData.shift();
+  }
+  updateRenderRealSeriesData();
+
+  // psd
+  psdObj = obj.psd;
+  undateRenderPsd();
+  // absolute
+  absoluteObj = obj.absolute;
+  undateRenderAbsoule();
+  //related
+  relatedObj.γ.push({
+    value: [(relatedObj.γ.length + 1) * 250, obj.related.γ],
+  });
+  relatedObj.β.push({
+    value: [(relatedObj.β.length + 1) * 250, obj.related.β],
+  });
+  relatedObj.α.push({
+    value: [(relatedObj.α.length + 1) * 250, obj.related.α],
+  });
+  relatedObj.θ.push({
+    value: [(relatedObj.θ.length + 1) * 250, obj.related.θ],
+  });
+  relatedObj.δ.push({
+    value: [(relatedObj.δ.length + 1) * 250, obj.related.δ],
+  });
+
+  updateRenderRelated();
+
+  // barnsTime
+  barnsTimeObj.EEG.push({
+    value: [(barnsTimeObj.EEG.length + 1) * 250, obj.barnsTime.EEG],
+  });
+  barnsTimeObj.DELTA.push({
+    value: [(barnsTimeObj.DELTA.length + 1) * 250, obj.barnsTime.DELTA],
+  });
+  barnsTimeObj.THETA.push({
+    value: [(barnsTimeObj.THETA.length + 1) * 250, obj.barnsTime.THETA],
+  });
+  barnsTimeObj.ALPHA.push({
+    value: [(barnsTimeObj.ALPHA.length + 1) * 250, obj.barnsTime.ALPHA],
+  });
+  barnsTimeObj.BETA.push({
+    value: [(barnsTimeObj.BETA.length + 1) * 250, obj.barnsTime.BETA],
+  });
+  barnsTimeObj.GAMMA.push({
+    value: [(barnsTimeObj.GAMMA.length + 1) * 250, obj.barnsTime.GAMMA],
+  });
+
+  updateRenderBarnsTime();
+};
+
 const initSeries = () => {
-  var myChart = echarts.init(document.getElementById("series"));
-  myChart.setOption({
+  seriesChart = echarts.init(document.getElementById("series"));
+  seriesChart.setOption({
+    animation: false,
     color: ["#8FDCFE", "#B3B3B3"],
-    legend: {
-      top: 80,
-      left: "0",
-      data: ["chan1", "chan2"],
-      icon: "circle",
-      orient: "vertical",
-      itemGap: 100,
-      itemHeight: 12,
-      itemWidth: 12,
-      textStyle: {
-        fontSize: 12,
-      },
-    },
+    // legend: {
+    //   top: 80,
+    //   left: "0",
+    //   data: ["chan1", "chan2"],
+    //   icon: "circle",
+    //   orient: "vertical",
+    //   itemGap: 100,
+    //   itemHeight: 12,
+    //   itemWidth: 12,
+    //   textStyle: {
+    //     fontSize: 12,
+    //   },
+    // },
     xAxis: [
       {
-        type: "category",
+        type: "time",
         show: false,
-        boundaryGap: false,
+        max: seriesStep.value * 1000,
         gridIndex: 0,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
-        boundaryGap: false,
+        type: "time",
         gridIndex: 1,
-        data: [1, 2, 3, 4, 5, 6, 7],
-
+        max: seriesStep.value * 1000,
         axisLabel: {
           color: "#666666",
+          formatter: function (value, index) {
+            return echarts.format.formatTime("s", value);
+          },
+          showMaxLabel: true,
+          showMinLabel: true,
         },
         axisLine: {
           lineStyle: {
@@ -328,21 +658,59 @@ const initSeries = () => {
     ],
     yAxis: [
       {
-        show: false,
-
+        show: true,
+        axisLine: {
+          show: false, // 显示y轴线
+        },
+        axisLabel: {
+          //坐标轴刻度标签
+          show: false,
+        },
+        axisTick: {
+          show: false, // 可取消y轴刻度线
+        },
+        splitLine: {
+          show: false, // 去除网格线
+        },
+        nameRotate: 0,
+        name: "chan1",
+        nameLocation: "middle",
+        nameTextStyle: {
+          fontSize: 12,
+          fontWeight: "bold",
+        },
         type: "value",
         gridIndex: 0,
       },
       {
-        show: false,
+        show: true,
+        axisLine: {
+          show: false, // 显示y轴线
+        },
+        axisLabel: {
+          //坐标轴刻度标签
+          show: false,
+        },
+        axisTick: {
+          show: false, // 可取消y轴刻度线
+        },
+        splitLine: {
+          show: false, // 去除网格线
+        },
+        nameRotate: 0,
+        name: "chan2",
+        nameLocation: "middle",
+        nameTextStyle: {
+          fontSize: 12,
+          fontWeight: "bold",
+        },
         type: "value",
         gridIndex: 1,
       },
     ],
-
     series: [
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: seriesData,
         type: "line",
         name: "chan1",
         symbol: "none",
@@ -354,14 +722,14 @@ const initSeries = () => {
         yAxisIndex: 0,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: seriesData,
         type: "line",
+        name: "chan2",
         symbol: "none",
         lineStyle: {
           color: "#B3B3B3",
           width: 1,
         },
-        name: "chan2",
         xAxisIndex: 1,
         yAxisIndex: 1,
       },
@@ -465,8 +833,9 @@ const initHeatmap = () => {
   });
 };
 const initPSD = () => {
-  var myChart = echarts.init(document.getElementById("psd"));
-  myChart.setOption({
+  psdChart = echarts.init(document.getElementById("psd"));
+  psdChart.setOption({
+    animation: false,
     legend: {
       left: "center",
       bottom: 5,
@@ -501,8 +870,8 @@ const initPSD = () => {
       },
     },
     yAxis: {
-      // type: "value",
-      type: "log",
+      type: "value",
+      // type: "log",
       name: "dBμV^2",
       axisTick: {
         length: 3,
@@ -515,7 +884,8 @@ const initPSD = () => {
       minorSplitLine: {
         show: true,
       },
-      min: 0.1,
+      // min: 0.1,
+      min: 0,
       max: 100,
       nameRotate: 90, // 旋转角度
       nameLocation: "middle",
@@ -534,38 +904,40 @@ const initPSD = () => {
         name: "AF3",
         type: "line",
         symbol: "none",
-        data: [0.1, 32, 1, 34, 90, 30, 10],
+        data: psdObj.AF3,
       },
       {
         name: "F3",
         type: "line",
         symbol: "none",
-        data: [0.1, 82, 91, 34, 90, 30, 30],
+        data: psdObj.F3,
       },
       {
         name: "P7",
         type: "line",
         symbol: "none",
-        data: [0.1, 32, 1, 54, 90, 30, 40],
+        data: psdObj.P7,
       },
       {
         name: "F7",
         type: "line",
         symbol: "none",
-        data: [0.1, 32, 31, 34, 30, 30, 30],
+        data: psdObj.F7,
       },
       {
         name: "AF4",
         type: "line",
         symbol: "none",
-        data: [0.1, 32, 91, 93, 10, 10, 20],
+        data: psdObj.AF4,
       },
     ],
   });
 };
 const initAbsolute = () => {
-  var myChart = echarts.init(document.getElementById("absolute"));
-  myChart.setOption({
+  absoluteChart = echarts.init(document.getElementById("absolute"));
+
+  absoluteChart.setOption({
+    animation: false,
     xAxis: {
       type: "category",
       axisTick: {
@@ -611,38 +983,7 @@ const initAbsolute = () => {
     },
     series: [
       {
-        data: [
-          {
-            value: 99,
-            itemStyle: {
-              color: "rgb(255, 67, 72, 0.8)",
-            },
-          },
-          {
-            value: 99,
-            itemStyle: {
-              color: "rgb(241, 189, 0, 0.8)",
-            },
-          },
-          {
-            value: 99,
-            itemStyle: {
-              color: "rgb(37, 146, 121, 0.8)",
-            },
-          },
-          {
-            value: 99,
-            itemStyle: {
-              color: "rgb(78, 123, 187, 0.8)",
-            },
-          },
-          {
-            value: 99,
-            itemStyle: {
-              color: "rgb(165, 107, 172, 0.8)",
-            },
-          },
-        ],
+        data: [],
         type: "bar",
         barCategoryGap: "2%",
       },
@@ -650,9 +991,10 @@ const initAbsolute = () => {
   });
 };
 const initRelated = () => {
-  var myChart = echarts.init(document.getElementById("related"));
-  myChart.setOption({
-    color: ["#E4CDFF", "#A19CFF", "#7A83FF", "#4C68FF", "#0721E6"],
+  relatedChart = echarts.init(document.getElementById("related"));
+  relatedChart.setOption({
+    animation: false,
+    color: ["#0721E6", "#4C68FF", "#7A83FF", "#A19CFF", "#E4CDFF"],
 
     legend: {
       data: ["γ wave", "β wave", "α wave", "θ wave", "δ wave"],
@@ -673,82 +1015,98 @@ const initRelated = () => {
     },
     xAxis: [
       {
-        type: "category",
+        type: "time",
+        max: relatedStep.value * 1000,
         boundaryGap: false,
-        data: ["0", "4", "8", "12", "16", "20", "24"],
+        axisLabel: {
+          color: "#666666",
+          formatter: function (value, index) {
+            return echarts.format.formatTime("s", value);
+          },
+          showMaxLabel: true,
+          showMinLabel: true,
+        },
       },
     ],
     yAxis: [
       {
-        // max: 900,
+        max: 100,
         type: "value",
+        name: "Each Band Power Ratio (%)",
+        nameRotate: 90, // 旋转角度
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          fontSize: 12, // 字体大小
+          fontWeight: "bold", // 字体加粗
+          verticalAlign: "bottom", // 文字垂直对齐方式
+        },
       },
     ],
     series: [
       {
         name: "γ wave",
         type: "line",
-        stack: "Total",
+
         smooth: true,
         lineStyle: {
           width: 0,
         },
-        showSymbol: false,
-        areaStyle: {
-          opacity: 0.8,
-          color: "#E4CDFF",
+        emphasis: {
+          disabled: true,
         },
-        data: [140, 232, 101, 264, 90, 340, 250],
+        showSymbol: false,
+        areaStyle: {},
+        data: relatedObj.γ,
       },
       {
         name: "β wave",
         type: "line",
-        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
         smooth: true,
         lineStyle: {
           width: 0,
         },
         showSymbol: false,
-        areaStyle: {
-          opacity: 0.8,
-          color: "#A19CFF",
-        },
-        data: [120, 282, 111, 234, 220, 340, 310],
+        areaStyle: {},
+        data: relatedObj.β,
       },
       {
         name: "α wave",
         type: "line",
-        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
         smooth: true,
         lineStyle: {
           width: 0,
         },
         showSymbol: false,
-        areaStyle: {
-          opacity: 0.8,
-          color: "#7A83FF",
-        },
-        data: [320, 132, 201, 334, 190, 130, 220],
+        areaStyle: {},
+        data: relatedObj.α,
       },
       {
         name: "θ wave",
         type: "line",
-        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
         smooth: true,
         lineStyle: {
           width: 0,
         },
         showSymbol: false,
-        areaStyle: {
-          opacity: 0.8,
-          color: "#4C68FF",
-        },
-        data: [220, 402, 231, 134, 190, 230, 120],
+        areaStyle: {},
+        data: relatedObj.θ,
       },
       {
         name: "δ wave",
         type: "line",
-        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
         smooth: true,
         lineStyle: {
           width: 0,
@@ -758,18 +1116,16 @@ const initRelated = () => {
           show: true,
           position: "top",
         },
-        areaStyle: {
-          opacity: 0.8,
-          color: "#0721E6",
-        },
-        data: [220, 302, 181, 234, 210, 290, 150],
+        areaStyle: {},
+        data: relatedObj.δ,
       },
     ],
   });
 };
 const initBarnsTime = () => {
-  var myChart = echarts.init(document.getElementById("barnsTime"));
-  myChart.setOption({
+  barnsTimeChart = echarts.init(document.getElementById("barnsTime"));
+  barnsTimeChart.setOption({
+    animation: false,
     color: ["#737373", "#D5D5D6", "#A4A4FF", "#7BFFFF", "#FF72FF", "#E6E689"],
     // legend: {
     //   top: 80,
@@ -789,47 +1145,52 @@ const initBarnsTime = () => {
     },
     xAxis: [
       {
-        type: "category",
+        type: "time",
         show: false,
+        max: barnsTimeStep.value * 1000,
         boundaryGap: false,
         gridIndex: 0,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
+        type: "time",
         show: false,
+        max: barnsTimeStep.value * 1000,
         boundaryGap: false,
         gridIndex: 1,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
+        type: "time",
         show: false,
+        max: barnsTimeStep.value * 1000,
         boundaryGap: false,
         gridIndex: 2,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
+        type: "time",
         show: false,
+        max: barnsTimeStep.value * 1000,
         boundaryGap: false,
         gridIndex: 3,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
+        type: "time",
         show: false,
+        max: barnsTimeStep.value * 1000,
         boundaryGap: false,
         gridIndex: 4,
-        data: [1, 2, 3, 4, 5, 6, 7],
       },
       {
-        type: "category",
+        type: "time",
         boundaryGap: false,
         gridIndex: 5,
-        data: [1, 2, 3, 4, 5, 6, 7],
+        max: barnsTimeStep.value * 1000,
         axisLabel: {
           color: "#666666",
+          formatter: function (value, index) {
+            return echarts.format.formatTime("s", value);
+          },
+          showMaxLabel: true,
+          showMinLabel: true,
         },
         axisLine: {
           lineStyle: {
@@ -841,7 +1202,7 @@ const initBarnsTime = () => {
     grid: [
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "0%",
         bottom: "83.34%",
@@ -849,7 +1210,7 @@ const initBarnsTime = () => {
       },
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "16.66%",
         bottom: "66.64%",
@@ -857,7 +1218,7 @@ const initBarnsTime = () => {
       },
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "33.36%",
         bottom: "49.98%",
@@ -865,7 +1226,7 @@ const initBarnsTime = () => {
       },
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "50.02%",
         bottom: "33.32%",
@@ -873,7 +1234,7 @@ const initBarnsTime = () => {
       },
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "66.68%",
         bottom: "16.66%",
@@ -881,7 +1242,7 @@ const initBarnsTime = () => {
       },
       {
         show: false,
-        left: "10%",
+        left: "13%",
         right: "4%",
         top: "83.34%",
         bottom: 0,
@@ -1038,12 +1399,15 @@ const initBarnsTime = () => {
 
     series: [
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.EEG,
         type: "line",
         name: "EEG",
         symbol: "none",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1061,12 +1425,15 @@ const initBarnsTime = () => {
         yAxisIndex: 0,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.DELTA,
         type: "line",
         symbol: "none",
         name: "DELTA",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1084,12 +1451,15 @@ const initBarnsTime = () => {
         yAxisIndex: 1,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.THETA,
         type: "line",
         symbol: "none",
         name: "THETA",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1107,12 +1477,15 @@ const initBarnsTime = () => {
         yAxisIndex: 2,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.ALPHA,
         type: "line",
         symbol: "none",
         name: "ALPHA",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1130,12 +1503,15 @@ const initBarnsTime = () => {
         yAxisIndex: 3,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.BETA,
         type: "line",
         symbol: "none",
         name: "BETA",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1153,12 +1529,15 @@ const initBarnsTime = () => {
         yAxisIndex: 4,
       },
       {
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: barnsTimeObj.GAMMA,
         type: "line",
         symbol: "none",
         name: "GAMMA",
         lineStyle: {
           width: 1,
+        },
+        emphasis: {
+          disabled: true,
         },
         markLine: {
           symbol: ["none", "none"],
@@ -1187,7 +1566,6 @@ const handleChangeSpectrumType = () => {
     if (spectrumType.value === "Heatmap") {
       initHeatmap();
     }
-  
   });
 };
 
@@ -1202,6 +1580,278 @@ const handleChangeBandsType = () => {
     if (bandsType.value === "Time Series") {
       initBarnsTime();
     }
+  });
+};
+
+// 更新渲染--seriesData
+const updateRenderRealSeriesData = () => {
+  let tempSeriesData;
+  tempSeriesData = Object.assign([], seriesData.slice(-seriesStep.value * 4));
+  tempSeriesData.forEach((item, index) => {
+    item.value[0] = (index + 1) * 250;
+  });
+  seriesChart &&
+    seriesChart.setOption({
+      xAxis: [
+        {
+          gridIndex: 0,
+          splitNumber: seriesStep.value,
+          max: seriesStep.value * 1000,
+        },
+        {
+          gridIndex: 1,
+          splitNumber: seriesStep.value,
+          max: seriesStep.value * 1000,
+        },
+      ],
+      series: [
+        { name: "chan1", data: tempSeriesData },
+        { name: "chan2", data: tempSeriesData },
+      ],
+    });
+};
+// 更新渲染--psd
+const undateRenderPsd = () => {
+  psdChart &&
+    psdChart.setOption({
+      series: [
+        {
+          name: "AF3",
+          data: psdObj.AF3,
+        },
+        {
+          name: "F3",
+          data: psdObj.F3,
+        },
+        {
+          name: "P7",
+          data: psdObj.P7,
+        },
+        {
+          name: "F7",
+          data: psdObj.F7,
+        },
+        {
+          name: "AF4",
+          data: psdObj.AF4,
+        },
+      ],
+    });
+};
+
+// 更新渲染-- absoule
+const undateRenderAbsoule = () => {
+  absoluteChart &&
+    absoluteChart.setOption({
+      series: [
+        {
+          data: [
+            {
+              value: absoluteObj[0],
+              itemStyle: {
+                color: "rgb(255, 67, 72, 0.8)",
+              },
+            },
+            {
+              value: absoluteObj[1],
+              itemStyle: {
+                color: "rgb(241, 189, 0, 0.8)",
+              },
+            },
+            {
+              value: absoluteObj[2],
+              itemStyle: {
+                color: "rgb(37, 146, 121, 0.8)",
+              },
+            },
+            {
+              value: absoluteObj[3],
+              itemStyle: {
+                color: "rgb(78, 123, 187, 0.8)",
+              },
+            },
+            {
+              value: absoluteObj[4],
+              itemStyle: {
+                color: "rgb(165, 107, 172, 0.8)",
+              },
+            },
+          ],
+        },
+      ],
+    });
+};
+
+// 更新渲染--related
+const updateRenderRelated = () => {
+  if (relatedObj.γ.length > relatedStep.value * 4) {
+    relatedObj.γ = relatedObj.γ.slice(
+      relatedObj.γ.length - relatedStep.value * 4
+    );
+    relatedObj.β = relatedObj.β.slice(
+      relatedObj.β.length - relatedStep.value * 4
+    );
+    relatedObj.α = relatedObj.α.slice(
+      relatedObj.α.length - relatedStep.value * 4
+    );
+    relatedObj.θ = relatedObj.θ.slice(
+      relatedObj.θ.length - relatedStep.value * 4
+    );
+    relatedObj.δ = relatedObj.δ.slice(
+      relatedObj.δ.length - relatedStep.value * 4
+    );
+    relatedObj.γ.forEach((item, index) => {
+      relatedObj.γ[index].value[0] = (index + 1) * 250;
+      relatedObj.β[index].value[0] = (index + 1) * 250;
+      relatedObj.α[index].value[0] = (index + 1) * 250;
+      relatedObj.θ[index].value[0] = (index + 1) * 250;
+      relatedObj.δ[index].value[0] = (index + 1) * 250;
+    });
+  }
+  relatedChart &&
+    relatedChart.setOption({
+      series: [
+        {
+          name: "γ wave",
+          data: relatedObj.γ,
+        },
+        {
+          name: "β wave",
+          data: relatedObj.β,
+        },
+        {
+          name: "α wave",
+          data: relatedObj.α,
+        },
+        {
+          name: "θ wave",
+          data: relatedObj.θ,
+        },
+        {
+          name: "δ wave",
+          data: relatedObj.δ,
+        },
+      ],
+    });
+};
+
+// 更新渲染--barns
+const updateRenderBarnsTime = () => {
+  if (barnsTimeObj.EEG.length > barnsTimeMaxStep * 4) {
+    barnsTimeObj.EEG.shift();
+    barnsTimeObj.DELTA.shift();
+    barnsTimeObj.THETA.shift();
+    barnsTimeObj.ALPHA.shift();
+    barnsTimeObj.BETA.shift();
+    barnsTimeObj.GAMMA.shift();
+  }
+  let tempBarnsTimeObj: any = {
+    EEG: [],
+    DELTA: [],
+    THETA: [],
+    ALPHA: [],
+    BETA: [],
+    GAMMA: [],
+  };
+  barnsTimeObj.EEG.forEach((item, index) => {
+    tempBarnsTimeObj.EEG = Object.assign(
+      [],
+      barnsTimeObj.EEG.slice(-barnsTimeStep.value * 4)
+    );
+    tempBarnsTimeObj.DELTA = Object.assign(
+      [],
+      barnsTimeObj.DELTA.slice(-barnsTimeStep.value * 4)
+    );
+    tempBarnsTimeObj.THETA = Object.assign(
+      [],
+      barnsTimeObj.THETA.slice(-barnsTimeStep.value * 4)
+    );
+    tempBarnsTimeObj.ALPHA = Object.assign(
+      [],
+      barnsTimeObj.ALPHA.slice(-barnsTimeStep.value * 4)
+    );
+    tempBarnsTimeObj.BETA = Object.assign(
+      [],
+      barnsTimeObj.BETA.slice(-barnsTimeStep.value * 4)
+    );
+    tempBarnsTimeObj.GAMMA = Object.assign(
+      [],
+      barnsTimeObj.GAMMA.slice(-barnsTimeStep.value * 4)
+    );
+  });
+  tempBarnsTimeObj.EEG.forEach((item, index) => {
+    tempBarnsTimeObj.EEG[index].value[0] = (index + 1) * 250;
+    tempBarnsTimeObj.DELTA[index].value[0] = (index + 1) * 250;
+    tempBarnsTimeObj.THETA[index].value[0] = (index + 1) * 250;
+    tempBarnsTimeObj.ALPHA[index].value[0] = (index + 1) * 250;
+    tempBarnsTimeObj.BETA[index].value[0] = (index + 1) * 250;
+    tempBarnsTimeObj.GAMMA[index].value[0] = (index + 1) * 250;
+  });
+  barnsTimeChart &&
+    barnsTimeChart.setOption({
+      xAxis: [
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 0,
+        },
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 1,
+        },
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 2,
+        },
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 3,
+        },
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 4,
+        },
+        {
+          max: barnsTimeStep.value * 1000,
+          gridIndex: 5,
+        },
+      ],
+      series: [
+        {
+          name: "EEG",
+          data: tempBarnsTimeObj.EEG,
+        },
+        {
+          name: "DELTA",
+          data: tempBarnsTimeObj.DELTA,
+        },
+        {
+          name: "THETA",
+          data: tempBarnsTimeObj.THETA,
+        },
+        {
+          name: "ALPHA",
+          data: tempBarnsTimeObj.ALPHA,
+        },
+        {
+          name: "BETA",
+          data: tempBarnsTimeObj.BETA,
+        },
+        {
+          name: "GAMMA",
+          data: tempBarnsTimeObj.GAMMA,
+        },
+      ],
+    });
+};
+
+const handleChangeSeriesStep = () => {
+  nextTick(() => {
+    updateRenderRealSeriesData();
+  });
+};
+const handleChangeBarnsTimeStep = () => {
+  nextTick(() => {
+    updateRenderBarnsTime();
   });
 };
 </script>

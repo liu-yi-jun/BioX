@@ -18,10 +18,10 @@
       "@/*": ["./src/*"],     
       "@components/*": ["./src/components/*"],
       "@assets/*": ["./src/assets/*"]
-     }
+     } 
   },
-  "include": ["src/electron/**/*"],
+  "include": ["src/electron/**/*"],  
   "references": [{
     "path": "./tsconfig.node.json"
   }]
-}
+}    

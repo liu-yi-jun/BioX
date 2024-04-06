@@ -25,3 +25,13 @@ export const formatTimestamp = (
     .replace("mm", minute)
     .replace("ss", second);
 };
+
+
+// 时间格式
+export const tipFormatter = (milliseconds: number) => {
+  const date = new Date(milliseconds);
+  //   const hours = date.getUTCHours().toString().padStart(2, "0");
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+  const seconds = date.getUTCSeconds().toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};

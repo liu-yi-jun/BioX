@@ -149,16 +149,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from "vue";
+import { ref, reactive, onMounted, nextTick, watch ,onBeforeUnmount} from "vue";
+// import { CustomDatabase } from "../../utils/db";
 import * as echarts from "echarts";
 const radioValue = ref<number>(1);
 const checkboxValue1 = ref(["1"]);
 const checkboxValue2 = ref(["1"]);
+const seriesStep = ref(30);
+const seriesMaxStep = 30;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
+import { CustomDatabase } from "../../utils/db";
+import { useIndexStore } from "../../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
+const db = new CustomDatabase();
+let sourceData;
+let seriesData: any = [];
 let myChart: echarts.EChartsType;
+let timerPlay,timer;
 interface showSeriesDataType {
   chanIndex: number;
   index: number;
+  type: string;
   radioIndex: number;
   name: string;
   color: string;
@@ -268,13 +281,131 @@ const radioStyle = reactive({
   lineHeight: "30px",
 });
 
+watch(
+  play,
+  (newValue) => {
+    if (newValue) {
+      timerPlay = setInterval(() => {
+        if (sourceData) {
+          if (playIndex.value >= sourceData.length) {
+            timerPlay && clearInterval(timerPlay);
+            return;
+          }
+          handleRealTimeData({
+            RD: sourceData[playIndex.value].RD,
+            OD: sourceData[playIndex.value].OD,
+            Conc: sourceData[playIndex.value].Conc,
+          });
+        }
+      }, 250);
+    } else {
+      timerPlay && clearInterval(timerPlay);
+    }
+  },
+  {
+    immediate: true,
+  }
+);
+
+watch(isDragSlider, (newValue) => {
+  // 拖拽了进度条更改渲染数据
+  if (newValue) {
+    indexStore.isDragSlider = false;
+    handleOldData();
+  }
+});
+watch(
+  recordId,
+  (value) => {
+    if (value !== undefined) {
+      initialize();
+    }
+  },
+);
+
+
 onMounted(function () {
+  // var sq = new CustomDatabase()
+  // console.log(sq,"sq");
+  initialize();
+});
+
+
+onBeforeUnmount(() => {
+  timer && clearInterval(timer);
+  timerPlay && clearInterval(timerPlay);
+});
+
+
+const initialize = () => {
+  sourceData = [];
+  seriesData = [];
+  if (!recordId.value) {
+    timer && clearInterval(timer);
+    timer = setInterval(() => {
+      // [通道1-735nm，通道1-805nm，通道1-850nm，通道2...]
+      let RD: number[] = [],
+        OD: number[] = [],
+        Conc: number[] = [];
+      for (let i = 0; i < 8 * 3; i++) {
+        RD.push(Math.round(Math.random() * 20 + 30));
+        OD.push(Math.round(Math.random() * 20 + 30));
+        Conc.push(Math.round(Math.random() * 20 + 30));
+      }
+      handleRealTimeData({
+        RD,
+        OD,
+        Conc,
+      });
+    }, 250);
+  } else {
+    db.get(`select sourceData from record where id = ${recordId.value}`).then(
+      (res) => {
+        sourceData = JSON.parse(res.sourceData);
+        if (playIndex.value > 0) {
+          // X轴与时间相关的才需要把之前的数据加进去
+          handleOldData();
+        }
+      }
+    );
+  }
+
   initData();
   nextTick(() => {
     myChart = echarts.init(document.getElementById("series"));
     initSeries();
   });
-});
+};
+
+
+
+// 处理之前数据
+const handleOldData = () => {
+  let tempPlayIndex = playIndex.value;
+  seriesData = sourceData
+    .map((item) => {
+      return {
+        RD: item.RD,
+        OD: item.OD,
+        Conc: item.Conc,
+      };
+    })
+    .slice(0, tempPlayIndex)
+    .slice(-seriesMaxStep * 4);
+  generateSeries();
+  initSeries();
+};
+
+// 处理实时数据
+const handleRealTimeData = (data: any) => {
+  seriesData.push(data);
+  if (seriesData.length > seriesMaxStep * 4) {
+    seriesData.shift();
+  }
+
+  generateSeries();
+  initSeries();
+};
 
 // 配置改变
 const handleChange = () => {
@@ -306,6 +437,7 @@ const initData = () => {
       chanIndex: Math.ceil((index + 1) / 3),
       radioIndex: (index % 3) + 1,
       index: index,
+      type: "RD",
       name: item,
       color: generateColor(
         seriesColors[Math.ceil((index + 1) / 3) - 1],
@@ -318,6 +450,7 @@ const initData = () => {
       chanIndex: Math.ceil((index + 1) / 3),
       radioIndex: (index % 3) + 1,
       index: index,
+      type: "OD",
       name: item,
       color: generateColor(
         seriesColors[Math.ceil((index + 1) / 3) - 1],
@@ -330,6 +463,7 @@ const initData = () => {
       chanIndex: Math.ceil((index + 1) / 3),
       radioIndex: (index % 3) + 1,
       index: index,
+      type: "Conc",
       name: item,
       color: generateColor(
         seriesColors[Math.ceil((index + 1) / 3) - 1],
@@ -360,6 +494,8 @@ const generateShowSeriesData = () => {
       checkboxValue.includes(item.radioIndex + "")
     );
   });
+  console.log("showSeriesData", showSeriesData);
+
   generateXAxisArr();
   generateYAxisArr();
   generateGrid();
@@ -370,13 +506,18 @@ const generateShowSeriesData = () => {
 const generateXAxisArr = () => {
   xAxisArr = showSeriesData.map((item, index) => {
     return {
-      type: "category",
+      type: "time",
       show: index === showSeriesData.length - 1,
       boundaryGap: false,
       gridIndex: index,
-      data: [1, 2, 3, 4, 5, 6, 7],
+      max: seriesStep.value * 1000,
       axisLabel: {
         color: "#666666",
+        formatter: function (value, index) {
+          return echarts.format.formatTime("s", value);
+        },
+        showMaxLabel: true,
+        showMinLabel: true,
       },
       axisLine: {
         lineStyle: {
@@ -417,11 +558,79 @@ const generateYAxisArr = () => {
   });
 };
 
+// 生成grid
+const generateGrid = () => {
+  gridArr = showSeriesData.map((item, index) => {
+    return {
+      left: "10%",
+      right: "4%",
+      top: (100 / showSeriesData.length) * index + "%",
+      bottom: 100 - (100 / showSeriesData.length) * (index + 1) + "%",
+      containLabel: false,
+    };
+  });
+};
+
 // 生成series
 const generateSeries = () => {
+  let tempSeriesData;
+  tempSeriesData = Object.assign([], seriesData.slice(-seriesStep.value * 4));
+
+  // seriesData
+  // [{
+  //   RD:[`通道1-735nm，通道1-805nm，通道1-850nm，通道2...`],
+  //   OD:[`通道1-735nm，通道1-805nm，通道1-850nm，通道2...`],
+  //   Conc:[`通道1-HbO，通道1-HbR，通道1-HbT，通道2...`]
+  // },{
+  //   RD:[`通道1-735nm，通道1-805nm，通道1-850nm，通道2...`],
+  //   OD:[`通道1-735nm，通道1-805nm，通道1-850nm，通道2...`],
+  //   Conc:[`通道1-HbO，通道1-HbR，通道1-HbT，通道2...`]
+  // }]
+  // 构建后
+  // {
+  // 通道1-735nm / 通道1-HbO
+  // RD:['通道1-735nm','通道1-735nm']
+  // OD:['通道1-735nm','通道1-735nm']
+  // Conc:['通道1-HbO','通道1-HbO']
+  // }
   seriesArr = showSeriesData.map((item, index) => {
+    let tempObj: any = {
+      RD: [],
+      OD: [],
+      Conc: [],
+    };
+
+    tempSeriesData.forEach((j, i) => {
+      if (item.type === "RD") {
+        tempObj.RD.push({
+          value: [
+            (tempObj.RD.length + 1) * 250,
+            j.RD[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
+          ],
+          "j.RD": j.RD,
+          index: (item.chanIndex - 1) * 3 + item.radioIndex - 1,
+        });
+      }
+      if (item.type === "OD") {
+        tempObj.OD.push({
+          value: [
+            (tempObj.OD.length + 1) * 250,
+            j.OD[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
+          ],
+        });
+      }
+      if (item.type === "Conc") {
+        tempObj.Conc.push({
+          value: [
+            (tempObj.Conc.length + 1) * 250,
+            j.Conc[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
+          ],
+        });
+      }
+    });
+
     return {
-      data: [150, 230, 224, 218, 135, 147, 260],
+      data: tempObj[item.type],
       type: "line",
       name: item.name,
       symbol: "none",
@@ -447,22 +656,10 @@ const generateSeries = () => {
   });
 };
 
-// 生成grid
-const generateGrid = () => {
-  gridArr = showSeriesData.map((item, index) => {
-    return {
-      left: "10%",
-      right: "4%",
-      top: (100 / showSeriesData.length) * index + "%",
-      bottom: 100 - (100 / showSeriesData.length) * (index + 1) + "%",
-      containLabel: false,
-    };
-  });
-};
-
 // 渲染图表
 const initSeries = () => {
   myChart?.setOption({
+    animation: false,
     xAxis: xAxisArr,
     grid: gridArr,
     yAxis: yAxisArr,

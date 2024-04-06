@@ -68,12 +68,12 @@ li {
     background-color: #ffffff;
   }
   .header-center {
-    width: 200px;
+    width: 180px;
     display: flex;
     background-color: #f8f8f8;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
-    padding: 10px 0px;
+    padding: 10px 40px;
     & > span {
       color: #a8a8a8;
     }
@@ -150,18 +150,21 @@ li {
 
   .editable-cell-icon,
   .editable-cell-icon-check {
-    position: absolute;
-    right: 0;
+    // position: absolute;
+    // right: 0;
     width: 20px;
+    margin-left: 5px;
+    color: #666;
     cursor: pointer;
   }
 
   .editable-cell-icon {
     margin-top: 4px;
-    display: none;
+    // display: none;
   }
 
   .editable-cell-icon-check {
+    margin-top: 7px;
     line-height: 28px;
   }
 
@@ -175,7 +178,7 @@ li {
   }
 }
 .editable-cell:hover .editable-cell-icon {
-  display: inline-block;
+  // display: inline-block;
 }
 
 .eig-card {
@@ -484,11 +487,19 @@ $roundRadius: 18px;
 .record-box {
   display: flex;
   padding: 15px 40px;
-  margin: 0 -20px -20px;
+  // margin: 0 -20px -20px;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.12);
   position: relative;
   z-index: 999;
   align-items: center;
+  .record-close {
+    position: absolute;
+    right: 8px;
+    cursor: pointer;
+    top: 5px;
+    font-size: 20px;
+    color: #ec005d;
+  }
   .record-title {
     margin-left: 46px;
    

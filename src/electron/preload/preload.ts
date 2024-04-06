@@ -13,5 +13,11 @@ window.addEventListener('DOMContentLoaded', () => {
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  openFile: () => ipcRenderer.invoke('dialog:openFile')
+  openFile: () => ipcRenderer.invoke('dialog:openFile'),
+  cancelBluetoothRequest: () => ipcRenderer.send('cancel-bluetooth-request'),
+  bluetoothPairingRequest: (callback: any) => ipcRenderer.on('bluetooth-pairing-request', () => callback()),
+  bluetoothPairingResponse: (response: any) => ipcRenderer.send('bluetooth-pairing-response', response),
+  require: () => ipcRenderer.invoke('require'),
+  __dirname: () => ipcRenderer.invoke('dirname'),
 })
+
