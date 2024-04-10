@@ -18,7 +18,7 @@
 import { ref, reactive, onMounted, getCurrentInstance } from "vue";
 const ipcRenderer = require("electron").ipcRenderer;
 import { CustomBluetooth } from "../utils/bluetooth";
-const isConnect = ref(true);
+const isConnect = ref(false);
 import { message } from "ant-design-vue";
 const app = getCurrentInstance();
 const findDevice = async () => {

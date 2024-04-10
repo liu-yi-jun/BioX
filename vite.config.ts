@@ -8,7 +8,7 @@ export default ({ mode }) => {
     alias: {
       "@": "/src",
       "@components": "/src/components/",
-      "@assets": "/src/assets/",
+      "@/assets": "/src/assets/",
     },
     plugins: [vue()],
     base: "./",

@@ -291,6 +291,10 @@ $roundRadius: 18px;
       left: 10%;
       right: 39%;
     }
+    .S1-D6 {
+      left: 46%;
+      right: 39%;
+    }
     .D6 {
       left: auto;
       right: 52%;
@@ -321,9 +325,20 @@ $roundRadius: 18px;
     }
     .S1-D7.round-line .S1-text {
       top: 110%;
-      right:-8px;
+      right: -8px;
       transform: rotate(30deg);
     }
+  }
+  .S1-D8-SVG {
+    position: relative;
+    overflow: hidden;
+    top: -27px;
+    cursor: pointer;
+  }
+  .S1-D6-SVG {
+    top: 2px;
+    position: relative;
+    cursor: pointer;
   }
   .D6 {
     left: 52%;
@@ -344,7 +359,7 @@ $roundRadius: 18px;
   }
   .S1 {
     left: 30%;
-    background-color: #FE9A98 !important;
+    background-color: #fe9a98 !important;
     top: 42%;
   }
 
@@ -423,10 +438,18 @@ $roundRadius: 18px;
     }
   }
 
+  .S1-D6 {
+    left: 39%;
+    top: calc(42% + $roundRadius / 2);
+    right: 46%;
+    cursor: inherit !important;
+  }
+
   .S1-D8 {
     left: 39%;
     top: calc(42% + $roundRadius / 2);
     right: 10%;
+    cursor: inherit !important;
   }
   // .S1-D5  {
   //   left: 30%;
@@ -454,8 +477,8 @@ $roundRadius: 18px;
     padding: 3px;
     &.active {
       .line {
-        background-color: #00D008;
-        border-color: #00D008;
+        background-color: #00d008;
+        border-color: #00d008;
       }
     }
   }
@@ -475,10 +498,9 @@ $roundRadius: 18px;
     width: $roundRadius;
     height: $roundRadius;
     border-radius: $roundRadius;
-    background-color: #00BFFF;
+    background-color: #00bfff;
   }
 }
-
 
 .eig-record {
   // height: 200px;
@@ -502,17 +524,15 @@ $roundRadius: 18px;
   }
   .record-title {
     margin-left: 46px;
-   
   }
   .record-icon-box {
     margin-right: 20px;
     font-size: 26px;
     cursor: pointer;
- 
   }
   .progress-record-icon {
     width: 18px;
-    cursor: pointer;  
+    cursor: pointer;
     height: 18px;
     border-radius: 4px;
     background-color: #ec005d;
@@ -523,7 +543,6 @@ $roundRadius: 18px;
     height: 18px;
     border-radius: 18px;
     background-color: #ec005d;
-
   }
   .record-slider-box {
     flex: 1;
@@ -532,7 +551,7 @@ $roundRadius: 18px;
     .eig-slider {
       flex: 1;
     }
-    &>span {
+    & > span {
       margin-left: 8px;
     }
   }

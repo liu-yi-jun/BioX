@@ -47,15 +47,46 @@
             <div class="D8 round" @click="channelLineClick(4)">
               <span class="D8-text text">D8</span>
             </div>
-            <div class="D6 round">
+            <div class="D6 round" @click="channelLineClick(2)">
               <span class="D6-text text">D6</span>
             </div>
             <div
               class="S1-D8 line-box"
-              @click="channelLineClick(4)"
               :class="{ active: channels.includes(4) }"
             >
-              <span class="line"></span>
+              <svg
+                class="S1-D8-SVG"
+                width="100%"
+                @click="channelLineClick(4)"
+                height="30"
+                viewBox="0 0 220 30"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,30 Q110,-25, 220,30"
+                  :stroke="channels.includes(4)?'#00D008':'#848484'"
+                  fill="transparent"
+                  stroke-width="3"
+                />
+              </svg>
+              <!-- <span class="line"></span> -->
+            </div>
+            <div class="S1-D6 line-box">
+              <svg
+                class="S1-D6-SVG"
+                width="100%"
+                @click="channelLineClick(2)"
+                height="16"
+                viewBox="0 0 220 16"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,0 Q110,16, 220,0"
+                  :stroke="channels.includes(2)?'#00D008':'#848484'"
+                  fill="transparent"
+                  stroke-width="3"
+                />
+              </svg>
             </div>
           </div>
           <div class="selection-box selection-box-right">
@@ -90,15 +121,46 @@
             <div class="D8 round" @click="channelLineClick(8)">
               <span class="D8-text text">D4</span>
             </div>
-            <div class="D6 round">
+            <div class="D6 round"  @click="channelLineClick(6)">
               <span class="D6-text text">D2</span>
             </div>
             <div
               class="S1-D8 line-box"
-              @click="channelLineClick(8)"
               :class="{ active: channels.includes(8) }"
             >
-              <span class="line"></span>
+            <svg
+                class="S1-D8-SVG"
+                width="100%"
+                @click="channelLineClick(8)"
+                height="30"
+                viewBox="0 0 220 30"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,30 Q110,-25, 220,30"
+                  :stroke="channels.includes(8)?'#00D008':'#848484'"
+                  fill="transparent"
+                  stroke-width="3"
+                />
+              </svg>
+              <!-- <span class="line"></span> -->
+            </div>
+            <div class="S1-D6 line-box">
+              <svg
+                class="S1-D6-SVG"
+                width="100%"
+                @click="channelLineClick(6)"
+                height="16"
+                viewBox="0 0 220 16"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,0 Q110,16, 220,0"
+                  :stroke="channels.includes(6)?'#00D008':'#848484'"
+                  fill="transparent"
+                  stroke-width="3"
+                />
+              </svg>
             </div>
           </div>
         </div>
@@ -149,7 +211,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch ,onBeforeUnmount} from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  nextTick,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 // import { CustomDatabase } from "../../utils/db";
 import * as echarts from "echarts";
 const radioValue = ref<number>(1);
@@ -167,7 +236,7 @@ const db = new CustomDatabase();
 let sourceData;
 let seriesData: any = [];
 let myChart: echarts.EChartsType;
-let timerPlay,timer;
+let timerPlay, timer;
 interface showSeriesDataType {
   chanIndex: number;
   index: number;
@@ -314,15 +383,11 @@ watch(isDragSlider, (newValue) => {
     handleOldData();
   }
 });
-watch(
-  recordId,
-  (value) => {
-    if (value !== undefined) {
-      initialize();
-    }
-  },
-);
-
+watch(recordId, (value) => {
+  if (value !== undefined) {
+    initialize();
+  }
+});
 
 onMounted(function () {
   // var sq = new CustomDatabase()
@@ -330,14 +395,13 @@ onMounted(function () {
   initialize();
 });
 
-
 onBeforeUnmount(() => {
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
 });
 
-
 const initialize = () => {
+  return;
   sourceData = [];
   seriesData = [];
   if (!recordId.value) {
@@ -376,8 +440,6 @@ const initialize = () => {
     initSeries();
   });
 };
-
-
 
 // 处理之前数据
 const handleOldData = () => {

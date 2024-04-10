@@ -1,9 +1,24 @@
-import { join } from "path";
+import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+var child_process = require("child_process");
+let child: typeof child_process;
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
 let bluetoothPinCallback: any;
 let selectBluetoothCallback: any;
+let __static = "";
+if (process.env.NODE_ENV !== "development") {
+  __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
+}
+
+let _product_path = join(__dirname, "../../product");
+let _product_resolve_path = resolve(__dirname, "../../product");
+let _db_path = resolve(__dirname, "../../");
+if (process.env.NODE_ENV !== "development") {
+  _product_path = join(__dirname, "../../../product");
+  _db_path = resolve(__dirname, "../../../../");
+  _product_resolve_path = resolve(__dirname, "../../../product");
+}
 
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -31,12 +46,10 @@ function createWindow() {
   mainWindow.webContents.on(
     "select-bluetooth-device",
     (event, deviceList, callback) => {
-      console.log(deviceList, "deviceList");
-      debugger;
       event.preventDefault();
       selectBluetoothCallback = callback;
       const result = deviceList.find((device) => {
-        return device.deviceName === "Biox_Demo";
+        return device.deviceName === "Biox_B0";
       });
       if (result) {
         callback(result.deviceId);
@@ -49,25 +62,64 @@ function createWindow() {
 
   ipcMain.on("cancel-bluetooth-request", (event) => {
     console.log("cancel-bluetooth-request");
-    
     selectBluetoothCallback("");
   });
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
-  ipcMain.on("bluetooth-pairing-response", (event, response) => {
-    console.log("bluetooth-pairing-response");
-    bluetoothPinCallback(response);
+  // ipcMain.on("bluetooth-pairing-response", (event, response) => {
+  //   console.log("bluetooth-pairing-response");
+  //   bluetoothPinCallback(response);
+  // });
+
+  // mainWindow.webContents.session.setBluetoothPairingHandler(
+  //   (details, callback) => {
+  //     bluetoothPinCallback = callback;
+  //     console.log("bluetooth-pairing-request");
+  //     // Send a message to the renderer to prompt the user to confirm the pairing.
+  //     mainWindow.webContents.send("bluetooth-pairing-request", details);
+  //   }
+  // );
+
+  // 创建子进程
+  ipcMain.on("create-child", (event, data) => {
+    child = child_process.fork(
+      join(__dirname, "./child.js"),
+      [__static, _product_path],
+      {
+        // 关闭子进程打印，开启ipc
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
+      },
+      function (err: any) {
+        console.log(err);
+      }
+    );
+    child.stderr.on("data", (data: any) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    child.stdout.on("data", (data: any) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    child.on("error", (err: any) => {
+      console.error("子进程启动或执行过程中发生错误:", err);
+    });
+
+    child.on("exit", (code: number, signal: string) => {
+      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+    });
+    child.on("receive-message", (type: string, msg: any) => {
+      if (type === "end-data-decode") {
+        event.sender.send("end-data-decode", msg);
+      }
+    });
   });
 
-  mainWindow.webContents.session.setBluetoothPairingHandler(
-    (details, callback) => {
-      bluetoothPinCallback = callback;
-      console.log("bluetooth-pairing-request");
-      // Send a message to the renderer to prompt the user to confirm the pairing.
-      mainWindow.webContents.send("bluetooth-pairing-request", details);
-    }
-  );
-  //   蓝牙连接部分
+  //  开始蓝牙数据解码
+  ipcMain.on("start-data-decode", (event, data) => {
+    // console.log("start-data-decode", data);
+    child.connected && child.send({ msg: "start-data-decode", data: Buffer.from(data)  });
+  });
 
   // and load the index.html of the app.
   if (isDev) {

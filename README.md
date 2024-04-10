@@ -7,6 +7,7 @@
 ### 1.环境
 
 #### node  v16.13.2
+#### python 3.6.0
 
 ```bash
 npm config edit
