@@ -5,9 +5,6 @@ let noticeList: Function[] = [];
 let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
-  // for (let i = 0; i < noticeList.length; i++) {
-  //   noticeList[i](data);
-  // }
 };
 
 CustomBluetooth.prototype.init = async function (cb) {
@@ -71,7 +68,9 @@ CustomBluetooth.prototype.init = async function (cb) {
     ipcRenderer.send("create-child");
     // 解码后的蓝牙数据
     ipcRenderer.on("end-data-decode", (event, data) => {
-      console.log("解码后蓝牙数据", data);
+      for (let i = 0; i < noticeList.length; i++) {
+          noticeList[i](data);
+        }
     });
     cb(true);
   } catch (err) {

@@ -229,12 +229,14 @@ const seriesMaxStep = 30;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
+import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
 const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
 let seriesData: any = [];
+let bluetooth = new CustomBluetooth();
 let myChart: echarts.EChartsType;
 let timerPlay, timer;
 interface showSeriesDataType {
@@ -396,35 +398,69 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
+  bluetooth.removeNotice(bluetoothNotice);
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
 });
+
+// 蓝牙数据通知
+const bluetoothNotice = (data) => {
+
+  handleRealTimeData(blueToothdataMapping(data));
+};
+
+// 将蓝牙数据进行映射
+const blueToothdataMapping = (data) => {
+  let RD: number[] = [],
+    OD: number[] = [],
+    Conc: number[] = [];
+  for (let i = 0; i < 8 * 3; i++) {
+    RD.push(Math.round(Math.random() * 20 + 30));
+    OD.push(Math.round(Math.random() * 20 + 30));
+    Conc.push(Math.round(Math.random() * 20 + 30));
+  }
+  RD[0] = data.near_infrared_channel[0];
+  RD[1] = data.near_infrared_channel[1];
+  RD[2] = data.near_infrared_channel[2];
+  RD[3] = data.near_infrared_channel[3];
+  RD[4] = data.near_infrared_channel[4];
+  RD[5] = data.near_infrared_channel[5];
+  return {
+    RD,
+    OD,
+    Conc,
+  };
+};
 
 const initialize = () => {
   sourceData = [];
   seriesData = [];
   if (!recordId.value) {
-    timer && clearInterval(timer);
-    timer = setInterval(() => {
-      // [通道1-735nm，通道1-805nm，通道1-850nm，通道2...]
-      let RD: number[] = [],
-        OD: number[] = [],
-        Conc: number[] = [];
-      for (let i = 0; i < 8 * 3; i++) {
-        RD.push(Math.round(Math.random() * 20 + 30));
-        OD.push(Math.round(Math.random() * 20 + 30));
-        Conc.push(Math.round(Math.random() * 20 + 30));
-      }
-      handleRealTimeData({
-        RD,
-        OD,
-        Conc,
-      });
-    }, 250);
+    bluetooth.addNotice(bluetoothNotice);
+    // timer && clearInterval(timer);
+    // timer = setInterval(() => {
+    //   // [通道1-735nm，通道1-805nm，通道1-850nm，通道2...]
+    //   let RD: number[] = [],
+    //     OD: number[] = [],
+    //     Conc: number[] = [];
+    //   for (let i = 0; i < 8 * 3; i++) {
+    //     RD.push(Math.round(Math.random() * 20 + 30));
+    //     OD.push(Math.round(Math.random() * 20 + 30));
+    //     Conc.push(Math.round(Math.random() * 20 + 30));
+    //   }
+    //   handleRealTimeData({
+    //     RD,
+    //     OD,
+    //     Conc,
+    //   });
+    // }, 250);
   } else {
+    bluetooth.removeNotice(bluetoothNotice);
     db.get(`select sourceData from record where id = ${recordId.value}`).then(
       (res) => {
-        sourceData = JSON.parse(res.sourceData);
+        sourceData = JSON.parse(res.sourceData).map((item) => {
+          return blueToothdataMapping(item);
+        });
         if (playIndex.value > 0) {
           // X轴与时间相关的才需要把之前的数据加进去
           handleOldData();

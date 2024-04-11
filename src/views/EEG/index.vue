@@ -167,13 +167,13 @@ import {
 import type { SelectProps } from "ant-design-vue";
 
 import { HighchartsKey } from "../../types";
-
+import { CustomBluetooth } from "../../utils/bluetooth";
 let grid: echarts.EChartOption.Grid[] = [];
 let xAxis: echarts.EChartOption.XAxis[] = [];
 let yAxis: echarts.EChartOption.YAxis[] = [];
 let series: echarts.EChartOption.Series[] = [];
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
-
+let bluetooth = new CustomBluetooth();
 const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const spectrumShowTime = ref(30);
@@ -348,70 +348,91 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
+  bluetooth.removeNotice(bluetoothNotice);
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
 });
 
+// 蓝牙数据通知
+const bluetoothNotice = (data) => {
+
+  handleRealTimeData(blueToothdataMapping(data));
+};
+
+// 将蓝牙数据进行映射
+const blueToothdataMapping = (data) => {
+  return {
+    series: {
+      Fp1: data.brain_elec_channel[0],
+      Fp2: data.brain_elec_channel[1],
+    },
+    psd: {
+      Fp1: [
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+      ],
+      Fp2: [
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+        Math.random() * 100,
+      ],
+    },
+    absolute: {
+      0: Math.random() * 20 + 80,
+      1: Math.random() * 20 + 80,
+      2: Math.random() * 20 + 80,
+      3: Math.random() * 20 + 80,
+      4: Math.random() * 20 + 80,
+    },
+    related: {
+      γ: 100,
+      β: Math.random() * 20 + 60,
+      α: Math.random() * 20 + 40,
+      θ: Math.random() * 20 + 20,
+      δ: Math.random() * 20 + 0,
+    },
+    barnsTime: {
+      EEG: Math.random() * 20 + 80,
+      DELTA: Math.random() * 20 + 80,
+      THETA: Math.random() * 20 + 80,
+      ALPHA: Math.random() * 20 + 80,
+      BETA: Math.random() * 20 + 80,
+      GAMMA: Math.random() * 20 + 80,
+    },
+  };
+};
+
+
+const clearData = (obj) => {
+  for (const key in obj) {
+   obj[key] = [];
+  }
+}
+
 const initialize = () => {
+  clearData(seriesObj);
+  clearData(psdObj);
+  clearData(relatedObj);
+  clearData(barnsTimeObj);
   sourceData = [];
   if (!recordId.value) {
-    timer && clearInterval(timer);
-    timer = setInterval(() => {
-      handleRealTimeData({
-        series: {
-          Fp1: Math.random() * 150,
-          Fp2: Math.random() * 150,
-        },
-        psd: {
-          Fp1: [
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-          ],
-          Fp2: [
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-          ],
-        },
-        absolute: {
-          0: Math.random() * 20 + 80,
-          1: Math.random() * 20 + 80,
-          2: Math.random() * 20 + 80,
-          3: Math.random() * 20 + 80,
-          4: Math.random() * 20 + 80,
-        },
-        related: {
-          γ: 100,
-          β: Math.random() * 20 + 60,
-          α: Math.random() * 20 + 40,
-          θ: Math.random() * 20 + 20,
-          δ: Math.random() * 20 + 0,
-        },
-        barnsTime: {
-          EEG: Math.random() * 20 + 80,
-          DELTA: Math.random() * 20 + 80,
-          THETA: Math.random() * 20 + 80,
-          ALPHA: Math.random() * 20 + 80,
-          BETA: Math.random() * 20 + 80,
-          GAMMA: Math.random() * 20 + 80,
-        },
-      });
-    }, 250);
+    bluetooth.addNotice(bluetoothNotice);
   } else {
+    bluetooth.removeNotice(bluetoothNotice);
     db.get(`select sourceData from record where id = ${recordId.value}`).then(
       (res) => {
-        sourceData = JSON.parse(res.sourceData);
-        console.log(sourceData);
-
+        sourceData = JSON.parse(res.sourceData).map((item) => {
+          return blueToothdataMapping(item);
+        });
         if (playIndex.value > 0) {
           // X轴与时间相关的才需要把之前的数据加进去
           handleOldData();

@@ -108,9 +108,9 @@ function createWindow() {
     child.on("exit", (code: number, signal: string) => {
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
-    child.on("receive-message", (type: string, msg: any) => {
+    child.on("message", ( {type, data}: {type: string, data: any}) => {
       if (type === "end-data-decode") {
-        event.sender.send("end-data-decode", msg);
+        event.sender.send("end-data-decode", data);
       }
     });
   });
@@ -118,7 +118,7 @@ function createWindow() {
   //  开始蓝牙数据解码
   ipcMain.on("start-data-decode", (event, data) => {
     // console.log("start-data-decode", data);
-    child.connected && child.send({ msg: "start-data-decode", data: Buffer.from(data)  });
+    child.connected && child.send({ type: "start-data-decode", data: Buffer.from(data)  });
   });
 
   // and load the index.html of the app.

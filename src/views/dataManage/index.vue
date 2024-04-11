@@ -2,12 +2,19 @@
   <div class="eig-column">
     <div class="eig-filter">
       <div class="filter-right">
-        <a-input-search
-          v-model:value="value"
-          placeholder="input search text"
-          style="width: 200px"
-          @search="onSearch"
-        />
+        <a-space>
+          <a-input-search
+            v-model:value="searchValue"
+            placeholder="input search text"
+            style="width: 200px"
+            @search="onSearch"
+          />
+          <a-button class="eig-icon-btn" @click="onRefresh">
+            <template #icon>
+              <RedoOutlined  :style="{ color: 'rgba(0, 0, 0, 0.45)' }" />
+            </template>
+          </a-button>
+        </a-space>
       </div>
     </div>
     <div class="eig-table">
@@ -65,7 +72,7 @@
                   />
                 </p>
                 <p v-if="column.dataIndex === 'name'">
-                  <span>{{ record.recoredCreateTime }}</span>
+                  <span>{{ record.instanceID }}</span>
                 </p>
               </div>
             </div>
@@ -92,10 +99,10 @@
 import { ref, reactive, onMounted } from "vue";
 import type { Ref, UnwrapRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { RedoOutlined } from "@ant-design/icons-vue";
 import { formatTimestamp, tipFormatter } from "../../utils/common";
-const value = ref<string>("");
+const searchValue = ref<string>("");
 import { cloneDeep } from "lodash-es";
-import { message } from "ant-design-vue";
 import { CheckOutlined, EditOutlined } from "@ant-design/icons-vue";
 import { CustomDatabase } from "../../utils/db";
 import { Modal } from "ant-design-vue";
@@ -105,6 +112,7 @@ const router = useRouter();
 const indexStore = useIndexStore();
 const { play, recordId } = storeToRefs(indexStore);
 const db = new CustomDatabase();
+import { message } from "ant-design-vue";
 interface DataItem {
   id: number;
   name: string;
@@ -138,9 +146,21 @@ const columns = [
   },
 ];
 
-onMounted(async () => {
-  recordList.value = await db.all(`select * from record`);
+onMounted(() => {
+  getDate();
 });
+
+const getDate = async () => {
+  recordList.value = await db.all(
+    `select id,instanceID,name,recoredCreateTime,recoredTotalTime,recoredEndTime,describe from record where  '${searchValue.value}' = '' or name Like '%${searchValue.value}%'  or instanceID Like '%${searchValue.value}%'`
+  );
+};
+
+
+const onRefresh = async () => {
+  await getDate();
+  message.success('已刷新！');
+};
 
 const deleteRow = (record: DataItem) => {
   Modal.confirm({
@@ -159,8 +179,7 @@ const deleteRow = (record: DataItem) => {
 };
 
 const onSearch = (searchValue: string) => {
-  console.log("use value", searchValue);
-  console.log("or use this.value", value.value);
+  getDate();
 };
 
 const editableData: UnwrapRef<Record<string, DataItem>> = reactive({});

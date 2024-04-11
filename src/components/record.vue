@@ -4,7 +4,9 @@
       <CloseCircleOutlined />
     </div>
     <div class="record-slider">
-      <span class="record-title" v-if="!isRecord">{{ name }}/{{ idName }}</span>
+      <span class="record-title" v-if="!isRecord"
+        >{{ name }}/{{ instanceID }}</span
+      >
       <div class="record-slider-box">
         <div class="record-icon-box">
           <div
@@ -117,7 +119,7 @@ const recoredTotalTime = ref<number>(0);
 // 弹出框状态 0:创建 1:结束
 const modelStatus = ref<number>(0);
 const name = ref<string>("");
-const idName = ref<string>("");
+const instanceID = ref<string>("");
 
 let timer;
 let db;
@@ -126,13 +128,17 @@ const emit = defineEmits([
   "onStatus",
   "startRecord",
   "endRecord",
+  "saveRecord",
   "cancelRecord",
 ]);
 const startRecord = () => {
   emit("startRecord");
 };
-const endRecord = (cb) => {
-  emit("endRecord", cb);
+const endRecord = () => {
+  emit("endRecord");
+};
+const saveRecord = (cb) => {
+  emit("saveRecord", cb);
 };
 const cancelRecord = () => {
   emit("cancelRecord");
@@ -148,7 +154,7 @@ watch(recordId, (newValue, oldValue) => {
     ).then((res) => {
       totalTime.value = res.recoredTotalTime;
       name.value = res.name;
-      idName.value = res.recoredCreateTime;
+      instanceID.value = res.recoredCreateTime;
     });
   }
 });
@@ -184,13 +190,17 @@ const changeStatus = () => {
   status.value = status.value === 0 ? 1 : 0;
 
   if (status.value === 1 && isRecord.value === false) {
-    // 开始播放
+    // 开始播放录制
     indexStore.play = true;
   }
+  // 进行中
   if (status.value === 1) {
     timer = setInterval(() => {
       currentTime.value = currentTime.value + 250;
       if (currentTime.value > totalTime.value) {
+        if (isRecord.value) {
+          openModal();
+        }
         status.value = 0;
         timer && clearInterval(timer);
         indexStore.play = false;
@@ -199,21 +209,43 @@ const changeStatus = () => {
       indexStore.playIndex++;
     }, 250);
   }
+
+  // 暂停
   if (status.value === 0) {
     timer && clearInterval(timer);
     indexStore.play = false;
   }
+
+  // 是否保存数据录制
   if (status.value === 0 && isRecord.value === true) {
     // 打开弹出框
-    recoredEndTime.value = new Date().getTime();
-    modelStatus.value = 1;
-    recoredTotalTime.value = recoredEndTime.value - recoredCreateTime.value;
-    openStartRecordModal.value = true;
+    openModal();
   }
+};
+//是否保存数据录制
+const openModal = () => {
+  recoredEndTime.value = new Date().getTime();
+  modelStatus.value = 1;
+  recoredTotalTime.value = recoredEndTime.value - recoredCreateTime.value;
+  openStartRecordModal.value = true;
+  endRecord();
 };
 
 const showStartRecordModal = () => {
   openStartRecordModal.value = true;
+};
+
+const generateUniqueId = () => {
+  // 获取当前时间戳的毫秒部分
+  const timestamp = Date.now().toString(36).slice(-8); // 转换为36进制并取后8位
+
+  // 生成一个随机的6位36进制数
+  const randomPart = Math.random().toString(36).slice(2, 8);
+
+  // 合并时间戳和随机部分，总共12位
+  const uniqueId = timestamp + randomPart;
+
+  return uniqueId;
 };
 
 const handleStartRecordModal = (e: MouseEvent) => {
@@ -231,8 +263,9 @@ const handleStartRecordModal = (e: MouseEvent) => {
         console.log("error", err);
       });
   } else if (status.value === 0 && modelStatus.value === 1) {
-    endRecord((sourceData) => {
+    saveRecord((sourceData) => {
       db.insert("record", {
+        instanceID: generateUniqueId(),
         sourceData: JSON.stringify(sourceData),
         ...toRaw(formData),
         recoredCreateTime: recoredCreateTime.value,
@@ -266,6 +299,7 @@ const clearData = () => {
   modelStatus.value = 0;
   status.value = 0;
   currentTime.value = 0;
+  resetFields();
 };
 
 const changeTime = (value) => {
@@ -274,6 +308,7 @@ const changeTime = (value) => {
 };
 
 const playClose = () => {
+  totalTime.value = 8 * 60 * 1000;
   indexStore.playIndex = 0;
   indexStore.isDragSlider = false;
   indexStore.recordId = 0;
@@ -282,7 +317,7 @@ const playClose = () => {
   disabled.value = true;
   timer && clearInterval(timer);
   indexStore.play = false;
-  clearData()
+  clearData();
 };
 </script>
 <style scoped></style>

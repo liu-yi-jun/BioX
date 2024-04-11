@@ -24,15 +24,8 @@ const PKG = Struct({
 
 // 加载DLL
 
-var pkg_decode_path = join(_product_path, "/dll/pkg_decode(1).dll");
+var pkg_decode_path = join(_product_path, "/dll/pkg_decode.dll");
 
-var TEST_SERIAL_PORT_PATH = join(_product_path, "/dll/TEST_SERIAL_PORT.dll");
-
-// let pkgDecode = ffi.Library(TEST_SERIAL_PORT_PATH, {
-//   OPEN_COM: ['bool', ['int']],
-//   SEND_COM: ['bool', [ref.types.uint8, ArrayType(ref.types.uint8), 'int', ref.types.uint16]],
-//   RECV_COM: ['bool', [ArrayType(ref.types.uint8)]],
-// });
 
 const pkgDecode = ffi.Library(pkg_decode_path, {
   get_pkg_buffer_length: ["int", []],
@@ -44,8 +37,8 @@ const pkgDecode = ffi.Library(pkg_decode_path, {
 });
 
 // 接收消息
-process.on("message", async function ({ msg, data }) {
-  if (msg === "start-data-decode") {
+process.on("message", async function ({ type, data }) {
+  if (type === "start-data-decode") {
     pkgDecode.pkg_recv();      
     let recvBuffer = Buffer.from(data.data);
     for (let i = 0; i < recvBuffer.length; i++) {
@@ -57,22 +50,23 @@ process.on("message", async function ({ msg, data }) {
       const ptrpkg = pkgDecode.decode();;
       // 获取值
       const pkg = ptrpkg.deref()
-      console.log('pkg.pkglen',pkg.pkglen);
-      console.log('pkg.time_mark',pkg.time_mark);
-      console.log('brain_elec_channel.0',pkg.brain_elec_channel[0]);
-      console.log('brain_elec_channel.1',pkg.brain_elec_channel[1]);
-      console.log('near_infrared_channel.0',pkg.near_infrared_channel[0]);
-      console.log('near_infrared_channel.1',pkg.near_infrared_channel[1]);
-      console.log('near_infrared_channel.2',pkg.near_infrared_channel[2]);
-      console.log('near_infrared_channel.3',pkg.near_infrared_channel[3]);
-      console.log('near_infrared_channel.4',pkg.near_infrared_channel[4]);
-      console.log('near_infrared_channel.5',pkg.near_infrared_channel[5]);
-      console.log('acceleration_x',pkg.acceleration_x);
-      console.log('acceleration_y',pkg.acceleration_y);
-      console.log('acceleration_z',pkg.acceleration_z);
-      console.log('temperature',pkg.temperature);
-      console.log('fall_off',pkg.fall_off);
-      console.log('error_state',pkg.error_state);
+      // console.log('pkg.pkglen',pkg.pkglen);
+      // console.log('pkg.time_mark',pkg.time_mark);
+      // console.log('brain_elec_channel.0',pkg.brain_elec_channel[0]);
+      // console.log('brain_elec_channel.1',pkg.brain_elec_channel[1]);
+      // console.log('near_infrared_channel.0',pkg.near_infrared_channel[0]); 1-1
+      // console.log('near_infrared_channel.1',pkg.near_infrared_channel[1]); 1-2
+      // console.log('near_infrared_channel.2',pkg.near_infrared_channel[2]); 1-3
+      // console.log('near_infrared_channel.3',pkg.near_infrared_channel[3]); 2-1
+      // console.log('near_infrared_channel.4',pkg.near_infrared_channel[4]); 2-2
+      // console.log('near_infrared_channel.5',pkg.near_infrared_channel[5]); 2-3
+      // console.log('acceleration_x',pkg.acceleration_x);
+      // console.log('acceleration_y',pkg.acceleration_y);
+      // console.log('acceleration_z',pkg.acceleration_z);
+      // console.log('temperature',pkg.temperature);
+      // console.log('fall_off',pkg.fall_off);
+      // console.log('error_state',pkg.error_state);
+      process.send!({ type: "end-data-decode", data: pkg });
       pkgDecode.pkgbuffer_pop();
     }
   }

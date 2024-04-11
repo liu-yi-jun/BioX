@@ -17,6 +17,7 @@ CustomDatabase.prototype.init = function (isMain = true) {
         // 录制数据表
         await this.run(`CREATE TABLE if not exists record(
           id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          instanceID VARCHAR(255) NOT NULL,
           name VARCHAR(255) NOT NULL,
           describe VARCHAR(255) NOT NULL,
           recoredCreateTime INTEGER NOT NULL default(0),
