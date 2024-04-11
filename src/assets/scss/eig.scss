@@ -275,8 +275,20 @@ li {
 
 $roundRadius: 18px;
 
+.selection-box-wrap {
+  margin: auto;
+  height: 100%;
+  width: 600px;
+  position: relative;
+}
 .selection {
   height: 100%;
+  width: 1000px;
+  margin: auto; 
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   .selection-box {
     flex: 1;
@@ -332,11 +344,11 @@ $roundRadius: 18px;
   .S1-D8-SVG {
     position: relative;
     overflow: hidden;
-    top: -27px;
+    top: -20px;
     cursor: pointer;
   }
   .S1-D6-SVG {
-    top: 2px;
+    top: 1px;
     position: relative;
     cursor: pointer;
   }

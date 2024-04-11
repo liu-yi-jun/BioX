@@ -12,9 +12,10 @@
     <div class="card-bottom">
       <div class="eig-card">
         <p class="card-title">Channel Selection</p>
-        <div class="selection" id="selection">
+        <div class="selection-box-wrap">
+          <div class="selection" id="selection"> 
           <div class="selection-box">
-            <div class="S1-D5 round-line">
+            <div class="S1-D5 round-line" :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
               <div class="S1 round"></div>
               <div
                 class="S1-D5 line-box"
@@ -27,7 +28,7 @@
                 <span class="D5-text text">D5</span>
               </div>
             </div>
-            <div class="S1-D7 round-line">
+            <div class="S1-D7 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
               <div
                 class="S1 round"
                 @click="channelLineClick([1, 2, 3, 4])"
@@ -58,12 +59,12 @@
                 class="S1-D8-SVG"
                 width="100%"
                 @click="channelLineClick(4)"
-                height="30"
-                viewBox="0 0 220 30"
+                height="25"
+                viewBox="0 0 220 25"  
                 preserveAspectRatio="none"
               >
                 <path
-                  d="M0,30 Q110,-25, 220,30"
+                  d="M0,25 Q110,-20, 220,25"
                   :stroke="channels.includes(4) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
@@ -90,7 +91,7 @@
             </div>
           </div>
           <div class="selection-box selection-box-right">
-            <div class="S1-D5 round-line">
+            <div class="S1-D5 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
               <div class="D5 round" @click="channelLineClick(5)">
                 <span class="D5-text text">D1</span>
               </div>
@@ -103,7 +104,7 @@
               </div>
               <div class="S1 round"></div>
             </div>
-            <div class="S1-D7 round-line">
+            <div class="S1-D7 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
               <div class="D7 round" @click="channelLineClick(7)">
                 <span class="D7-text text">D3</span>
               </div>
@@ -132,12 +133,12 @@
                 class="S1-D8-SVG"
                 width="100%"
                 @click="channelLineClick(8)"
-                height="30"
-                viewBox="0 0 220 30"
+                height="25"
+                viewBox="0 0 220 25"
                 preserveAspectRatio="none"
               >
                 <path
-                  d="M0,30 Q110,-25, 220,30"
+                  d="M0,25 Q110,-20, 220,25"
                   :stroke="channels.includes(8) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
@@ -163,6 +164,7 @@
               </svg>
             </div>
           </div>
+        </div>
         </div>
       </div>
       <div class="eig-card view-setting-card">
@@ -224,6 +226,8 @@ import * as echarts from "echarts";
 const radioValue = ref<number>(1);
 const checkboxValue1 = ref(["1"]);
 const checkboxValue2 = ref(["1"]);
+const selectionHeight = ref(0);
+const selectionWidth = ref(0);
 const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -394,6 +398,9 @@ watch(recordId, (value) => {
 onMounted(function () {
   // var sq = new CustomDatabase()
   // console.log(sq,"sq");
+  nextTick(() => {
+    getSelectionHeight();
+  });
   initialize();
 });
 
@@ -403,9 +410,16 @@ onBeforeUnmount(() => {
   timerPlay && clearInterval(timerPlay);
 });
 
+// 获取元素高度
+const getSelectionHeight = () => {
+  selectionHeight.value =
+    document.getElementById("selection")?.clientHeight || 0;
+  selectionWidth.value =
+    document.getElementById("selection")?.clientWidth || 0;
+};
+
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
-
   handleRealTimeData(blueToothdataMapping(data));
 };
 
