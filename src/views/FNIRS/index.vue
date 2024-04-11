@@ -64,7 +64,7 @@
               >
                 <path
                   d="M0,30 Q110,-25, 220,30"
-                  :stroke="channels.includes(4)?'#00D008':'#848484'"
+                  :stroke="channels.includes(4) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
                 />
@@ -82,7 +82,7 @@
               >
                 <path
                   d="M0,0 Q110,16, 220,0"
-                  :stroke="channels.includes(2)?'#00D008':'#848484'"
+                  :stroke="channels.includes(2) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
                 />
@@ -121,14 +121,14 @@
             <div class="D8 round" @click="channelLineClick(8)">
               <span class="D8-text text">D4</span>
             </div>
-            <div class="D6 round"  @click="channelLineClick(6)">
+            <div class="D6 round" @click="channelLineClick(6)">
               <span class="D6-text text">D2</span>
             </div>
             <div
               class="S1-D8 line-box"
               :class="{ active: channels.includes(8) }"
             >
-            <svg
+              <svg
                 class="S1-D8-SVG"
                 width="100%"
                 @click="channelLineClick(8)"
@@ -138,7 +138,7 @@
               >
                 <path
                   d="M0,30 Q110,-25, 220,30"
-                  :stroke="channels.includes(8)?'#00D008':'#848484'"
+                  :stroke="channels.includes(8) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
                 />
@@ -156,7 +156,7 @@
               >
                 <path
                   d="M0,0 Q110,16, 220,0"
-                  :stroke="channels.includes(6)?'#00D008':'#848484'"
+                  :stroke="channels.includes(6) ? '#00D008' : '#848484'"
                   fill="transparent"
                   stroke-width="3"
                 />
@@ -247,82 +247,82 @@ interface showSeriesDataType {
 }
 let showSeriesData: showSeriesDataType[] = [];
 const seriesRDNames = [
-  "chan1-735 nm",
-  "chan1-805 nm",
-  "chan1-850 nm",
-  "chan2-735 nm",
-  "chan2-805 nm",
-  "chan2-850 nm",
-  "chan3-735 nm",
-  "chan3-805 nm",
-  "chan3-850 nm",
-  "chan4-735 nm",
-  "chan4-805 nm",
-  "chan4-850 nm",
-  "chan5-735 nm",
-  "chan5-805 nm",
-  "chan5-850 nm",
-  "chan6-735 nm",
-  "chan6-805 nm",
-  "chan6-850 nm",
-  "chan7-735 nm",
-  "chan7-805 nm",
-  "chan7-850 nm",
-  "chan8-735 nm",
-  "chan8-805 nm",
-  "chan8-850 nm",
+  "S1D5.λ1",
+  "S1D5.λ2",
+  "S1D5.λ3",
+  "S1D6.λ1",
+  "S1D6.λ2",
+  "S1D6.λ3",
+  "S1D7.λ1",
+  "S1D7.λ2",
+  "S1D7.λ3",
+  "S1D8.λ1",
+  "S1D8.λ2",
+  "S1D8.λ3",
+  "S2D1.λ1",
+  "S2D1.λ2",
+  "S2D1.λ3",
+  "S2D2.λ1",
+  "S2D2.λ2",
+  "S2D2.λ3",
+  "S2D3.λ1",
+  "S2D3.λ2",
+  "S2D3.λ3",
+  "S2D4.λ1",
+  "S2D4.λ2",
+  "S2D4.λ3",
 ];
 const seriesODNames = [
-  "chan1-735 nm",
-  "chan1-805 nm",
-  "chan1-850 nm",
-  "chan2-735 nm",
-  "chan2-805 nm",
-  "chan2-850 nm",
-  "chan3-735 nm",
-  "chan3-805 nm",
-  "chan3-850 nm",
-  "chan4-735 nm",
-  "chan4-805 nm",
-  "chan4-850 nm",
-  "chan5-735 nm",
-  "chan5-805 nm",
-  "chan5-850 nm",
-  "chan6-735 nm",
-  "chan6-805 nm",
-  "chan6-850 nm",
-  "chan7-735 nm",
-  "chan7-805 nm",
-  "chan7-850 nm",
-  "chan8-735 nm",
-  "chan8-805 nm",
-  "chan8-850 nm",
+  "S1D5.λ1",
+  "S1D5.λ2",
+  "S1D5.λ3",
+  "S1D6.λ1",
+  "S1D6.λ2",
+  "S1D6.λ3",
+  "S1D7.λ1",
+  "S1D7.λ2",
+  "S1D7.λ3",
+  "S1D8.λ1",
+  "S1D8.λ2",
+  "S1D8.λ3",
+  "S2D1.λ1",
+  "S2D1.λ2",
+  "S2D1.λ3",
+  "S2D2.λ1",
+  "S2D2.λ2",
+  "S2D2.λ3",
+  "S2D3.λ1",
+  "S2D3.λ2",
+  "S2D3.λ3",
+  "S2D4.λ1",
+  "S2D4.λ2",
+  "S2D4.λ3",
 ];
 const seriesConcNames = [
-  "chan1-HbO",
-  "chan1-HbR",
-  "chan1-HbT",
-  "chan2-HbO",
-  "chan2-HbR",
-  "chan2-HbT",
-  "chan3-HbO",
-  "chan3-HbR",
-  "chan3-HbT",
-  "chan4-HbO",
-  "chan4-HbR",
-  "chan4-HbT",
-  "chan5-HbO",
-  "chan5-HbR",
-  "chan5-HbT",
-  "chan6-HbO",
-  "chan6-HbR",
-  "chan6-HbT",
-  "chan7-HbO",
-  "chan7-HbR",
-  "chan7-HbT",
-  "chan8-HbO",
-  "chan8-HbR",
-  "chan8-HbT",
+  "S1D5.HbO",
+  "S1D5.HbR",
+  "S1D5.HbT",
+  "S1D6.HbO",
+  "S1D6.HbR",
+  "S1D6.HbT",
+  "S1D7.HbO",
+  "S1D7.HbR",
+  "S1D7.HbT",
+  "S1D8.HbO",
+  "S1D8.HbR",
+  "S1D8.HbT",
+  "S2D1.HbO",
+  "S2D1.HbR",
+  "S2D1.HbT",
+  "S2D2.HbO",
+  "S2D2.HbR",
+  "S2D2.HbT",
+  "S2D3.HbO",
+  "S2D3.HbR",
+  "S2D3.HbT",
+  "S2D4.HbO",
+  "S2D4.HbR",
+  "S2D4.HbT",
 ];
 const seriesColors = [
   "rgba(137,137,140,1)",
@@ -401,7 +401,6 @@ onBeforeUnmount(() => {
 });
 
 const initialize = () => {
-  return;
   sourceData = [];
   seriesData = [];
   if (!recordId.value) {

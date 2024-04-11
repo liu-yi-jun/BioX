@@ -22,7 +22,7 @@
                 placeholder="Channels"
                 :options="channelOptions"
                 size="small"
-                @change="handleChange"
+                @change="generateSeries"
               ></a-select>
             </a-space>
           </div>
@@ -63,7 +63,7 @@
                   placeholder="Channels"
                   :options="psdChannelOptions"
                   size="small"
-                  @change="handleChange"
+                  @change="handleChangePsdChannel"
                 ></a-select>
                 <a-select
                   v-if="spectrumType === 'Heatmap'"
@@ -168,6 +168,12 @@ import type { SelectProps } from "ant-design-vue";
 
 import { HighchartsKey } from "../../types";
 
+let grid: echarts.EChartOption.Grid[] = [];
+let xAxis: echarts.EChartOption.XAxis[] = [];
+let yAxis: echarts.EChartOption.YAxis[] = [];
+let series: echarts.EChartOption.Series[] = [];
+let colors: string[] = ["#8FDCFE", "#B3B3B3"];
+
 const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const spectrumShowTime = ref(30);
@@ -175,10 +181,10 @@ const relatedStep = ref(30);
 
 const barnsTimeStep = ref(30);
 const barnsTimeMaxStep = 30;
-const channel = ref(["chan1"]);
-const psdChannel = ref(["chan1"]);
-const heatmapChannel = ref("chan1");
-const bandsChannel = ref("chan1");
+const channel = ref(["Fp1", "Fp2"]);
+const psdChannel = ref(["Fp1", "Fp2"]);
+const heatmapChannel = ref("Fp1");
+const bandsChannel = ref("Fp1");
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
@@ -208,12 +214,12 @@ const showTimeOptionsData = [
 ];
 const chanOptionsData = [
   {
-    value: "chan1",
-    label: "chan1",
+    value: "Fp1",
+    label: "Fp1",
   },
   {
-    value: "chan2",
-    label: "chan2",
+    value: "Fp2",
+    label: "Fp2",
   },
 ];
 const showTimeOptions = ref<SelectProps["options"]>(showTimeOptionsData);
@@ -257,6 +263,7 @@ const bandsTypeOptions = ref<SelectProps["options"]>([
     label: "Time Series",
   },
 ]);
+
 const handleChange = (value: string[]) => {
   console.log(`selected ${value}`);
 };
@@ -269,7 +276,10 @@ let seriesChart,
   barnsTimeChart;
 
 // Series data
-let seriesData: any[] = [],
+let seriesObj: any = {
+    Fp1: [],
+    Fp2: [],
+  },
   psdObj: any = {},
   absoluteObj: any = {},
   relatedObj: any = {
@@ -343,16 +353,17 @@ onBeforeUnmount(() => {
 });
 
 const initialize = () => {
-  return;
   sourceData = [];
-  seriesData = [];
   if (!recordId.value) {
     timer && clearInterval(timer);
     timer = setInterval(() => {
       handleRealTimeData({
-        series: Math.random() * 150,
+        series: {
+          Fp1: Math.random() * 150,
+          Fp2: Math.random() * 150,
+        },
         psd: {
-          AF3: [
+          Fp1: [
             Math.random() * 100,
             Math.random() * 100,
             Math.random() * 100,
@@ -361,34 +372,7 @@ const initialize = () => {
             Math.random() * 100,
             Math.random() * 100,
           ],
-          F3: [
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-          ],
-          P7: [
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-          ],
-          F7: [
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-            Math.random() * 100,
-          ],
-          AF4: [
+          Fp2: [
             Math.random() * 100,
             Math.random() * 100,
             Math.random() * 100,
@@ -473,11 +457,15 @@ const handleOldData = () => {
 // 处理之前数据-2
 const handleBeforeData = (obj) => {
   // series
-  seriesData = [];
-  seriesData = obj.seriesArr.map((item) => {
-    return {
-      value: [(seriesData.length + 1) * 250, item],
-    };
+  seriesObj.Fp1 = [];
+  seriesObj.Fp2 = [];
+  obj.seriesArr.map((item) => {
+    seriesObj.Fp1.push({
+      value: [(seriesObj.Fp1.length + 1) * 250, item.Fp1],
+    });
+    seriesObj.Fp2.push({
+      value: [(seriesObj.Fp2.length + 1) * 250, item.Fp2],
+    });
   });
   relatedObj.γ = [];
   relatedObj.β = [];
@@ -538,12 +526,13 @@ const handleBeforeData = (obj) => {
 const handleRealTimeData = (obj) => {
   // series
 
-  seriesData.push({
-    value: [(seriesData.length + 1) * 250, obj.series],
+  seriesObj.Fp1.push({
+    value: [(seriesObj.Fp1.length + 1) * 250, obj.series.Fp1],
   });
-  if (seriesData.length > seriesMaxStep * 4) {
-    seriesData.shift();
-  }
+  seriesObj.Fp2.push({
+    value: [(seriesObj.Fp2.length + 1) * 250, obj.series.Fp2],
+  });
+
   updateRenderRealSeriesData();
 
   // psd
@@ -596,145 +585,7 @@ const handleRealTimeData = (obj) => {
 
 const initSeries = () => {
   seriesChart = echarts.init(document.getElementById("series"));
-  seriesChart.setOption({
-    animation: false,
-    color: ["#8FDCFE", "#B3B3B3"],
-    // legend: {
-    //   top: 80,
-    //   left: "0",
-    //   data: ["chan1", "chan2"],
-    //   icon: "circle",
-    //   orient: "vertical",
-    //   itemGap: 100,
-    //   itemHeight: 12,
-    //   itemWidth: 12,
-    //   textStyle: {
-    //     fontSize: 12,
-    //   },
-    // },
-    xAxis: [
-      {
-        type: "time",
-        show: false,
-        max: seriesStep.value * 1000,
-        gridIndex: 0,
-      },
-      {
-        type: "time",
-        gridIndex: 1,
-        max: seriesStep.value * 1000,
-        axisLabel: {
-          color: "#666666",
-          formatter: function (value, index) {
-            return echarts.format.formatTime("s", value);
-          },
-          showMaxLabel: true,
-          showMinLabel: true,
-        },
-        axisLine: {
-          lineStyle: {
-            color: "#dddddd",
-          },
-        },
-      },
-    ],
-    grid: [
-      {
-        show: false,
-        left: "6%",
-        right: "4%",
-        top: 40,
-        bottom: "51%",
-        containLabel: false,
-      },
-      {
-        show: false,
-        left: "6%",
-        right: "4%",
-        top: "51%",
-        bottom: 40,
-        containLabel: false,
-      },
-    ],
-    yAxis: [
-      {
-        show: true,
-        axisLine: {
-          show: false, // 显示y轴线
-        },
-        axisLabel: {
-          //坐标轴刻度标签
-          show: false,
-        },
-        axisTick: {
-          show: false, // 可取消y轴刻度线
-        },
-        splitLine: {
-          show: false, // 去除网格线
-        },
-        nameRotate: 0,
-        name: "chan1",
-        nameLocation: "middle",
-        nameTextStyle: {
-          fontSize: 12,
-          fontWeight: "bold",
-        },
-        type: "value",
-        gridIndex: 0,
-      },
-      {
-        show: true,
-        axisLine: {
-          show: false, // 显示y轴线
-        },
-        axisLabel: {
-          //坐标轴刻度标签
-          show: false,
-        },
-        axisTick: {
-          show: false, // 可取消y轴刻度线
-        },
-        splitLine: {
-          show: false, // 去除网格线
-        },
-        nameRotate: 0,
-        name: "chan2",
-        nameLocation: "middle",
-        nameTextStyle: {
-          fontSize: 12,
-          fontWeight: "bold",
-        },
-        type: "value",
-        gridIndex: 1,
-      },
-    ],
-    series: [
-      {
-        data: seriesData,
-        type: "line",
-        name: "chan1",
-        symbol: "none",
-        lineStyle: {
-          color: "#8FDCFE",
-          width: 1,
-        },
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-      },
-      {
-        data: seriesData,
-        type: "line",
-        name: "chan2",
-        symbol: "none",
-        lineStyle: {
-          color: "#B3B3B3",
-          width: 1,
-        },
-        xAxisIndex: 1,
-        yAxisIndex: 1,
-      },
-    ],
-  });
+  generateSeries();
 };
 const initHeatmap = () => {
   function getNoiseHelper() {
@@ -951,104 +802,84 @@ const initHeatmap = () => {
 };
 const initPSD = () => {
   psdChart = echarts.init(document.getElementById("psd"));
-  psdChart.setOption({
-    animation: false,
-    legend: {
-      left: "center",
-      bottom: 5,
-      data: ["AF3", "F3", "P7", "F7", "AF4"],
-      icon: "circle",
-      itemHeight: 12,
-      itemWidth: 12,
-      textStyle: {
-        fontSize: 12,
+  psdChart && psdChart.clear();
+  psdChart &&
+    psdChart.setOption({
+      animation: false,
+      legend: {
+        // 设置图例不可选择
+        selectedMode: false,
+        left: "center",
+        bottom: 5,
+        data: psdChannel.value,
+        icon: "circle",
+        itemHeight: 12,
+        itemWidth: 12,
+        textStyle: {
+          fontSize: 12,
+        },
       },
-    },
-    grid: {
-      top: "3%",
-      left: "4%",
-      right: "4%",
-      containLabel: true,
-    },
-    xAxis: {
-      type: "category",
-      axisTick: {
-        length: 3,
-        show: true,
+      grid: {
+        top: "3%",
+        left: "4%",
+        right: "4%",
+        containLabel: true,
       },
-      boundaryGap: false,
-      data: ["0", "10", "20", "30", "40", "50", "60"],
-      name: "frequency(Hz)",
-      nameLocation: "middle",
-      nameGap: 30,
-      nameTextStyle: {
-        fontSize: 12, // 字体大小
-        fontWeight: "bold", // 字体加粗
+      xAxis: {
+        type: "category",
+        axisTick: {
+          length: 3,
+          show: true,
+        },
+        boundaryGap: false,
+        data: ["0", "10", "20", "30", "40", "50", "60"],
+        name: "frequency(Hz)",
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          fontSize: 12, // 字体大小
+          fontWeight: "bold", // 字体加粗
+        },
       },
-    },
-    yAxis: {
-      type: "value",
-      // type: "log",
-      name: "dBμV^2",
-      axisTick: {
-        length: 3,
-        show: true,
+      yAxis: {
+        type: "value",
+        // type: "log",
+        name: "dBμV^2",
+        axisTick: {
+          length: 3,
+          show: true,
+        },
+        minorTick: {
+          length: 1,
+          show: true,
+        },
+        minorSplitLine: {
+          show: true,
+        },
+        // min: 0.1,
+        min: 0,
+        max: 100,
+        nameRotate: 90, // 旋转角度
+        nameLocation: "middle",
+        nameGap: 30,
+        nameTextStyle: {
+          fontSize: 12, // 字体大小
+          fontWeight: "bold", // 字体加粗
+          verticalAlign: "bottom", // 文字垂直对齐方式
+        },
+        axisLine: {
+          show: true, // 显示y轴线
+        },
       },
-      minorTick: {
-        length: 1,
-        show: true,
-      },
-      minorSplitLine: {
-        show: true,
-      },
-      // min: 0.1,
-      min: 0,
-      max: 100,
-      nameRotate: 90, // 旋转角度
-      nameLocation: "middle",
-      nameGap: 30,
-      nameTextStyle: {
-        fontSize: 12, // 字体大小
-        fontWeight: "bold", // 字体加粗
-        verticalAlign: "bottom", // 文字垂直对齐方式
-      },
-      axisLine: {
-        show: true, // 显示y轴线
-      },
-    },
-    series: [
-      {
-        name: "AF3",
-        type: "line",
-        symbol: "none",
-        data: psdObj.AF3,
-      },
-      {
-        name: "F3",
-        type: "line",
-        symbol: "none",
-        data: psdObj.F3,
-      },
-      {
-        name: "P7",
-        type: "line",
-        symbol: "none",
-        data: psdObj.P7,
-      },
-      {
-        name: "F7",
-        type: "line",
-        symbol: "none",
-        data: psdObj.F7,
-      },
-      {
-        name: "AF4",
-        type: "line",
-        symbol: "none",
-        data: psdObj.AF4,
-      },
-    ],
-  });
+      series: psdChannel.value.map((item) => {
+        return {
+          name: item,
+          type: "line",
+          symbol: "none",
+          data: psdObj[item],
+        };
+      }),
+    });
 };
 const initAbsolute = () => {
   absoluteChart = echarts.init(document.getElementById("absolute"));
@@ -1700,31 +1531,128 @@ const handleChangeBandsType = () => {
   });
 };
 
-// 更新渲染--seriesData
-const updateRenderRealSeriesData = () => {
-  let tempSeriesData;
-  tempSeriesData = Object.assign([], seriesData.slice(-seriesStep.value * 4));
-  tempSeriesData.forEach((item, index) => {
-    item.value[0] = (index + 1) * 250;
+// 生成--series
+const generateSeries = () => {
+  seriesChart && seriesChart.clear();
+  grid = [];
+  xAxis = [];
+  yAxis = [];
+  series = [];
+  channel.value.forEach((item, index) => {
+    grid.push({
+      show: false,
+      left: "10%",
+      right: "4%",
+      top: (100 / channel.value.length) * index + "%",
+      bottom: 100 - (100 / channel.value.length) * (index + 1) + "%",
+      containLabel: false,
+    });
+    xAxis.push({
+      type: "time",
+      show: index === channel.value.length - 1,
+      gridIndex: index,
+      splitNumber: seriesStep.value,
+      max: seriesStep.value * 1000,
+      axisLabel: {
+        color: "#666666",
+        formatter: function (value, index) {
+          return echarts.format.formatTime("s", value);
+        },
+        showMaxLabel: true,
+        showMinLabel: true,
+      },
+      axisLine: {
+        lineStyle: {
+          color: "#dddddd",
+        },
+      },
+    });
+    yAxis.push({
+      show: true,
+      axisLine: {
+        show: false, // 显示y轴线
+      },
+      axisLabel: {
+        //坐标轴刻度标签
+        show: false,
+      },
+      axisTick: {
+        show: false, // 可取消y轴刻度线
+      },
+      splitLine: {
+        show: false, // 去除网格线
+      },
+      nameRotate: 0,
+      name: item,
+      nameLocation: "middle",
+      nameTextStyle: {
+        fontSize: 12,
+        fontWeight: "bold",
+      },
+      type: "value",
+      gridIndex: index,
+    });
+    series.push({
+      data: seriesObj[item],
+      type: "line",
+      name: item,
+      symbol: "none",
+      lineStyle: {
+        color: colors[index],
+        width: 1,
+      },
+      xAxisIndex: index,
+      yAxisIndex: index,
+    });
   });
+
   seriesChart &&
     seriesChart.setOption({
-      xAxis: [
-        {
-          gridIndex: 0,
-          splitNumber: seriesStep.value,
-          max: seriesStep.value * 1000,
-        },
-        {
-          gridIndex: 1,
-          splitNumber: seriesStep.value,
-          max: seriesStep.value * 1000,
-        },
-      ],
-      series: [
-        { name: "chan1", data: tempSeriesData },
-        { name: "chan2", data: tempSeriesData },
-      ],
+      animation: false,
+      color: colors,
+      grid: grid,
+      xAxis: xAxis,
+      yAxis: yAxis,
+      series: series,
+    });
+};
+
+// 更新渲染--seriesData
+const updateRenderRealSeriesData = () => {
+  if (seriesObj.Fp1.length > seriesMaxStep * 4) {
+    seriesObj.Fp1.shift();
+    seriesObj.Fp2.shift();
+  }
+  let tempSeriesObj: any = {
+    Fp1: [],
+    Fp2: [],
+  };
+  seriesObj.Fp1.forEach((item, index) => {
+    tempSeriesObj.Fp1 = Object.assign(
+      [],
+      seriesObj.Fp1.slice(-seriesStep.value * 4)
+    );
+    tempSeriesObj.Fp2 = Object.assign(
+      [],
+      seriesObj.Fp2.slice(-seriesStep.value * 4)
+    );
+  });
+  tempSeriesObj.Fp1.forEach((item, index) => {
+    tempSeriesObj.Fp1[index].value[0] = (index + 1) * 250;
+    tempSeriesObj.Fp2[index].value[0] = (index + 1) * 250;
+  });
+
+  seriesChart &&
+    seriesChart.setOption({
+      xAxis: channel.value.map((item, index) => ({
+        gridIndex: index,
+        splitNumber: seriesStep.value,
+        max: seriesStep.value * 1000,
+      })),
+      series: channel.value.map((item) => ({
+        name: item,
+        data: tempSeriesObj[item],
+      })),
     });
 };
 // 更新渲染--psd
@@ -1733,24 +1661,12 @@ const undateRenderPsd = () => {
     psdChart.setOption({
       series: [
         {
-          name: "AF3",
-          data: psdObj.AF3,
+          name: "Fp1",
+          data: psdObj.Fp1,
         },
         {
-          name: "F3",
-          data: psdObj.F3,
-        },
-        {
-          name: "P7",
-          data: psdObj.P7,
-        },
-        {
-          name: "F7",
-          data: psdObj.F7,
-        },
-        {
-          name: "AF4",
-          data: psdObj.AF4,
+          name: "Fp2",
+          data: psdObj.Fp2,
         },
       ],
     });
@@ -1960,16 +1876,14 @@ const updateRenderBarnsTime = () => {
       ],
     });
 };
-
+const handleChangePsdChannel = () => {
+  initPSD();
+};
 const handleChangeSeriesStep = () => {
-  nextTick(() => {
-    updateRenderRealSeriesData();
-  });
+  updateRenderRealSeriesData();
 };
 const handleChangeBarnsTimeStep = () => {
-  nextTick(() => {
-    updateRenderBarnsTime();
-  });
+  updateRenderBarnsTime();
 };
 </script>
 <style scoped></style>
