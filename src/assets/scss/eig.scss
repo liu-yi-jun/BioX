@@ -55,6 +55,7 @@ li {
   position: relative;
   z-index: 5;
   .header-headset {
+    margin-right: 100px;
     border-radius: 4px;
     background-color: #ec005d;
     padding: 10px 50px;
@@ -69,6 +70,7 @@ li {
   }
   .header-center {
     width: 180px;
+    margin-right: 90px;
     display: flex;
     background-color: #f8f8f8;
     justify-content: space-between;
@@ -575,4 +577,30 @@ $roundRadius: 18px;
 
 .eig-icon-btn:hover .anticon{
   color: #4096ff !important;
+}
+
+.header-device-popover .ant-popover-inner{
+  padding: 0px;
+}
+
+.header-device-list {
+  padding: 8px 0;
+  .anticon-deployment-unit {
+    font-size: 24px;
+    color: rgba(0, 0, 0, 0.45);
+    padding: 0 20px 0 10px;
+  }
+  .header-device-item {
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    &:hover {
+      background-color:  #f7f7f7;
+    }
+    &:last-child {
+      border: none;
+    }
+  }
 }

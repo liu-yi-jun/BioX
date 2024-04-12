@@ -6,6 +6,7 @@ let child: typeof child_process;
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
 let bluetoothPinCallback: any;
 let selectBluetoothCallback: any;
+let selectBluetoothCb:Function;
 let __static = "";
 if (process.env.NODE_ENV !== "development") {
   __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
@@ -43,25 +44,36 @@ function createWindow() {
   mainWindow.setFullScreen(true);
 
   //   蓝牙连接部分
+  // 扫描蓝牙设备
   mainWindow.webContents.on(
     "select-bluetooth-device",
     (event, deviceList, callback) => {
       event.preventDefault();
+      console.log("select-bluetooth-device", deviceList);
       selectBluetoothCallback = callback;
-      const result = deviceList.find((device) => {
-        return device.deviceName === "Biox_B0";
-      });
-      if (result) {
-        callback(result.deviceId);
-      } else {
-        // The device wasn't found so we need to either wait longer (eg until the
-        // device is turned on) or until the user cancels the request
-      }
+      mainWindow.webContents.send("find-device", deviceList);
+      // const result = deviceList.find((device) => {
+      //   return device.deviceName === "Biox_B0";
+      // });
+      // if (result) {
+      //   callback(result.deviceId);
+      // } else {
+      //   // The device wasn't found so we need to either wait longer (eg until the
+      //   // device is turned on) or until the user cancels the request
+      // }
     }
   );
 
+  // 确认连接设备
+  ipcMain.on("connect-bluetooth-device", (event, deviceItem) => {
+    console.log("connect-bluetooth-device", JSON.parse(deviceItem));
+    selectBluetoothCallback(JSON.parse(deviceItem).deviceId);
+  });
+
+  // 取消蓝牙扫描
   ipcMain.on("cancel-bluetooth-request", (event) => {
     console.log("cancel-bluetooth-request");
+    
     selectBluetoothCallback("");
   });
 

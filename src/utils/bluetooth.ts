@@ -1,11 +1,13 @@
 export function CustomBluetooth() {}
 const ipcRenderer = require("electron").ipcRenderer;
 let noticeList: Function[] = [];
-
+let server, device;
 let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
+
+
 
 CustomBluetooth.prototype.init = async function (cb) {
   try {
@@ -16,18 +18,23 @@ CustomBluetooth.prototype.init = async function (cb) {
 
     // cb(true);
 
-    let timer = setTimeout(() => {
-      cb(false, "蓝牙未识别到，请检查设备是否开启");
-      timer && clearTimeout(timer);
-    }, 4000);
-    const device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: ["00000000-cc7a-482a-984a-7f2ed5b3e58f"], //将服务UUID添加到这里
-      // filters: [{ services: ['00000000-cc7a-482a-984a-7f2ed5b3e58f'] }],
-      // filters: [{ name: 'Biox_Demo' },],
-    });
-    // 连接到设备
-    const server = await device.gatt.connect();
+    if (!server) {
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ["00000000-cc7a-482a-984a-7f2ed5b3e58f"], //将服务UUID添加到这里
+        // filters: [{ services: ['00000000-cc7a-482a-984a-7f2ed5b3e58f'] }],
+        // filters: [{ name: 'Biox_Demo' },],
+      });
+      // 连接到设备
+      server = await device.gatt.connect();
+    } else {
+      if (!device.gatt.connected) {
+        server = await device.gatt.connect();
+      }
+    }
+
+    cb(true,"loading");
+
     // 获取服务
     const service = await server.getPrimaryService(
       "00000000-cc7a-482a-984a-7f2ed5b3e58f"
@@ -49,7 +56,7 @@ CustomBluetooth.prototype.init = async function (cb) {
       handleNotifications
     );
     characteristic1.addEventListener("characteristicvaluechanged", (event) => {
-      console.log("event11", event.target.value);
+      console.log("characteristic1", event.target.value);
     });
     // 开始监听通知
     await characteristic2.startNotifications();
@@ -64,15 +71,22 @@ CustomBluetooth.prototype.init = async function (cb) {
     // 发送写请求
     characteristic1.writeValue(commandBuffer);
 
+    // setTimeout(() => {
+    //   console.log("发送停止指令");
+    //   // 发送写请求
+    //   characteristic1.writeValue(new TextEncoder().encode("AT+STOP_ALL\r\n"));
+    // }, 10000);
+
     // 创建子进程
     ipcRenderer.send("create-child");
     // 解码后的蓝牙数据
     ipcRenderer.on("end-data-decode", (event, data) => {
       for (let i = 0; i < noticeList.length; i++) {
-          noticeList[i](data);
-        }
+        noticeList[i](data);
+      }
     });
-    cb(true);
+    cb(true,"hide");
+    cb(true,'success');
   } catch (err) {
     cb(false, err.message);
   }
@@ -83,4 +97,16 @@ CustomBluetooth.prototype.addNotice = function (cb: Function) {
 };
 CustomBluetooth.prototype.removeNotice = function (cb: Function) {
   noticeList = noticeList.filter((item) => item !== cb);
+};
+
+CustomBluetooth.prototype.close = function (cb: Function) {
+  if (server && device.gatt.connected) {
+
+    server.disconnect();
+    server = null
+    device = null
+    cb(true, "设备连接已断开");
+  } else {
+    cb(false, "蓝牙未连接");
+  }
 };
