@@ -56,6 +56,15 @@
                   size="small"
                 ></a-select>
                 <a-select
+                  v-model:value="maxFreq"
+                  style="width: 100px"
+                  v-if="spectrumType === 'PSD'"
+                  aria-placeholder="Show Time"
+                  :options="maxFreqOptions"
+                  @change="handleChangePsdChannel"
+                  size="small"
+                ></a-select>
+                <a-select
                   v-model:value="psdChannel"
                   v-if="spectrumType === 'PSD'"
                   mode="multiple"
@@ -185,6 +194,7 @@ const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
 const bandsChannel = ref("Fp1");
+const maxFreq = ref(50);
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
@@ -237,6 +247,28 @@ const relatedChannelOptions = ref<SelectProps["options"]>([
   {
     value: "Low/High",
     label: "Low/High",
+  },
+]);
+const maxFreqOptions = ref<SelectProps["options"]>([
+  {
+    value: 50,
+    label: "50Hz",
+  },
+  {
+    value: 100,
+    label: "100Hz",
+  },
+  {
+    value: 150,
+    label: "150Hz",
+  },
+  {
+    value: 200,
+    label: "200Hz",
+  },
+  {
+    value: 250,
+    label: "250Hz",
   },
 ]);
 const spectrumTypeOptions = ref<SelectProps["options"]>([
@@ -355,36 +387,25 @@ onBeforeUnmount(() => {
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
-
   handleRealTimeData(blueToothdataMapping(data));
 };
 
 // 将蓝牙数据进行映射
 const blueToothdataMapping = (data) => {
+  let psdF1: number[] = [];
+  let psdF2: number[] = [];
+  for (let i = 0; i <= maxFreq.value; i += 10) {
+    psdF1.push(Math.random() * 100);
+    psdF2.push(Math.random() * 100);
+  }
   return {
     series: {
       Fp1: data.brain_elec_channel[0],
       Fp2: data.brain_elec_channel[1],
     },
     psd: {
-      Fp1: [
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-      ],
-      Fp2: [
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-        Math.random() * 100,
-      ],
+      Fp1: psdF1,
+      Fp2: psdF2,
     },
     absolute: {
       0: Math.random() * 20 + 80,
@@ -411,12 +432,11 @@ const blueToothdataMapping = (data) => {
   };
 };
 
-
 const clearData = (obj) => {
   for (const key in obj) {
-   obj[key] = [];
+    obj[key] = [];
   }
-}
+};
 
 const initialize = () => {
   clearData(seriesObj);
@@ -822,6 +842,10 @@ const initHeatmap = () => {
   });
 };
 const initPSD = () => {
+  let XAxisData: number[] = [];
+  for (let i = 0; i <= maxFreq.value; i += 10) {
+    XAxisData.push(i);
+  }
   psdChart = echarts.init(document.getElementById("psd"));
   psdChart && psdChart.clear();
   psdChart &&
@@ -853,7 +877,7 @@ const initPSD = () => {
           show: true,
         },
         boundaryGap: false,
-        data: ["0", "10", "20", "30", "40", "50", "60"],
+        data: XAxisData,
         name: "frequency(Hz)",
         nameLocation: "middle",
         nameGap: 30,
@@ -1897,6 +1921,7 @@ const updateRenderBarnsTime = () => {
       ],
     });
 };
+
 const handleChangePsdChannel = () => {
   initPSD();
 };
