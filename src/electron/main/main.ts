@@ -16,9 +16,9 @@ if (process.env.NODE_ENV !== "development") {
 }
 
 let _product_path = join(__dirname, "../../../../product");
-// if (process.env.NODE_ENV !== "development") {
-//   _product_path = join(__dirname, "../../../product");
-// }
+if (process.env.NODE_ENV !== "development") {
+  _product_path = join(__dirname, "../../../product");
+}
 
 log.error('main:path:' + _product_path)
 
