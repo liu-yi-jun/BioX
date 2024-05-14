@@ -3,13 +3,13 @@
     <div class="eig-filter">
       <div class="filter-right">
         <a-space>
-          <a-input-search
-            v-model:value="searchValue"
-            placeholder="input search text"
-            style="width: 200px"
-            @search="onSearch"
-          />
-          <a-button class="eig-icon-btn" @click="onRefresh">
+                <a-input-search
+                  v-model:value="searchValue"
+                  placeholder="input search text"
+                  style="width: 200px"
+                  @search="onSearch"
+                />
+        <a-button class="eig-icon-btn" @click="onRefresh">
             <template #icon>
               <RedoOutlined :style="{ color: 'rgba(0, 0, 0, 0.45)' }" />
             </template>
@@ -90,7 +90,7 @@
           <template v-else-if="column.dataIndex === 'operation'">
             <a @click="deleteRow(record)">删除</a>
             <a-divider type="vertical" />
-            <a>导出</a>
+            <a @click="exportCsv(record)">导出</a>
           </template>
         </template>
       </a-table>
@@ -179,6 +179,58 @@ const deleteRow = (record: DataItem) => {
       });
     },
   });
+};
+
+const exportCsv = async (record: DataItem) => {
+  let csvContent = ""
+  
+  // 列值
+  const metaDataKeys = columns.map(column => column.dataIndex);
+  metaDataKeys.forEach(element => {
+      csvContent = csvContent + element+":"+record[element]
+    });
+
+  csvContent += "\n"
+
+  // 获取记录的数据，非基本信息
+  const res = await db.get(`select sourceData from record where id = ${record.id}`);
+  const sourceData = JSON.parse(res.sourceData);
+  console.log(sourceData)
+  // 检查sourceData是否是数组以及是否有数据
+  if (!Array.isArray(sourceData) || sourceData.length === 0) {
+    alert("记录的数据异常！");
+    return;
+  }
+  // 列值
+  const sourceDataKeys = Object.keys(sourceData[0])
+  console.log(sourceDataKeys)
+  // 转换数据到CSV格式
+  sourceData.forEach(sd => {
+    console.log(typeof sd)
+    sd.forEach(element => {
+      csvContent = csvContent + sd[element]+","
+    });
+    csvContent += "\n"
+  }
+  )
+  console.log(csvContent)
+
+  // 创建一个Blob对象
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  // 创建一个临时的URL对象
+  const url = window.URL.createObjectURL(blob);
+
+  // 创建一个a标签模拟点击进行下载
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = record.name+'.csv'; // 设置下载的文件名
+  document.body.appendChild(a);
+  a.click();
+
+  // 清理并释放URL对象
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 };
 
 const onSearch = (searchValue: string) => {
