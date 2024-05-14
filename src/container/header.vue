@@ -10,7 +10,7 @@
     >
       <template #content>
         <div>
-          <ul class="header-device-list">
+          <ul class="header-device-list" v-if="deviceList.length">
             <li
               v-for="item in deviceList"
               :key="item.deviceId"
@@ -24,6 +24,9 @@
               </div>
             </li>
           </ul>
+          <div v-else class="header-device-loading">
+            <a-spin  />
+          </div>
         </div>
       </template>
       <div class="header-headset" @click="openConnectVisible">
@@ -37,7 +40,7 @@
         <span>100</span>
       </div>
     </div>
-    <div></div>
+    <div ></div>
   </div>
 </template>
 
@@ -46,7 +49,7 @@ import { ref, reactive, onMounted, getCurrentInstance, watch } from "vue";
 const ipcRenderer = require("electron").ipcRenderer;
 import { DeploymentUnitOutlined } from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
-const isConnect = ref(true);
+const isConnect = ref(false);
 const connectVisible = ref<boolean>(false);
 import { message } from "ant-design-vue";
 const bluetooth = new CustomBluetooth();
@@ -114,6 +117,11 @@ const closeDevice = () => {
     message.success(msg);
   });
 };
+
+// 蓝牙扫描
+const findDeviceList = () => {
+  bluetooth.bluetoothScan()
+}
 onMounted(() => {
   // 蓝牙配对
   // ipcRenderer.on("bluetooth-pairing-request", () => (event, details) => {

@@ -3,7 +3,6 @@ var ffi = require("ffi-napi");
 import { join } from "path";
 const Struct = require("ref-struct-napi");
 var ArrayType = require("ref-array-napi");
-
 let __static = process.argv[2];
 let _product_path = process.argv[3];
 // 定义指针类型
@@ -21,11 +20,21 @@ const PKG = Struct({
   error_state: ref.types.int16,
 });
 
-
 // 加载DLL
 
 var pkg_decode_path = join(_product_path, "/dll/pkg_decode.dll");
+// var bluetooth_lib_path = join(_product_path, "/so/cpython.so");
+// var mymodule = join(_product_path, "/pyd/mymodule.pyd");
 
+// const bluetoothDecode = ffi.Library(bluetooth_lib_path, {
+//   get_devices: ["void", []],
+// });
+
+// const bluetoothDecode = ffi.Library(mymodule, {
+//   'my_function': ['int', ['int', 'int']]
+// });
+
+console.log(pkg_decode_path);
 
 const pkgDecode = ffi.Library(pkg_decode_path, {
   get_pkg_buffer_length: ["int", []],
@@ -33,23 +42,23 @@ const pkgDecode = ffi.Library(pkg_decode_path, {
   pkgbuffer_pop: ["void", []],
   pkg_recv: ["void", []],
   // ref.refType(PKG)定义一个PKG类型的指针
-  decode: [ref.refType(PKG) , []],
+  decode: [ref.refType(PKG), []],
 });
 
 // 接收消息
 process.on("message", async function ({ type, data }) {
   if (type === "start-data-decode") {
-    pkgDecode.pkg_recv();      
+    pkgDecode.pkg_recv();
     let recvBuffer = Buffer.from(data.data);
     for (let i = 0; i < recvBuffer.length; i++) {
       pkgDecode.push_to_databuffer(recvBuffer[i]);
     }
-    
+
     if (pkgDecode.get_pkg_buffer_length()) {
       // 返回一个指针
-      const ptrpkg = pkgDecode.decode();;
+      const ptrpkg = pkgDecode.decode();
       // 获取值
-      const pkg = ptrpkg.deref()
+      const pkg = ptrpkg.deref();
       // console.log('pkg.pkglen',pkg.pkglen);
       // console.log('pkg.time_mark',pkg.time_mark);
       // console.log('brain_elec_channel.0',pkg.brain_elec_channel[0]);
@@ -70,4 +79,16 @@ process.on("message", async function ({ type, data }) {
       pkgDecode.pkgbuffer_pop();
     }
   }
+  if (type === "bluetooth-scan") {
+    console.log("bluetooth-scan");
+
+    // console.log(bluetoothDecode.get_devices());
+  }
 });
+
+// // 计算功率谱、计算功率谱密度、计算相对功率谱
+
+// function calculatePowerSpectrum() {
+//   let sample_rate = 500;
+//   let n = 32;
+// }

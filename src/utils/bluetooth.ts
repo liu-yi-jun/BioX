@@ -76,6 +76,8 @@ CustomBluetooth.prototype.init = async function (cb) {
     //   // 发送写请求
     //   characteristic1.writeValue(new TextEncoder().encode("AT+STOP_ALL\r\n"));
     // }, 10000);
+    console.log('create-child');
+    
 
     // 创建子进程
     ipcRenderer.send("create-child");
@@ -110,3 +112,8 @@ CustomBluetooth.prototype.close = function (cb: Function) {
     cb(false, "蓝牙未连接");
   }
 };
+
+
+CustomBluetooth.prototype.bluetoothScan = function () {
+  ipcRenderer.send("bluetooth-scan");
+}

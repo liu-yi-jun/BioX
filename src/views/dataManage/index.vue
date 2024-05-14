@@ -11,7 +11,7 @@
           />
           <a-button class="eig-icon-btn" @click="onRefresh">
             <template #icon>
-              <RedoOutlined  :style="{ color: 'rgba(0, 0, 0, 0.45)' }" />
+              <RedoOutlined :style="{ color: 'rgba(0, 0, 0, 0.45)' }" />
             </template>
           </a-button>
         </a-space>
@@ -39,6 +39,7 @@
                   v-model:value="
                     editableData[`${record.id}_${column.dataIndex}`].name
                   "
+                  ref="input_name"
                   style="width: 120px"
                   size="small"
                   @pressEnter="save(record.id, column.dataIndex)"
@@ -51,6 +52,7 @@
                     editableData[`${record.id}_${column.dataIndex}`].describe
                   "
                   size="small"
+                  ref="input_describe"
                   @pressEnter="save(record.id, column.dataIndex)"
                   @blur="save(record.id, column.dataIndex)"
                 />
@@ -96,7 +98,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, nextTick } from "vue";
 import type { Ref, UnwrapRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { RedoOutlined } from "@ant-design/icons-vue";
@@ -111,6 +113,8 @@ import { useIndexStore } from "../../store/index";
 const router = useRouter();
 const indexStore = useIndexStore();
 const { play, recordId } = storeToRefs(indexStore);
+const input_name = ref();
+const input_describe = ref();
 const db = new CustomDatabase();
 import { message } from "ant-design-vue";
 interface DataItem {
@@ -156,10 +160,9 @@ const getDate = async () => {
   );
 };
 
-
 const onRefresh = async () => {
   await getDate();
-  message.success('已刷新！');
+  message.success("已刷新！");
 };
 
 const deleteRow = (record: DataItem) => {
@@ -188,6 +191,14 @@ const edit = (id: number, dataIndex) => {
   editableData[`${id}_${dataIndex}`] = cloneDeep(
     recordList.value.filter((item) => id === item.id)[0]
   );
+  nextTick(() => {
+    if (dataIndex === "name") {
+      input_name.value.focus();
+    }
+    if (dataIndex === "describe") {
+      input_describe.value.focus();
+    }
+  });
 };
 const save = (id: number, dataIndex) => {
   Object.assign(

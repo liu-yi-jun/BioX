@@ -2,6 +2,9 @@ import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
 let child: typeof child_process;
+import log from 'electron-log/main';
+log.transports.file.level = 'silly'
+log.transports.console.level = 'silly';
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
 let bluetoothPinCallback: any;
@@ -12,14 +15,12 @@ if (process.env.NODE_ENV !== "development") {
   __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
 }
 
-let _product_path = join(__dirname, "../../product");
-let _product_resolve_path = resolve(__dirname, "../../product");
-let _db_path = resolve(__dirname, "../../");
-if (process.env.NODE_ENV !== "development") {
-  _product_path = join(__dirname, "../../../product");
-  _db_path = resolve(__dirname, "../../../../");
-  _product_resolve_path = resolve(__dirname, "../../../product");
-}
+let _product_path = join(__dirname, "../../../../product");
+// if (process.env.NODE_ENV !== "development") {
+//   _product_path = join(__dirname, "../../../product");
+// }
+
+log.error('main:path:' + _product_path)
 
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -33,6 +34,7 @@ async function handleFileOpen() {
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
+    frame: false,
     width: 800,
     height: 600,
     webPreferences: {
@@ -73,7 +75,6 @@ function createWindow() {
   // 取消蓝牙扫描
   ipcMain.on("cancel-bluetooth-request", (event) => {
     console.log("cancel-bluetooth-request");
-    
     selectBluetoothCallback("");
   });
 
@@ -94,6 +95,7 @@ function createWindow() {
 
   // 创建子进程
   ipcMain.on("create-child", (event, data) => {
+    log.error('create-child',join(__dirname, "./child.js"))
     child = child_process.fork(
       join(__dirname, "./child.js"),
       [__static, _product_path],
@@ -102,6 +104,7 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
+        log.error(err)
         console.log(err);
       }
     );
@@ -114,10 +117,12 @@ function createWindow() {
     });
 
     child.on("error", (err: any) => {
+      log.error("子进程启动或执行过程中发生错误:", err)
       console.error("子进程启动或执行过程中发生错误:", err);
     });
 
     child.on("exit", (code: number, signal: string) => {
+      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`)
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     child.on("message", ( {type, data}: {type: string, data: any}) => {
@@ -131,6 +136,10 @@ function createWindow() {
   ipcMain.on("start-data-decode", (event, data) => {
     // console.log("start-data-decode", data);
     child.connected && child.send({ type: "start-data-decode", data: Buffer.from(data)  });
+  });
+
+  ipcMain.on("bluetooth-scan", (event) => {
+    child.connected && child.send({ type: "bluetooth-scan"  });
   });
 
   // and load the index.html of the app.

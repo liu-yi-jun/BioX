@@ -1,3 +1,20 @@
 1、electron的main.ts debugger 没有用
 2、如果出现fs 模块为proxy 考虑引入方式是否写错 用require 不要用import format
 3、require未定义，检测是否有node环境，再main中设置nodeIntegration：true，contextIsolation：false
+4、Node-API 版本矩阵 https://nodejs.org/api/n-api.html#node-api-version-matrix
+5、"postinstall": "install-app-deps" 是一个在 package.json 文件中定义的 npm 脚本命令，用于在 npm install 命令完成后执行一些额外的任务
+6、sqlite3使用5.1.6构建，5.1.7找不到包
+7、"ffi-napi": "^4.0.3",不支持Electron 20.3.8 版本之后
+8、fatal error C1083: xxxxxx  No such file or directory 【xx-xxx\ffi-napi\build\ffi_bindings.vcxproj】，路径中不能带“-”或者空格
+9、npm i卡到删除package-lock再试
+10、[ERROR] Could not resolve "mock-aws-s3"
+[0]
+[0]     node_modules/@mapbox/node-pre-gyp/lib/util/s3_setup.js:43:28:
+[0]       43 │     const AWSMock = require('mock-aws-s3');
+重新跑一下
+11、终端中文乱码 输入chcp 65001
+12、npm ERR! 'C:\Program' is not recognized as an internal or external command, 解决：多打包几次
+13、electron-log为error才会被生产环境记录
+14、不打包成asar，package.json设置 "asar": false,
+15、C:\Users\Administrator\AppData\Roaming\vite-vue3-electron-ts-template\logs
+16、主进程查看console，使用黑窗口运行程序
