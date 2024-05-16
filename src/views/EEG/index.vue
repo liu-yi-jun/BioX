@@ -194,7 +194,7 @@ const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
 const bandsChannel = ref("Fp1");
-const maxFreq = ref(50);
+const maxFreq = ref(250);
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
@@ -392,20 +392,23 @@ const bluetoothNotice = (data) => {
 
 // 将蓝牙数据进行映射
 const blueToothdataMapping = (data) => {
+  console.log(data.barnsTimeFp1.BETA, "blueToothdataMapping");
+
   let psdF1: number[] = [];
   let psdF2: number[] = [];
-  for (let i = 0; i <= maxFreq.value; i += 10) {
+  for (let i = 0; i < maxFreq.value; i += 50) {
     psdF1.push(Math.random() * 100);
     psdF2.push(Math.random() * 100);
   }
+
   return {
     series: {
       Fp1: data.brain_elec_channel[0],
       Fp2: data.brain_elec_channel[1],
     },
     psd: {
-      Fp1: psdF1,
-      Fp2: psdF2,
+      Fp1: data.psdFp1.psd,
+      Fp2: data.psdFp2.psd,
     },
     absolute: {
       0: Math.random() * 20 + 80,
@@ -415,18 +418,18 @@ const blueToothdataMapping = (data) => {
       4: Math.random() * 20 + 80,
     },
     related: {
-      γ: 100,
-      β: Math.random() * 20 + 60,
-      α: Math.random() * 20 + 40,
-      θ: Math.random() * 20 + 20,
-      δ: Math.random() * 20 + 0,
+      γ: data.psdFp1.related[0],
+      β: data.psdFp1.related[1],
+      α: data.psdFp1.related[2],
+      θ: data.psdFp1.related[3],
+      δ: data.psdFp1.related[4],
     },
     barnsTime: {
-      EEG: Math.random() * 20 + 80,
+      EEG: data.brain_elec_channel[0],
       DELTA: Math.random() * 20 + 80,
       THETA: Math.random() * 20 + 80,
       ALPHA: Math.random() * 20 + 80,
-      BETA: Math.random() * 20 + 80,
+      BETA: data.barnsTimeFp1.BETA,
       GAMMA: Math.random() * 20 + 80,
     },
   };
@@ -843,7 +846,7 @@ const initHeatmap = () => {
 };
 const initPSD = () => {
   let XAxisData: number[] = [];
-  for (let i = 0; i <= maxFreq.value; i += 10) {
+  for (let i = 50; i <= maxFreq.value; i += 50) {
     XAxisData.push(i);
   }
   psdChart = echarts.init(document.getElementById("psd"));
@@ -903,7 +906,7 @@ const initPSD = () => {
         },
         // min: 0.1,
         min: 0,
-        max: 100,
+        // max: 500,
         nameRotate: 90, // 旋转角度
         nameLocation: "middle",
         nameGap: 30,
@@ -1135,6 +1138,17 @@ const initBarnsTime = () => {
     // },
     tooltip: {
       trigger: "axis",
+      formatter: function (params) {
+        let result = "";
+        params.forEach(function (item) {
+          // item 是每一个系列的数据信息
+          const seriesName = item.seriesName; // 系列名称
+          const value = item.value; // 数据值     
+          const marker = item.marker; // 标志图形
+          result += `${marker}${seriesName}: ${value[1]}<br/>`;
+        });
+        return result;
+      },
     },
     xAxis: [
       {
@@ -1175,6 +1189,7 @@ const initBarnsTime = () => {
       {
         type: "time",
         boundaryGap: false,
+        show: true,
         gridIndex: 5,
         max: barnsTimeStep.value * 1000,
         axisLabel: {

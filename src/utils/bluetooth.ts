@@ -7,8 +7,6 @@ let handleNotifications = function (event) {
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
 
-
-
 CustomBluetooth.prototype.init = async function (cb) {
   try {
     // ipcRenderer.send("create-child");
@@ -33,7 +31,7 @@ CustomBluetooth.prototype.init = async function (cb) {
       }
     }
 
-    cb(true,"loading");
+    cb(true, "loading");
 
     // 获取服务
     const service = await server.getPrimaryService(
@@ -76,19 +74,24 @@ CustomBluetooth.prototype.init = async function (cb) {
     //   // 发送写请求
     //   characteristic1.writeValue(new TextEncoder().encode("AT+STOP_ALL\r\n"));
     // }, 10000);
-    console.log('create-child');
-    
+    console.log("create-child");
 
     // 创建子进程
     ipcRenderer.send("create-child");
     // 解码后的蓝牙数据
     ipcRenderer.on("end-data-decode", (event, data) => {
       for (let i = 0; i < noticeList.length; i++) {
-        noticeList[i](data);
+        noticeList[i]({
+          ...data.pkg,
+          psdFp1: data.psdFp1,
+          psdFp2: data.psdFp2,
+          barnsTimeFp1: data.barnsTimeFp1,
+          barnsTimeFp2: data.barnsTimeFp2,
+        });
       }
     });
-    cb(true,"hide");
-    cb(true,'success');
+    cb(true, "hide");
+    cb(true, "success");
   } catch (err) {
     cb(false, err.message);
   }
@@ -103,17 +106,16 @@ CustomBluetooth.prototype.removeNotice = function (cb: Function) {
 
 CustomBluetooth.prototype.close = function (cb: Function) {
   if (server && device.gatt.connected) {
-
     server.disconnect();
-    server = null
-    device = null
+    server = null;
+    device = null;
+    ipcRenderer.send("close-child");
     cb(true, "设备连接已断开");
   } else {
     cb(false, "蓝牙未连接");
   }
 };
 
-
 CustomBluetooth.prototype.bluetoothScan = function () {
   ipcRenderer.send("bluetooth-scan");
-}
+};

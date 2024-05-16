@@ -78,6 +78,11 @@ function createWindow() {
     selectBluetoothCallback("");
   });
 
+  // 关闭子进程
+  ipcMain.on("close-child", (event) => {
+    child.connected && child.kill();
+  })
+
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
   //   console.log("bluetooth-pairing-response");
@@ -108,6 +113,10 @@ function createWindow() {
         console.log(err);
       }
     );
+
+    // 初始化
+    child.connected && child.send({ type: "filter-init"});
+    
     child.stderr.on("data", (data: any) => {
       console.error(`stderr: ${data}`);
     });

@@ -1,6 +1,6 @@
 <template>
   <div class="header">
-    <div>BraInward BioX</div>
+    <div @click="findDeviceList">BraInward BioX</div>
     <a-popover
       v-if="!isConnect"
       overlayClassName="header-device-popover"
