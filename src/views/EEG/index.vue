@@ -392,7 +392,7 @@ const bluetoothNotice = (data) => {
 
 // 将蓝牙数据进行映射
 const blueToothdataMapping = (data) => {
-  console.log(data.barnsTimeFp1.BETA, "blueToothdataMapping");
+  console.log(data, "blueToothdataMapping");
 
   let psdF1: number[] = [];
   let psdF2: number[] = [];
@@ -407,30 +407,30 @@ const blueToothdataMapping = (data) => {
       Fp2: data.brain_elec_channel[1],
     },
     psd: {
-      Fp1: data.psdFp1.psd,
-      Fp2: data.psdFp2.psd,
+      Fp1: data.psd_s[0],
+      Fp2: data.psd_s[1],
     },
     absolute: {
-      0: Math.random() * 20 + 80,
-      1: Math.random() * 20 + 80,
-      2: Math.random() * 20 + 80,
-      3: Math.random() * 20 + 80,
-      4: Math.random() * 20 + 80,
+      0: data.psd_relative_s[parseChannel(bandsChannel.value)][0] || 0,
+      1: data.psd_relative_s[parseChannel(bandsChannel.value)][1] || 0,
+      2: data.psd_relative_s[parseChannel(bandsChannel.value)][2] || 0,
+      3: data.psd_relative_s[parseChannel(bandsChannel.value)][3] || 0,
+      4: data.psd_relative_s[parseChannel(bandsChannel.value)][4] || 0,
     },
     related: {
-      γ: data.psdFp1.related[0],
-      β: data.psdFp1.related[1],
-      α: data.psdFp1.related[2],
-      θ: data.psdFp1.related[3],
-      δ: data.psdFp1.related[4],
+      γ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
+      β: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
+      α: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
+      θ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
+      δ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
     },
     barnsTime: {
       EEG: data.brain_elec_channel[0],
-      DELTA: Math.random() * 20 + 80,
-      THETA: Math.random() * 20 + 80,
-      ALPHA: Math.random() * 20 + 80,
-      BETA: data.barnsTimeFp1.BETA,
-      GAMMA: Math.random() * 20 + 80,
+      DELTA: data.e1_s[parseChannel(bandsChannel.value)],
+      THETA: data.e2_s[parseChannel(bandsChannel.value)],
+      ALPHA: data.e3_s[parseChannel(bandsChannel.value)],
+      BETA: data.e4_s[parseChannel(bandsChannel.value)],
+      GAMMA: data.e5_s[parseChannel(bandsChannel.value)],
     },
   };
 };
@@ -1143,7 +1143,7 @@ const initBarnsTime = () => {
         params.forEach(function (item) {
           // item 是每一个系列的数据信息
           const seriesName = item.seriesName; // 系列名称
-          const value = item.value; // 数据值     
+          const value = item.value; // 数据值
           const marker = item.marker; // 标志图形
           result += `${marker}${seriesName}: ${value[1]}<br/>`;
         });
@@ -1189,7 +1189,7 @@ const initBarnsTime = () => {
       {
         type: "time",
         boundaryGap: false,
-        show: true,
+        show: false,
         gridIndex: 5,
         max: barnsTimeStep.value * 1000,
         axisLabel: {
@@ -1945,6 +1945,16 @@ const handleChangeSeriesStep = () => {
 };
 const handleChangeBarnsTimeStep = () => {
   updateRenderBarnsTime();
+};
+
+const parseChannel = (channel: string) => {
+  switch (channel) {
+    case "Fp1":
+      return 0;
+    case "Fp2":
+      return 1;
+  }
+  return 0;
 };
 </script>
 <style scoped></style>

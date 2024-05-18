@@ -44,28 +44,44 @@ const pkgDecode = ffi.Library(pkg_decode_path, {
 });
 
 // 滤波、功率谱计算
-var signal_process_path = join(_product_path, "/dll/signal_process(2).dll");
+var signal_process_path = join(_product_path, "/dll/signal_process(3).dll");
 // 定义类型
 const Float = ref.types.float;
 const Int = ref.types.int;
 const Bool = ref.types.bool;
 const Double = ref.types.double;
-const DoubleArray = ArrayType(ref.types.double);
+const DoubleArray = ArrayType(Double);
 // 加载库
 const signalProcess = ffi.Library(signal_process_path, {
-  init_hp_filter: ["void", [Int]],
-  run_hp_filter: [Double, [Double]],
-  init_lp_filter: ["void", [Int]],
-  run_lp_filter: [Double, [Double]],
-  init_notch_filter1: ["void", [Int]],
-  run_notch_filter1: [Double, [Double]],
-  init_notch_filter2: ["void", [Int]],
-  run_notch_filter2: [Double, [Double]],
-  init_bp_filter: ["void", [Int, Int, Int]],
-  run_bp_filter: [Double, [Double]],
-  fft_ps: [Bool, [Float, Int, Int, DoubleArray]],
-  fft_psd: [Bool, [Float, Int, Int, Int, DoubleArray]],
-  fft_psd_relative: [Bool, [Float, Int, Int, Int, DoubleArray]],
+  init_filter: ["void", [Int, Int]],
+  init_bp_filter: ["void", [Int, Int]],
+  run_pre_process_filter: ["void", [Int, DoubleArray, DoubleArray]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
+  run_bp_filter: [
+    "void",
+    [
+      Int,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+    ],
+  ],
+  fft_ps: [
+    Bool,
+    [
+      Int,
+      Int,
+      Float,
+      Int,
+      Int,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+      DoubleArray,
+    ],
+  ],
 });
 
 let test_i = 0;
@@ -73,15 +89,28 @@ let test_i = 0;
 // 初始化参数
 const window = 8; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为500
 const step = 2; //fft 步长
-const y = new DoubleArray(window / 2 + 1);
-const y2 = new DoubleArray(7); // 相对频谱密度数组，长度为7，存储每个频段能量百分比单位为%
 const sample_rate = 500;
+const d = new DoubleArray(2);
+const e1 = new DoubleArray(2);
+const e2 = new DoubleArray(2);
+const e3 = new DoubleArray(2);
+const e4 = new DoubleArray(2);
+const e5 = new DoubleArray(2);
+const channel = 2;
+const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
+const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
+const psd_relative = new DoubleArray(window / 2 + 1); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
+const psd_relative_percent = new DoubleArray(window / 2 + 1); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+
+const ps_s: any = [0, 0];
+const psd_s: any = [0, 0];
+const psd_relative_s: any = [0, 0];
+const psd_relative_percent_s: any = [0, 0];
+
 // 接收消息
 process.on("message", async function ({ type, data }) {
   if (type === "filter-init") {
-    // 滤波器初始化
-    filterInit();
-    bpFilterInit(3, 10);
+    signalProcess.init_filter(sample_rate, channel);
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
@@ -113,31 +142,53 @@ process.on("message", async function ({ type, data }) {
       // console.log('fall_off',pkg.fall_off);
       // console.log('error_state',pkg.error_state);
 
-      let d1 = filterProcess(pkg.brain_elec_channel[0]); // 滤波处理 第一通道
-      let bp1 = bpFilterProcess(d1);
-      // (test_i + 1) % 32
-      let psdFp1 = calculatePowerSpectrum(d1); // 功率谱计算 第一通道
-      // test_i++;
+      // 滤波处理
+      signalProcess.run_pre_process_filter(
+        channel,
+        new DoubleArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
+        d
+      );
 
-      // let d2 = filterProcess(pkg.brain_elec_channel[1]); // 滤波处理 第二通道
-      // let bp2 = bpFilterProcess(d2);
-      // let psdFp2 = calculatePowerSpectrum( d2); // 功率谱计算 第二通道
+      // // 时域信号处理
+      signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
+
+      //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
+      for (
+        let current_channel = 0;
+        current_channel < channel;
+        current_channel++
+      ) {
+        signalProcess.fft_ps(
+          current_channel,
+          sample_rate,
+          d[current_channel], //(test_i + 1) % 32
+          step,
+          window,
+          ps,
+          psd,
+          psd_relative,
+          psd_relative_percent
+        ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
+        ps_s[current_channel] = ps;
+        psd_s[current_channel] = psd;
+        psd_relative_s[current_channel] = psd_relative;
+        psd_relative_percent_s[current_channel] = psd_relative_percent;
+      }
+      test_i++;
+
       process.send!({
         type: "end-data-decode",
         data: {
           pkg,
-          psdFp1,
-          barnsTimeFp1: {
-            DELTA: 0,
-            THETA: 0,
-            ALPHA: 0,
-            BETA: bp1,
-            GAMMA: 0,
-          },
-          psdFp2: [],
-          barnsTimeFp2: {
-            BETA: [],
-          },
+          ps_s,
+          psd_s,
+          psd_relative_s,
+          psd_relative_percent_s,
+          e1_s: e1,
+          e2_s: e2,
+          e3_s: e3,
+          e4_s: e4,
+          e5_s: e5,
         },
       });
 
@@ -152,62 +203,40 @@ process.on("message", async function ({ type, data }) {
   }
 });
 
-// 滤波器初始化
-function filterInit() {
-  signalProcess.init_notch_filter1(sample_rate); //初始化陷波滤波器1
-  signalProcess.init_notch_filter2(sample_rate); //初始化陷波滤波器2
-  signalProcess.init_lp_filter(sample_rate); //初始化低通滤波器
-  signalProcess.init_hp_filter(sample_rate); //初始化高通滤波器
+// new DoubleArray数据转普通数组
+function doubleArrayToArray(data: any) {
+  return Array.from({ length: data.buffer.length / 8 }, (_, i) =>
+    data.buffer.readDoubleLE(i * 8)
+  );
 }
 
-// 滤波处理
-function filterProcess(x: number) {
-  let a = signalProcess.run_hp_filter(x); //1HZ高通
-  let b = signalProcess.run_lp_filter(a); //100HZ低通
-  let c = signalProcess.run_notch_filter1(b); //滤除50HZ；
-  let d = signalProcess.run_notch_filter2(c); //滤除100HZ;d为最终拿去做fft的数据，需要存入一个数组
-  return d;
-}
+// //计算功率谱、计算功率谱密度、计算相对功率谱
 
-// 带通滤波器初始化
-function bpFilterInit(band_fl: number, band_fh: number) {
-  //带通下限,带通上限
-  signalProcess.init_bp_filter(sample_rate, band_fl, band_fh);
-}
+// function calculatePowerSpectrum(d: number) {
+//   // let psState = signalProcess.fft_ps(d, step, window, y); //计算功率谱：假设d1为上述存储的最终滤波后数组,当fft_ps（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
+//   let psdState = signalProcess.fft_psd(d, sample_rate, step, window, y); //计算功率谱密度：假设d1为上述存储的最终滤波后数组,当fft_psd（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
+//   // let relatedState = signalProcess.fft_psd_relative(
+//   //   d,
+//   //   sample_rate,
+//   //   step,
+//   //   window,
+//   //   y2
+//   // ); //计算相对功率谱：假设d1为上述存储的最终滤波后数组,当fft_psd_relative（d1[i],sample_rate,step,window,y）返回值为true,数组y2[]会更新，此时需要将y[]画图显示,y2[]为相对频谱密度数组，长度为7，存储每个频段能量百分比单位为%单位为%
 
-// 带通处理
-function bpFilterProcess(d: number) {
-  let e = signalProcess.run_bp_filter(d);
-  return e;
-}
-
-//计算功率谱、计算功率谱密度、计算相对功率谱
-
-function calculatePowerSpectrum(d: number) {
-  // let psState = signalProcess.fft_ps(d, step, window, y); //计算功率谱：假设d1为上述存储的最终滤波后数组,当fft_ps（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
-  let psdState = signalProcess.fft_psd(d, sample_rate, step, window, y); //计算功率谱密度：假设d1为上述存储的最终滤波后数组,当fft_psd（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
-  // let relatedState = signalProcess.fft_psd_relative(
-  //   d,
-  //   sample_rate,
-  //   step,
-  //   window,
-  //   y2
-  // ); //计算相对功率谱：假设d1为上述存储的最终滤波后数组,当fft_psd_relative（d1[i],sample_rate,step,window,y）返回值为true,数组y2[]会更新，此时需要将y[]画图显示,y2[]为相对频谱密度数组，长度为7，存储每个频段能量百分比单位为%单位为%
-
-  return {
-    // psState: psState,
-    // ps: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
-    //   y.buffer.readDoubleLE(i * 8)
-    // ),
-    psdState: psdState,
-    psd: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
-      y.buffer.readDoubleLE(i * 8)
-    ),
-    relatedState:true,
-    related:[0,0,0,0,0,0,0]
-    // relatedState: relatedState,
-    // related: Array.from({ length: y2.buffer.length / 8 }, (_, i) =>
-    //   y2.buffer.readDoubleLE(i * 8)
-    // ),
-  };
-}
+//   return {
+//     // psState: psState,
+//     // ps: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
+//     //   y.buffer.readDoubleLE(i * 8)
+//     // ),
+//     psdState: psdState,
+//     psd: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
+//       y.buffer.readDoubleLE(i * 8)
+//     ),
+//     relatedState: true,
+//     related: [0, 0, 0, 0, 0, 0, 0],
+//     // relatedState: relatedState,
+//     // related: Array.from({ length: y2.buffer.length / 8 }, (_, i) =>
+//     //   y2.buffer.readDoubleLE(i * 8)
+//     // ),
+//   };
+// }
