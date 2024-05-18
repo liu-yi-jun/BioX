@@ -1,11 +1,10 @@
-
 // 如果有node环境才能使用require，node环境在electron中main.ts中配置
-const sqlite3 = require("sqlite3")
+const sqlite3 = require("sqlite3");
 // import log  from 'electron-log';
 export function CustomDatabase(url = "data.db") {
   // const sqlite3 = sq3.verbose();
   this.db = new sqlite3.Database(url);
-} 
+}
 
 CustomDatabase.prototype.init = function (isMain = true) {
   return new Promise((resolve, reject) => {
@@ -24,6 +23,15 @@ CustomDatabase.prototype.init = function (isMain = true) {
           recoredTotalTime INTEGER NOT NULL default(0),
           recoredEndTime INTEGER NOT NULL default(0),
           sourceData TEXT
+          )`);
+        // 蓝牙设备表
+        await this.run(`CREATE TABLE if not exists device(
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          deviceId VARCHAR(255) NOT NULL,
+          uuidList text,
+          name VARCHAR(255) NOT NULL,
+          describe VARCHAR(255) NOT NULL,
+          createTime INTEGER NOT NULL default(0)
           )`);
 
         resolve(true);
@@ -52,7 +60,7 @@ CustomDatabase.prototype.run = function (sql) {
   let that = this;
   return new Promise((resolve, reject) => {
     // console.log('sql', sql);
-    
+
     that.db.run(sql, (err) => {
       if (err) {
         // log.error(err);

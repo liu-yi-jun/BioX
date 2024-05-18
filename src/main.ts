@@ -15,7 +15,7 @@ import Loading from "./plugin/loading";
 
 
 interface loadingType {
-  show():null
+  show(text?:string):null
   hide():null
 }
 
@@ -31,7 +31,7 @@ db.init().then(() => {
   app.use(createPinia()); //use pinia
   app.use(router); //use router
   // 自定义插件全局loading
-  app.use(Loading);
   app.use(Antd);
+  app.use(Loading);
   app.mount("#app");
 });

@@ -1,13 +1,21 @@
 export function CustomBluetooth() {}
 const ipcRenderer = require("electron").ipcRenderer;
 let noticeList: Function[] = [];
+import { CustomDatabase } from "../utils/db";
+const db = new CustomDatabase();
 let server, device;
 let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
 
-CustomBluetooth.prototype.init = async function (cb) {
+CustomBluetooth.prototype.scan = async function () {
+  await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+  });
+};
+
+CustomBluetooth.prototype.init = async function (cb, deviceId) {
   try {
     // ipcRenderer.send("create-child");
     // setTimeout(() => {
@@ -15,11 +23,31 @@ CustomBluetooth.prototype.init = async function (cb) {
     // },3000)
 
     // cb(true);
+    let deviceInfo = await db.get(
+      `select * from device where deviceId = "${deviceId}"`
+    );
 
+    deviceInfo.uuidList = JSON.parse(deviceInfo.uuidList).filter((i) => {
+      return (
+        i.uuid !== "00001801-0000-1000-8000-00805f9b34fb" &&
+        i.uuid !== "00001800-0000-1000-8000-00805f9b34fb"
+      );
+    });
+
+    const serverUUID = deviceInfo.uuidList[deviceInfo.uuidList.length - 1].uuid;
+    const character1 =
+      deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[0]
+        .uuid;
+    const character2 =
+      deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[1]
+        .uuid;
+    setTimeout(() => {
+      cb(true, "initComplete");
+    }, 1000);
     if (!server) {
       device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ["00000000-cc7a-482a-984a-7f2ed5b3e58f"], //将服务UUID添加到这里
+        optionalServices: [serverUUID], //将服务UUID添加到这里
         // filters: [{ services: ['00000000-cc7a-482a-984a-7f2ed5b3e58f'] }],
         // filters: [{ name: 'Biox_Demo' },],
       });
@@ -34,19 +62,13 @@ CustomBluetooth.prototype.init = async function (cb) {
     cb(true, "loading");
 
     // 获取服务
-    const service = await server.getPrimaryService(
-      "00000000-cc7a-482a-984a-7f2ed5b3e58f"
-    ); // 替换为实际的服务UUID
+    const service = await server.getPrimaryService(serverUUID); // 替换为实际的服务UUID
 
     // 获取特征
-    const characteristic1 = await service.getCharacteristic(
-      "00000001-8e22-4541-9d4c-21edae82ed19"
-    ); // 替换为实际的特征UUID
+    const characteristic1 = await service.getCharacteristic(character1); // 替换为实际的特征UUID
 
     // 获取特征
-    const characteristic2 = await service.getCharacteristic(
-      "00000002-8e22-4541-9d4c-21edae82ed19"
-    ); // 替换为实际的特征UUID
+    const characteristic2 = await service.getCharacteristic(character2); // 替换为实际的特征UUID
 
     // 绑定通知事件
     characteristic2.addEventListener(

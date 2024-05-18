@@ -1,29 +1,23 @@
 <template>
   <div v-if="loading" class="loading">
-    <div class="electricity">
-      <span
-        ><div
-          class="css-dev-only-do-not-override-1hsjdkk ant-spin ant-spin-spinning"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <span class="ant-spin-dot ant-spin-dot-spin"
-            ><i class="ant-spin-dot-item"></i><i class="ant-spin-dot-item"></i
-            ><i class="ant-spin-dot-item"></i
-            ><i class="ant-spin-dot-item"></i></span
-          ><!---->
-        </div></span
-      >
+    <div class="loading-box">
+      <Spin :tip="tip" size="large" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
-
+import { Spin } from "ant-design-vue";
 const loading = ref(false);
+const tip = ref("加载中...");
 
-const show = () => {
+const show = (text: string | undefined) => {
+  if (text) {
+    tip.value = text;
+  } else {
+    tip.value = "加载中...";
+  }
   loading.value = true;
   console.log("show方法执行了");
 };
@@ -49,8 +43,7 @@ defineExpose({
   font-size: 30px;
   width: 100vw;
   height: 100vh;
-  opacity: 0.5;
-  background-color: grey;
+  background-color: rgba(0, 0, 0, 0.3);
   color: white;
   z-index: 999;
 }

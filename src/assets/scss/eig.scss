@@ -23,7 +23,7 @@ li {
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: center;
+  // justify-content: center;
   flex-direction: column;
   background-color: #f0f2f5;
   overflow: hidden;
@@ -34,6 +34,7 @@ li {
     display: flex;
     align-content: center;
     flex: 1;
+    height: 0px;
     .eig-menu {
       height: 100%;
       background-color: #e1e1e1;
@@ -55,7 +56,7 @@ li {
   position: relative;
   z-index: 5;
   .header-headset {
-    margin-right: 100px;
+    margin-right: 72px;
     border-radius: 4px;
     background-color: #ec005d;
     padding: 10px 50px;
@@ -64,13 +65,13 @@ li {
   .header {
     display: flex;
     justify-content: space-between;
-    padding: 0px 10px;
+    padding: 8px 10px;
     align-items: center;
     background-color: #ffffff;
   }
   .header-center {
     width: 180px;
-    margin-right: 90px;
+    margin-right: 70px;
     display: flex;
     background-color: #f8f8f8;
     justify-content: space-between;
@@ -526,6 +527,7 @@ $roundRadius: 18px;
   // margin: 0 -20px -20px;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.12);
   position: relative;
+  flex-shrink: 0;
   z-index: 999;
   align-items: center;
   .record-close {
@@ -585,6 +587,8 @@ $roundRadius: 18px;
 
 .header-device-list {
   padding: 8px 0;
+  max-height: 500px;
+    overflow: auto;
   .anticon-deployment-unit {
     font-size: 24px;
     color: rgba(0, 0, 0, 0.45);
@@ -608,4 +612,13 @@ $roundRadius: 18px;
 .header-device-loading {
   text-align: center;
   line-height: 80px;
+}
+
+.loading-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: #1677ff;
+  font-size: 16px;
 }

@@ -2,14 +2,14 @@ import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
 let child: typeof child_process;
-import log from 'electron-log/main';
-log.transports.file.level = 'silly'
-log.transports.console.level = 'silly';
+import log from "electron-log/main";
+log.transports.file.level = "silly";
+log.transports.console.level = "silly";
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
 let bluetoothPinCallback: any;
 let selectBluetoothCallback: any;
-let selectBluetoothCb:Function;
+let selectBluetoothCb: Function;
 let __static = "";
 if (process.env.NODE_ENV !== "development") {
   __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
@@ -20,7 +20,7 @@ if (process.env.NODE_ENV !== "development") {
   _product_path = join(__dirname, "../../../product");
 }
 
-log.error('main:path:' + _product_path)
+log.error("main:path:" + _product_path);
 
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -51,7 +51,6 @@ function createWindow() {
     "select-bluetooth-device",
     (event, deviceList, callback) => {
       event.preventDefault();
-      console.log("select-bluetooth-device", deviceList);
       selectBluetoothCallback = callback;
       mainWindow.webContents.send("find-device", deviceList);
       // const result = deviceList.find((device) => {
@@ -78,10 +77,38 @@ function createWindow() {
     selectBluetoothCallback("");
   });
 
+  // python生成蓝牙uuid
+  ipcMain.on("python-uuid", (event, deviceId) => {
+    child_process.exec(
+      join(
+        _product_path,
+        `/exe/bluetooth_scanner.exe device-info --address ${deviceId}`
+      ),
+      (error: any, stdout: any, stderr: any) => {
+        if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        mainWindow.webContents.send("python-uuid-response", stdout);
+      }
+    );
+  });
+
+
   // 关闭子进程
   ipcMain.on("close-child", (event) => {
     child.connected && child.kill();
-  })
+  });
+
+  // 关闭应用
+  ipcMain.on("close-window", (event) => {
+    app.quit();
+  });
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
@@ -100,7 +127,7 @@ function createWindow() {
 
   // 创建子进程
   ipcMain.on("create-child", (event, data) => {
-    log.error('create-child',join(__dirname, "./child.js"))
+    log.error("create-child", join(__dirname, "./child.js"));
     child = child_process.fork(
       join(__dirname, "./child.js"),
       [__static, _product_path],
@@ -109,14 +136,14 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
-        log.error(err)
+        log.error(err);
         console.log(err);
       }
     );
 
     // 初始化
-    child.connected && child.send({ type: "filter-init"});
-    
+    child.connected && child.send({ type: "filter-init" });
+
     child.stderr.on("data", (data: any) => {
       console.error(`stderr: ${data}`);
     });
@@ -126,15 +153,15 @@ function createWindow() {
     });
 
     child.on("error", (err: any) => {
-      log.error("子进程启动或执行过程中发生错误:", err)
+      log.error("子进程启动或执行过程中发生错误:", err);
       console.error("子进程启动或执行过程中发生错误:", err);
     });
 
     child.on("exit", (code: number, signal: string) => {
-      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`)
+      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
-    child.on("message", ( {type, data}: {type: string, data: any}) => {
+    child.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-decode") {
         event.sender.send("end-data-decode", data);
       }
@@ -144,11 +171,12 @@ function createWindow() {
   //  开始蓝牙数据解码
   ipcMain.on("start-data-decode", (event, data) => {
     // console.log("start-data-decode", data);
-    child.connected && child.send({ type: "start-data-decode", data: Buffer.from(data)  });
+    child.connected &&
+      child.send({ type: "start-data-decode", data: Buffer.from(data) });
   });
 
   ipcMain.on("bluetooth-scan", (event) => {
-    child.connected && child.send({ type: "bluetooth-scan"  });
+    child.connected && child.send({ type: "bluetooth-scan" });
   });
 
   // and load the index.html of the app.
