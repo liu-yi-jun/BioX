@@ -187,9 +187,13 @@ const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const spectrumShowTime = ref(30);
 const relatedStep = ref(30);
-
+const relatedMaxStep = 30;
 const barnsTimeStep = ref(30);
 const barnsTimeMaxStep = 30;
+const psdMapMaxStep = 30;
+const psdRelativeMaxStep = 1;
+const minTime = 250;
+const timeGap = Math.round(1000 / minTime);
 const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
@@ -307,28 +311,18 @@ let seriesChart,
   relatedChart,
   barnsTimeChart;
 
+let psd_s_out: any[] = [];
+let psd_relative_s_out: any[] = [];
+let psd_relative_percent_s_out: any[] = [];
+let time_e_s_out: any[] = [];
+const channelNum: number = 2;
+
 // Series data
 let seriesObj: any = {
     Fp1: [],
     Fp2: [],
   },
-  psdObj: any = {},
-  absoluteObj: any = {},
-  relatedObj: any = {
-    γ: [],
-    β: [],
-    α: [],
-    θ: [],
-    δ: [],
-  },
-  barnsTimeObj: any = {
-    EEG: [],
-    DELTA: [],
-    THETA: [],
-    ALPHA: [],
-    BETA: [],
-    GAMMA: [],
-  };
+  psdObj: any = {};
 
 watch(
   play,
@@ -343,12 +337,15 @@ watch(
           handleRealTimeData({
             series: sourceData[playIndex.value].series,
             psd: sourceData[playIndex.value].psd,
+            psd_s: sourceData[playIndex.value].psd_s,
             absolute: sourceData[playIndex.value].absolute,
-            related: sourceData[playIndex.value].related,
-            barnsTime: sourceData[playIndex.value].barnsTime,
+            psd_relative_s: sourceData[playIndex.value].psd_relative_s,
+            psd_relative_percent_s:
+              sourceData[playIndex.value].psd_relative_percent_s,
+            time_e_s: sourceData[playIndex.value].time_e_s,
           });
         }
-      }, 250);
+      }, minTime);
     } else {
       timerPlay && clearInterval(timerPlay);
     }
@@ -392,7 +389,7 @@ const bluetoothNotice = (data) => {
 
 // 将蓝牙数据进行映射
 const blueToothdataMapping = (data) => {
-  console.log(data, "blueToothdataMapping");
+  // console.log(data, "blueToothdataMapping");
 
   let psdF1: number[] = [];
   let psdF2: number[] = [];
@@ -410,28 +407,11 @@ const blueToothdataMapping = (data) => {
       Fp1: data.psd_s[0],
       Fp2: data.psd_s[1],
     },
-    absolute: {
-      0: data.psd_relative_s[parseChannel(bandsChannel.value)][0] || 0,
-      1: data.psd_relative_s[parseChannel(bandsChannel.value)][1] || 0,
-      2: data.psd_relative_s[parseChannel(bandsChannel.value)][2] || 0,
-      3: data.psd_relative_s[parseChannel(bandsChannel.value)][3] || 0,
-      4: data.psd_relative_s[parseChannel(bandsChannel.value)][4] || 0,
-    },
-    related: {
-      γ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
-      β: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
-      α: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
-      θ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
-      δ: data.psd_relative_percent_s[parseChannel(bandsChannel.value)][0],
-    },
-    barnsTime: {
-      EEG: data.brain_elec_channel[0],
-      DELTA: data.e1_s[parseChannel(bandsChannel.value)],
-      THETA: data.e2_s[parseChannel(bandsChannel.value)],
-      ALPHA: data.e3_s[parseChannel(bandsChannel.value)],
-      BETA: data.e4_s[parseChannel(bandsChannel.value)],
-      GAMMA: data.e5_s[parseChannel(bandsChannel.value)],
-    },
+    psd_s: data.psd_s,
+    psd_relative_s: data.psd_relative_s,
+    psd_relative_percent_s: data.psd_relative_percent_s,
+    time_e_s: data.time_e_s,
+
   };
 };
 
@@ -444,8 +424,7 @@ const clearData = (obj) => {
 const initialize = () => {
   clearData(seriesObj);
   clearData(psdObj);
-  clearData(relatedObj);
-  clearData(barnsTimeObj);
+  clearOldData();
   sourceData = [];
   if (!recordId.value) {
     bluetooth.addNotice(bluetoothNotice);
@@ -473,27 +452,47 @@ const initialize = () => {
   });
 };
 
+const clearOldData = () => {
+  psd_s_out = [];
+  psd_relative_s_out = [];
+  psd_relative_percent_s_out = [];
+  time_e_s_out = [];
+};
+
 // 处理之前数据-1
 const handleOldData = () => {
+  clearOldData();
   let tempPlayIndex = playIndex.value;
   handleBeforeData({
     seriesArr: sourceData
       .slice(0, tempPlayIndex)
-      .slice(-seriesMaxStep * 4)
+      .slice(-seriesMaxStep * timeGap)
       .map((item) => item.series),
-    psd: sourceData[tempPlayIndex].psd,
-    absolute: sourceData[tempPlayIndex].absolute,
+    psd: sourceData[tempPlayIndex]?sourceData[tempPlayIndex].psd:{
+      Fp1: 0,
+      Fp2: 0,
+    },
+    psdMapArr: sourceData
+      .slice(0, tempPlayIndex)
+      .slice(-psdMapMaxStep * timeGap)
+      .map((item) => item.psd_s),
+    // absolute: sourceData[tempPlayIndex].absolute,
+    psdRelativeArr: sourceData
+      .slice(0, tempPlayIndex)
+      .slice(-psdRelativeMaxStep * timeGap)
+      .map((item) => item.psd_relative_s),
     relatedArr: sourceData
       .slice(0, tempPlayIndex)
-      .slice(-relatedStep.value * 4)
-      .map((item) => item.related),
+      .slice(-relatedMaxStep * timeGap)
+      .map((item) => item.psd_relative_percent_s),
     barnsTimeArr: sourceData
       .slice(0, tempPlayIndex)
-      .slice(-barnsTimeMaxStep * 4)
-      .map((item) => item.barnsTime),
+      .slice(-barnsTimeMaxStep * timeGap)
+      .map((item) => item.time_e_s),
   });
   updateRenderRealSeriesData();
   undateRenderPsd();
+  undateRenderPsdMap();
   undateRenderAbsoule();
   updateRenderRelated();
   updateRenderBarnsTime();
@@ -505,76 +504,48 @@ const handleBeforeData = (obj) => {
   seriesObj.Fp2 = [];
   obj.seriesArr.map((item) => {
     seriesObj.Fp1.push({
-      value: [(seriesObj.Fp1.length + 1) * 250, item.Fp1],
+      value: [(seriesObj.Fp1.length + 1) * minTime, item.Fp1],
     });
     seriesObj.Fp2.push({
-      value: [(seriesObj.Fp2.length + 1) * 250, item.Fp2],
+      value: [(seriesObj.Fp2.length + 1) * minTime, item.Fp2],
     });
   });
-  relatedObj.γ = [];
-  relatedObj.β = [];
-  relatedObj.α = [];
-  relatedObj.θ = [];
-  relatedObj.δ = [];
   // psd
   psdObj = obj.psd;
+  // psdMap
+  obj.psdMapArr.forEach((item) => {
+    processingData(item, psd_s_out, channelNum, psdMapMaxStep);
+  });
   // absolute
-  absoluteObj = obj.absolute;
+  // absoluteObj = obj.absolute;
+  obj.psdRelativeArr.forEach((item) => {
+    processingData(item, psd_relative_s_out, channelNum, psdRelativeMaxStep);
+  });
   // related
   obj.relatedArr.forEach((item) => {
-    relatedObj.γ.push({
-      value: [(relatedObj.γ.length + 1) * 250, item.γ],
-    });
-    relatedObj.β.push({
-      value: [(relatedObj.β.length + 1) * 250, item.β],
-    });
-    relatedObj.α.push({
-      value: [(relatedObj.α.length + 1) * 250, item.α],
-    });
-    relatedObj.θ.push({
-      value: [(relatedObj.θ.length + 1) * 250, item.θ],
-    });
-    relatedObj.δ.push({
-      value: [(relatedObj.δ.length + 1) * 250, item.δ],
-    });
+    processingData(
+      item,
+      psd_relative_percent_s_out,
+      channelNum,
+      relatedMaxStep
+    );
   });
+
   // barnsTime
-  barnsTimeObj.EEG = [];
-  barnsTimeObj.DELTA = [];
-  barnsTimeObj.THETA = [];
-  barnsTimeObj.ALPHA = [];
-  barnsTimeObj.BETA = [];
-  barnsTimeObj.GAMMA = [];
   obj.barnsTimeArr.forEach((item) => {
-    barnsTimeObj.EEG.push({
-      value: [(barnsTimeObj.EEG.length + 1) * 250, item.EEG],
-    });
-    barnsTimeObj.DELTA.push({
-      value: [(barnsTimeObj.DELTA.length + 1) * 250, item.DELTA],
-    });
-    barnsTimeObj.THETA.push({
-      value: [(barnsTimeObj.THETA.length + 1) * 250, item.THETA],
-    });
-    barnsTimeObj.ALPHA.push({
-      value: [(barnsTimeObj.ALPHA.length + 1) * 250, item.ALPHA],
-    });
-    barnsTimeObj.BETA.push({
-      value: [(barnsTimeObj.BETA.length + 1) * 250, item.BETA],
-    });
-    barnsTimeObj.GAMMA.push({
-      value: [(barnsTimeObj.GAMMA.length + 1) * 250, item.GAMMA],
-    });
+    processingData(item, time_e_s_out, channelNum, barnsTimeMaxStep);
   });
+
 };
 // 处理实时数据
 const handleRealTimeData = (obj) => {
   // series
 
   seriesObj.Fp1.push({
-    value: [(seriesObj.Fp1.length + 1) * 250, obj.series.Fp1],
+    value: [(seriesObj.Fp1.length + 1) * minTime, obj.series.Fp1],
   });
   seriesObj.Fp2.push({
-    value: [(seriesObj.Fp2.length + 1) * 250, obj.series.Fp2],
+    value: [(seriesObj.Fp2.length + 1) * minTime, obj.series.Fp2],
   });
 
   updateRenderRealSeriesData();
@@ -582,47 +553,32 @@ const handleRealTimeData = (obj) => {
   // psd
   psdObj = obj.psd;
   undateRenderPsd();
+  // psdMap
+  processingData(obj.psd_s, psd_s_out, channelNum, psdMapMaxStep);
+  undateRenderPsdMap();
   // absolute
-  absoluteObj = obj.absolute;
+
+  processingData(
+    obj.psd_relative_s,
+    psd_relative_s_out,
+    channelNum,
+    psdRelativeMaxStep
+  );
+
   undateRenderAbsoule();
   //related
-  relatedObj.γ.push({
-    value: [(relatedObj.γ.length + 1) * 250, obj.related.γ],
-  });
-  relatedObj.β.push({
-    value: [(relatedObj.β.length + 1) * 250, obj.related.β],
-  });
-  relatedObj.α.push({
-    value: [(relatedObj.α.length + 1) * 250, obj.related.α],
-  });
-  relatedObj.θ.push({
-    value: [(relatedObj.θ.length + 1) * 250, obj.related.θ],
-  });
-  relatedObj.δ.push({
-    value: [(relatedObj.δ.length + 1) * 250, obj.related.δ],
-  });
+  processingData(
+    obj.psd_relative_percent_s,
+    psd_relative_percent_s_out,
+    channelNum,
+    barnsTimeMaxStep
+  );
 
   updateRenderRelated();
 
   // barnsTime
-  barnsTimeObj.EEG.push({
-    value: [(barnsTimeObj.EEG.length + 1) * 250, obj.barnsTime.EEG],
-  });
-  barnsTimeObj.DELTA.push({
-    value: [(barnsTimeObj.DELTA.length + 1) * 250, obj.barnsTime.DELTA],
-  });
-  barnsTimeObj.THETA.push({
-    value: [(barnsTimeObj.THETA.length + 1) * 250, obj.barnsTime.THETA],
-  });
-  barnsTimeObj.ALPHA.push({
-    value: [(barnsTimeObj.ALPHA.length + 1) * 250, obj.barnsTime.ALPHA],
-  });
-  barnsTimeObj.BETA.push({
-    value: [(barnsTimeObj.BETA.length + 1) * 250, obj.barnsTime.BETA],
-  });
-  barnsTimeObj.GAMMA.push({
-    value: [(barnsTimeObj.GAMMA.length + 1) * 250, obj.barnsTime.GAMMA],
-  });
+
+  processingData(obj.time_e_s, time_e_s_out, channelNum, barnsTimeMaxStep);
 
   updateRenderBarnsTime();
 };
@@ -745,10 +701,10 @@ const initHeatmap = () => {
     };
   }
 
-  let noise = getNoiseHelper();
-  let xData: number[] = [];
-  let yData: number[] = [];
-  noise.seed(Math.random());
+  // let noise = getNoiseHelper();
+  // let xData: number[] = [];
+  // let yData: number[] = [];
+  // noise.seed(Math.random());
   function generateData(theta: number, min: number, max: number) {
     let data: number[][] = [];
     for (let i = 0; i <= 200; i++) {
@@ -765,33 +721,45 @@ const initHeatmap = () => {
     }
     return data;
   }
-  setInterval(() => {
-    for (let j = 0; j <= 100; j++) {
-      data.pop();
-      data.unshift([
-        0,
-        j,
-        noise.perlin2(Math.floor(Math.random() * 201) / 40, j / 20) + 0.5,
-      ]);
-    }
-    for (let i = 0; i <= 200; i++) {
-      for (let j = 0; j <= 100; j++) {
-        if (i * 101 + j >= data.length) {
-          return;
-        }
-        data[i * 101 + j][0] = i;
-        data[i * 101 + j][1] = j;
-      }
-    }
-    heatmapChart.setOption({
-      series: [
-        {
-          data: data,
-        },
-      ],
-    });
-  }, 1000);
-  let data = generateData(2, -5, 5);
+  // setInterval(() => {
+  //   for (let j = 0; j <= 100; j++) {
+  //     data.pop();
+  //     data.unshift([
+  //       0,
+  //       j,
+  //       noise.perlin2(Math.floor(Math.random() * 201) / 40, j / 20) + 0.5,
+  //     ]);
+  //   }
+  //   for (let i = 0; i <= 200; i++) {
+  //     for (let j = 0; j <= 100; j++) {
+  //       if (i * 101 + j >= data.length) {
+  //         return;
+  //       }
+  //       data[i * 101 + j][0] = i;
+  //       data[i * 101 + j][1] = j;
+  //     }
+  //   }
+  //   heatmapChart.setOption({
+  //     series: [
+  //       {
+  //         data: data,
+  //       },
+  //     ],
+  //   });
+  // }, 1000);
+
+  // let data = generateData(2, -5, 5);
+  // console.log(xData, "xData");
+  // console.log(yData, "yData");
+  // console.log(data, "data");
+  let xData: number[] = [];
+  let yData: number[] = [];
+  for (let i = 0; i < spectrumShowTime.value * timeGap; i++) {
+    xData.push(i);
+  }
+  for (let i = 0; i < 5; i++) {
+    yData.push(i);
+  }
   heatmapChart = echarts.init(document.getElementById("heatmap"));
   heatmapChart.setOption({
     animation: false,
@@ -808,7 +776,7 @@ const initHeatmap = () => {
     },
     visualMap: {
       min: 0,
-      max: 1,
+      max: 150,
       calculable: true,
       realtime: false,
       inRange: {
@@ -831,7 +799,7 @@ const initHeatmap = () => {
       {
         name: "Gaussian",
         type: "heatmap",
-        data: data,
+        data: [],
         emphasis: {
           itemStyle: {
             borderColor: "#333",
@@ -1053,7 +1021,12 @@ const initRelated = () => {
         },
         showSymbol: false,
         areaStyle: {},
-        data: relatedObj.γ,
+        data: conversionData(
+          psd_relative_percent_s_out,
+          bandsChannel.value,
+          0,
+          barnsTimeMaxStep
+        ),
       },
       {
         name: "β wave",
@@ -1067,7 +1040,12 @@ const initRelated = () => {
         },
         showSymbol: false,
         areaStyle: {},
-        data: relatedObj.β,
+        data: conversionData(
+          psd_relative_percent_s_out,
+          bandsChannel.value,
+          1,
+          barnsTimeMaxStep
+        ),
       },
       {
         name: "α wave",
@@ -1081,7 +1059,12 @@ const initRelated = () => {
         },
         showSymbol: false,
         areaStyle: {},
-        data: relatedObj.α,
+        data: conversionData(
+          psd_relative_percent_s_out,
+          bandsChannel.value,
+          2,
+          barnsTimeMaxStep
+        ),
       },
       {
         name: "θ wave",
@@ -1095,7 +1078,12 @@ const initRelated = () => {
         },
         showSymbol: false,
         areaStyle: {},
-        data: relatedObj.θ,
+        data: conversionData(
+          psd_relative_percent_s_out,
+          bandsChannel.value,
+          3,
+          barnsTimeMaxStep
+        ),
       },
       {
         name: "δ wave",
@@ -1113,7 +1101,12 @@ const initRelated = () => {
           position: "top",
         },
         areaStyle: {},
-        data: relatedObj.δ,
+        data: conversionData(
+          psd_relative_percent_s_out,
+          bandsChannel.value,
+          4,
+          barnsTimeMaxStep
+        ),
       },
     ],
   });
@@ -1407,7 +1400,7 @@ const initBarnsTime = () => {
 
     series: [
       {
-        data: barnsTimeObj.EEG,
+        data: seriesObj[bandsChannel.value],
         type: "line",
         name: "EEG",
         symbol: "none",
@@ -1433,7 +1426,12 @@ const initBarnsTime = () => {
         yAxisIndex: 0,
       },
       {
-        data: barnsTimeObj.DELTA,
+        data: conversionData(
+          time_e_s_out,
+          bandsChannel.value,
+          0,
+          barnsTimeStep.value
+        ),
         type: "line",
         symbol: "none",
         name: "DELTA",
@@ -1459,7 +1457,12 @@ const initBarnsTime = () => {
         yAxisIndex: 1,
       },
       {
-        data: barnsTimeObj.THETA,
+        data: conversionData(
+          time_e_s_out,
+          bandsChannel.value,
+          1,
+          barnsTimeStep.value
+        ),
         type: "line",
         symbol: "none",
         name: "THETA",
@@ -1485,7 +1488,12 @@ const initBarnsTime = () => {
         yAxisIndex: 2,
       },
       {
-        data: barnsTimeObj.ALPHA,
+        data: conversionData(
+          time_e_s_out,
+          bandsChannel.value,
+          2,
+          barnsTimeStep.value
+        ),
         type: "line",
         symbol: "none",
         name: "ALPHA",
@@ -1511,7 +1519,12 @@ const initBarnsTime = () => {
         yAxisIndex: 3,
       },
       {
-        data: barnsTimeObj.BETA,
+        data: conversionData(
+          time_e_s_out,
+          bandsChannel.value,
+          3,
+          barnsTimeStep.value
+        ),
         type: "line",
         symbol: "none",
         name: "BETA",
@@ -1537,7 +1550,12 @@ const initBarnsTime = () => {
         yAxisIndex: 4,
       },
       {
-        data: barnsTimeObj.GAMMA,
+        data: conversionData(
+          time_e_s_out,
+          bandsChannel.value,
+          4,
+          barnsTimeStep.value
+        ),
         type: "line",
         symbol: "none",
         name: "GAMMA",
@@ -1679,7 +1697,7 @@ const generateSeries = () => {
 
 // 更新渲染--seriesData
 const updateRenderRealSeriesData = () => {
-  if (seriesObj.Fp1.length > seriesMaxStep * 4) {
+  if (seriesObj.Fp1.length > seriesMaxStep * timeGap) {
     seriesObj.Fp1.shift();
     seriesObj.Fp2.shift();
   }
@@ -1690,16 +1708,16 @@ const updateRenderRealSeriesData = () => {
   seriesObj.Fp1.forEach((item, index) => {
     tempSeriesObj.Fp1 = Object.assign(
       [],
-      seriesObj.Fp1.slice(-seriesStep.value * 4)
+      seriesObj.Fp1.slice(-seriesStep.value * timeGap)
     );
     tempSeriesObj.Fp2 = Object.assign(
       [],
-      seriesObj.Fp2.slice(-seriesStep.value * 4)
+      seriesObj.Fp2.slice(-seriesStep.value * timeGap)
     );
   });
   tempSeriesObj.Fp1.forEach((item, index) => {
-    tempSeriesObj.Fp1[index].value[0] = (index + 1) * 250;
-    tempSeriesObj.Fp2[index].value[0] = (index + 1) * 250;
+    tempSeriesObj.Fp1[index].value[0] = (index + 1) * minTime;
+    tempSeriesObj.Fp2[index].value[0] = (index + 1) * minTime;
   });
 
   seriesChart &&
@@ -1732,6 +1750,49 @@ const undateRenderPsd = () => {
     });
 };
 
+// 更新渲染-- psdMap
+const undateRenderPsdMap = () => {
+  let xData: number[] = [];
+  let yData: number[] = [];
+  for (let i = 0; i < spectrumShowTime.value * timeGap; i++) {
+    xData.push(i);
+  }
+  for (let i = 0; i < 5; i++) {
+    yData.push(i);
+  }
+
+  let tempPsdMap: number[][][] = [];
+  for (let i = 0; i < channelNum; i++) {
+    tempPsdMap.push([]);
+  }
+
+  for (let i = 0; i < channelNum; i++) {
+    psd_s_out[i] &&
+      psd_s_out[i].forEach((item, index) => {
+        tempPsdMap[i].push(item.value[1]);
+      });
+  }
+
+  heatmapChart &&
+    heatmapChart.setOption({
+      xAxis: {
+        data: xData,
+      },
+      yAxis: {
+        data: yData,
+      },
+      series: [
+        {
+          data: conversionPsdMapData(
+            tempPsdMap,
+            heatmapChannel.value,
+            spectrumShowTime.value
+          ),
+        },
+      ],
+    });
+};
+
 // 更新渲染-- absoule
 const undateRenderAbsoule = () => {
   absoluteChart &&
@@ -1740,31 +1801,56 @@ const undateRenderAbsoule = () => {
         {
           data: [
             {
-              value: absoluteObj[0],
+              value: conversionData(
+                psd_relative_s_out,
+                bandsChannel.value,
+                0,
+                psdRelativeMaxStep / timeGap
+              )[0].value[1],
               itemStyle: {
                 color: "rgb(255, 67, 72, 0.8)",
               },
             },
             {
-              value: absoluteObj[1],
+              value: conversionData(
+                psd_relative_s_out,
+                bandsChannel.value,
+                1,
+                psdRelativeMaxStep / timeGap
+              )[0].value[1],
               itemStyle: {
                 color: "rgb(241, 189, 0, 0.8)",
               },
             },
             {
-              value: absoluteObj[2],
+              value: conversionData(
+                psd_relative_s_out,
+                bandsChannel.value,
+                2,
+                psdRelativeMaxStep / timeGap
+              )[0].value[1],
               itemStyle: {
                 color: "rgb(37, 146, 121, 0.8)",
               },
             },
             {
-              value: absoluteObj[3],
+              value: conversionData(
+                psd_relative_s_out,
+                bandsChannel.value,
+                3,
+                psdRelativeMaxStep / timeGap
+              )[0].value[1],
               itemStyle: {
                 color: "rgb(78, 123, 187, 0.8)",
               },
             },
             {
-              value: absoluteObj[4],
+              value: conversionData(
+                psd_relative_s_out,
+                bandsChannel.value,
+                4,
+                psdRelativeMaxStep
+              )[0].value[1],
               itemStyle: {
                 color: "rgb(165, 107, 172, 0.8)",
               },
@@ -1777,52 +1863,54 @@ const undateRenderAbsoule = () => {
 
 // 更新渲染--related
 const updateRenderRelated = () => {
-  if (relatedObj.γ.length > relatedStep.value * 4) {
-    relatedObj.γ = relatedObj.γ.slice(
-      relatedObj.γ.length - relatedStep.value * 4
-    );
-    relatedObj.β = relatedObj.β.slice(
-      relatedObj.β.length - relatedStep.value * 4
-    );
-    relatedObj.α = relatedObj.α.slice(
-      relatedObj.α.length - relatedStep.value * 4
-    );
-    relatedObj.θ = relatedObj.θ.slice(
-      relatedObj.θ.length - relatedStep.value * 4
-    );
-    relatedObj.δ = relatedObj.δ.slice(
-      relatedObj.δ.length - relatedStep.value * 4
-    );
-    relatedObj.γ.forEach((item, index) => {
-      relatedObj.γ[index].value[0] = (index + 1) * 250;
-      relatedObj.β[index].value[0] = (index + 1) * 250;
-      relatedObj.α[index].value[0] = (index + 1) * 250;
-      relatedObj.θ[index].value[0] = (index + 1) * 250;
-      relatedObj.δ[index].value[0] = (index + 1) * 250;
-    });
-  }
+
   relatedChart &&
     relatedChart.setOption({
       series: [
         {
           name: "γ wave",
-          data: relatedObj.γ,
+          data: conversionData(
+            psd_relative_percent_s_out,
+            bandsChannel.value,
+            0,
+            barnsTimeMaxStep
+          ),
         },
         {
           name: "β wave",
-          data: relatedObj.β,
+          data: conversionData(
+            psd_relative_percent_s_out,
+            bandsChannel.value,
+            1,
+            barnsTimeMaxStep
+          ),
         },
         {
           name: "α wave",
-          data: relatedObj.α,
+          data: conversionData(
+            psd_relative_percent_s_out,
+            bandsChannel.value,
+            2,
+            barnsTimeMaxStep
+          ),
         },
         {
           name: "θ wave",
-          data: relatedObj.θ,
+          data: conversionData(
+            psd_relative_percent_s_out,
+            bandsChannel.value,
+            3,
+            barnsTimeMaxStep
+          ),
         },
         {
           name: "δ wave",
-          data: relatedObj.δ,
+          data: conversionData(
+            psd_relative_percent_s_out,
+            bandsChannel.value,
+            4,
+            barnsTimeMaxStep
+          ),
         },
       ],
     });
@@ -1830,56 +1918,7 @@ const updateRenderRelated = () => {
 
 // 更新渲染--barns
 const updateRenderBarnsTime = () => {
-  if (barnsTimeObj.EEG.length > barnsTimeMaxStep * 4) {
-    barnsTimeObj.EEG.shift();
-    barnsTimeObj.DELTA.shift();
-    barnsTimeObj.THETA.shift();
-    barnsTimeObj.ALPHA.shift();
-    barnsTimeObj.BETA.shift();
-    barnsTimeObj.GAMMA.shift();
-  }
-  let tempBarnsTimeObj: any = {
-    EEG: [],
-    DELTA: [],
-    THETA: [],
-    ALPHA: [],
-    BETA: [],
-    GAMMA: [],
-  };
-  barnsTimeObj.EEG.forEach((item, index) => {
-    tempBarnsTimeObj.EEG = Object.assign(
-      [],
-      barnsTimeObj.EEG.slice(-barnsTimeStep.value * 4)
-    );
-    tempBarnsTimeObj.DELTA = Object.assign(
-      [],
-      barnsTimeObj.DELTA.slice(-barnsTimeStep.value * 4)
-    );
-    tempBarnsTimeObj.THETA = Object.assign(
-      [],
-      barnsTimeObj.THETA.slice(-barnsTimeStep.value * 4)
-    );
-    tempBarnsTimeObj.ALPHA = Object.assign(
-      [],
-      barnsTimeObj.ALPHA.slice(-barnsTimeStep.value * 4)
-    );
-    tempBarnsTimeObj.BETA = Object.assign(
-      [],
-      barnsTimeObj.BETA.slice(-barnsTimeStep.value * 4)
-    );
-    tempBarnsTimeObj.GAMMA = Object.assign(
-      [],
-      barnsTimeObj.GAMMA.slice(-barnsTimeStep.value * 4)
-    );
-  });
-  tempBarnsTimeObj.EEG.forEach((item, index) => {
-    tempBarnsTimeObj.EEG[index].value[0] = (index + 1) * 250;
-    tempBarnsTimeObj.DELTA[index].value[0] = (index + 1) * 250;
-    tempBarnsTimeObj.THETA[index].value[0] = (index + 1) * 250;
-    tempBarnsTimeObj.ALPHA[index].value[0] = (index + 1) * 250;
-    tempBarnsTimeObj.BETA[index].value[0] = (index + 1) * 250;
-    tempBarnsTimeObj.GAMMA[index].value[0] = (index + 1) * 250;
-  });
+
   barnsTimeChart &&
     barnsTimeChart.setOption({
       xAxis: [
@@ -1911,30 +1950,112 @@ const updateRenderBarnsTime = () => {
       series: [
         {
           name: "EEG",
-          data: tempBarnsTimeObj.EEG,
+          data: seriesObj[bandsChannel.value],
         },
         {
           name: "DELTA",
-          data: tempBarnsTimeObj.DELTA,
+          data: conversionData(
+            time_e_s_out,
+            bandsChannel.value,
+            0,
+            barnsTimeStep.value
+          ),
         },
         {
           name: "THETA",
-          data: tempBarnsTimeObj.THETA,
+          data: conversionData(
+            time_e_s_out,
+            bandsChannel.value,
+            1,
+            barnsTimeStep.value
+          ),
         },
         {
           name: "ALPHA",
-          data: tempBarnsTimeObj.ALPHA,
+          data: conversionData(
+            time_e_s_out,
+            bandsChannel.value,
+            2,
+            barnsTimeStep.value
+          ),
         },
         {
           name: "BETA",
-          data: tempBarnsTimeObj.BETA,
+          data: conversionData(
+            time_e_s_out,
+            bandsChannel.value,
+            3,
+            barnsTimeStep.value
+          ),
         },
         {
           name: "GAMMA",
-          data: tempBarnsTimeObj.GAMMA,
+          data: conversionData(
+            time_e_s_out,
+            bandsChannel.value,
+            4,
+            barnsTimeStep.value
+          ),
         },
       ],
     });
+};
+
+// 处理数据
+const processingData = (
+  inputDataList: any, //psd_relative_s
+  outDataList: any, //psd_relative_s_out
+  channel,
+  maxStep
+) => {
+  if (!outDataList.length) {
+    for (let i = 0; i < channel; i++) {
+      outDataList.push([]);
+    }
+  }
+  for (let i = 0; i < channel; i++) {
+    outDataList[i].push({
+      value: [0, inputDataList[i]],
+    });
+    if (outDataList[i].length > maxStep * timeGap) {
+      outDataList[i].shift();
+    }
+  }
+  for (let i = 0; i < channel; i++) {
+    outDataList[i].forEach((item, index) => {
+      outDataList[i][index].value[0] = (index + 1) * minTime;
+    });
+  }
+};
+
+const conversionData = (outDataList, typeChannel, index, step) => {
+  if (!outDataList.length) {
+    return [{ value: [0, 0] }];
+  }
+  let tempOutDataList: any = [];
+  for (let i = 0; i < outDataList.length; i++) {
+    tempOutDataList.push(outDataList[i].slice(-step * timeGap));
+  }
+  return tempOutDataList[parseChannel(typeChannel)]
+    ? tempOutDataList[parseChannel(typeChannel)].map((item, xIndex) => ({
+        value: [(xIndex + 1) * minTime, item.value[1][index]],
+      }))
+    : [];
+};
+
+const conversionPsdMapData = (outDataList, typeChannel, step) => {
+  let tempPsdMapList: any = [];
+  for (let i = 0; i < outDataList.length; i++) {
+    tempPsdMapList.push(outDataList[i].slice(-step * timeGap));
+  }
+  let psdMapData: number[][] = [];
+  for (let x = 0; x < tempPsdMapList[parseChannel(typeChannel)].length; x++) {
+    let psdItems = tempPsdMapList[parseChannel(typeChannel)][x];
+    psdItems.forEach((value, y) => {
+      psdMapData.push([x, y, value]);
+    });
+  }
+  return psdMapData;
 };
 
 const handleChangePsdChannel = () => {

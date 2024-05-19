@@ -151,6 +151,7 @@ process.on("message", async function ({ type, data }) {
 
       // // 时域信号处理
       signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
+      let time_e_s = []
 
       //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
       for (
@@ -158,6 +159,7 @@ process.on("message", async function ({ type, data }) {
         current_channel < channel;
         current_channel++
       ) {
+        time_e_s.push([e1[current_channel], e2[current_channel], e3[current_channel], e4[current_channel], e5[current_channel]]);
         signalProcess.fft_ps(
           current_channel,
           sample_rate,
@@ -176,6 +178,7 @@ process.on("message", async function ({ type, data }) {
       }
       test_i++;
 
+    
       process.send!({
         type: "end-data-decode",
         data: {
@@ -184,11 +187,7 @@ process.on("message", async function ({ type, data }) {
           psd_s,
           psd_relative_s,
           psd_relative_percent_s,
-          e1_s: e1,
-          e2_s: e2,
-          e3_s: e3,
-          e4_s: e4,
-          e5_s: e5,
+          time_e_s,
         },
       });
 

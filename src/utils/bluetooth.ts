@@ -109,11 +109,7 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
           psd_s: data.psd_s,
           psd_relative_s: data.psd_relative_s,
           psd_relative_percent_s: data.psd_relative_percent_s,
-          e1_s: data.e1_s,
-          e2_s: data.e2_s,
-          e3_s: data.e3_s,
-          e4_s: data.e4_s,
-          e5_s: data.e5_s,
+          time_e_s: data.time_e_s,
         });
       }
     });
