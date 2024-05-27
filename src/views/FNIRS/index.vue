@@ -433,12 +433,35 @@ const blueToothdataMapping = (data) => {
     OD.push(Math.round(Math.random() * 20 + 30));
     Conc.push(Math.round(Math.random() * 20 + 30));
   }
-  RD[0] = data.near_infrared_channel[0];
-  RD[1] = data.near_infrared_channel[1];
-  RD[2] = data.near_infrared_channel[2];
-  RD[3] = data.near_infrared_channel[3];
-  RD[4] = data.near_infrared_channel[4];
-  RD[5] = data.near_infrared_channel[5];
+
+  
+  RD[0] = data.near_infrared_channel_1_wavelength_1[0];
+  RD[1] = data.near_infrared_channel_1_wavelength_2[0];
+  RD[2] = data.near_infrared_channel_1_wavelength_13[0];
+  RD[3] = data.near_infrared_channel_2_wavelength_1[0];
+  RD[4] = data.near_infrared_channel_2_wavelength_2[0];
+  RD[5] = data.near_infrared_channel_2_wavelength_13[0];
+
+  RD[6] = data.near_infrared_channel_1_wavelength_1[1];
+  RD[7] = data.near_infrared_channel_1_wavelength_2[1];
+  RD[8] = data.near_infrared_channel_1_wavelength_13[1];
+  RD[9] = data.near_infrared_channel_2_wavelength_1[1];
+  RD[10] = data.near_infrared_channel_2_wavelength_2[1];
+  RD[11] = data.near_infrared_channel_2_wavelength_13[1];
+
+  RD[12] = data.near_infrared_channel_1_wavelength_1[2];
+  RD[13] = data.near_infrared_channel_1_wavelength_2[2];
+  RD[14] = data.near_infrared_channel_1_wavelength_13[2];
+  RD[15] = data.near_infrared_channel_2_wavelength_1[2];
+  RD[16] = data.near_infrared_channel_2_wavelength_2[2];
+  RD[17] = data.near_infrared_channel_2_wavelength_13[2];
+
+  RD[18] = data.near_infrared_channel_1_wavelength_1[3];
+  RD[19] = data.near_infrared_channel_1_wavelength_2[3];
+  RD[20] = data.near_infrared_channel_1_wavelength_13[3];
+  RD[21] = data.near_infrared_channel_2_wavelength_1[3];
+  RD[22] = data.near_infrared_channel_2_wavelength_2[3];
+  RD[23] = data.near_infrared_channel_2_wavelength_13[3];
   return {
     RD,
     OD,

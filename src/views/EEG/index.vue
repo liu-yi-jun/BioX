@@ -6,25 +6,45 @@
       <div class="time-series">
         <div class="eig-filter eig-select-wrap">
           <div class="filter-right">
-            <a-space>
-              <a-select
-                v-model:value="seriesStep"
-                style="width: 100px"
-                @change="handleChangeSeriesStep"
-                aria-placeholder="Show Time"
-                :options="showTimeOptions"
-                size="small"
-              ></a-select>
-              <a-select
-                v-model:value="channel"
-                mode="multiple"
-                :style="{ 'min-width': '100px' }"
-                placeholder="Channels"
-                :options="channelOptions"
-                size="small"
-                @change="generateSeries"
-              ></a-select>
-            </a-space>
+            <a-form size="small" :model="seriesForm" layout="inline">
+              <a-form-item label="min">
+                <a-input
+                  type="number"
+                  style="width: 100px"
+                  v-model:value="seriesForm.min"
+                  placeholder="auto"
+                />
+              </a-form-item>
+              <a-form-item label="max">
+                <a-input
+                  type="number"
+                  style="width: 100px"
+                  v-model:value="seriesForm.max"
+                  placeholder="auto"
+                />
+              </a-form-item>
+              <a-form-item>
+                <a-select
+                  v-model:value="seriesStep"
+                  style="width: 100px"
+                  @change="handleChangeSeriesStep"
+                  aria-placeholder="Show Time"
+                  :options="showTimeOptions"
+                  size="small"
+                ></a-select>
+              </a-form-item>
+              <a-form-item>
+                <a-select
+                  v-model:value="channel"
+                  mode="multiple"
+                  :style="{ 'min-width': '100px' }"
+                  placeholder="Channels"
+                  :options="channelOptions"
+                  size="small"
+                  @change="generateSeries"
+                ></a-select>
+              </a-form-item>
+            </a-form>
           </div>
         </div>
         <div style="width: 100%; height: 100%" id="series"></div>
@@ -212,6 +232,11 @@ const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer;
 
+const seriesForm = reactive({
+  min: "",
+  max: "",
+});
+
 const showTimeOptionsData = [
   {
     value: 5,
@@ -384,13 +409,24 @@ onBeforeUnmount(() => {
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
+  console.log('time',data.timer)
+  
   handleRealTimeData(blueToothdataMapping(data));
 };
 
 // 将蓝牙数据进行映射
 const blueToothdataMapping = (data) => {
-  // console.log(data, "blueToothdataMapping");
+  // console.log(data.hexString,'hexString');
 
+ if(data.brain_elec_channel[0] == 0 || data.brain_elec_channel[1] == 0) {
+  console.log(data.brain_elec_channel[0],'0');
+  console.log(data.brain_elec_channel[1],'1');
+  
+  // console.log(data.pkg,'第一通道异常pkg');
+  console.log(data.hexString,'hexString');
+ }
+ 
+  
   let psdF1: number[] = [];
   let psdF2: number[] = [];
   for (let i = 0; i < maxFreq.value; i += 50) {
@@ -411,7 +447,6 @@ const blueToothdataMapping = (data) => {
     psd_relative_s: data.psd_relative_s,
     psd_relative_percent_s: data.psd_relative_percent_s,
     time_e_s: data.time_e_s,
-
   };
 };
 
@@ -468,10 +503,12 @@ const handleOldData = () => {
       .slice(0, tempPlayIndex)
       .slice(-seriesMaxStep * timeGap)
       .map((item) => item.series),
-    psd: sourceData[tempPlayIndex]?sourceData[tempPlayIndex].psd:{
-      Fp1: 0,
-      Fp2: 0,
-    },
+    psd: sourceData[tempPlayIndex]
+      ? sourceData[tempPlayIndex].psd
+      : {
+          Fp1: 0,
+          Fp2: 0,
+        },
     psdMapArr: sourceData
       .slice(0, tempPlayIndex)
       .slice(-psdMapMaxStep * timeGap)
@@ -535,7 +572,6 @@ const handleBeforeData = (obj) => {
   obj.barnsTimeArr.forEach((item) => {
     processingData(item, time_e_s_out, channelNum, barnsTimeMaxStep);
   });
-
 };
 // 处理实时数据
 const handleRealTimeData = (obj) => {
@@ -775,8 +811,8 @@ const initHeatmap = () => {
       data: yData,
     },
     visualMap: {
-      min: 0,
-      max: 150,
+      min: -300,
+      max: 300,
       calculable: true,
       realtime: false,
       inRange: {
@@ -814,7 +850,7 @@ const initHeatmap = () => {
 };
 const initPSD = () => {
   let XAxisData: number[] = [];
-  for (let i = 50; i <= maxFreq.value; i += 50) {
+  for (let i = 0; i <= maxFreq.value; i += 1) {
     XAxisData.push(i);
   }
   psdChart = echarts.init(document.getElementById("psd"));
@@ -873,7 +909,7 @@ const initPSD = () => {
           show: true,
         },
         // min: 0.1,
-        min: 0,
+        // min: 0,
         // max: 500,
         nameRotate: 90, // 旋转角度
         nameLocation: "middle",
@@ -930,7 +966,6 @@ const initAbsolute = () => {
       minorSplitLine: {
         show: true,
       },
-      min: 0,
       max: 100,
       name: "μV^2",
       nameRotate: 90, // 旋转角度
@@ -1621,13 +1656,13 @@ const generateSeries = () => {
       show: false,
       left: "10%",
       right: "4%",
-      top: (100 / channel.value.length) * index + "%",
-      bottom: 100 - (100 / channel.value.length) * (index + 1) + "%",
+      top: (100 / channel.value.length) * index + 5 + "%",
+      bottom: 110 - (100 / channel.value.length) * (index + 1) + "%",
       containLabel: false,
     });
     xAxis.push({
       type: "time",
-      show: index === channel.value.length - 1,
+      show: true,
       gridIndex: index,
       splitNumber: seriesStep.value,
       max: seriesStep.value * 1000,
@@ -1648,14 +1683,16 @@ const generateSeries = () => {
     yAxis.push({
       show: true,
       axisLine: {
-        show: false, // 显示y轴线
+        show: true, // 显示y轴线
       },
       axisLabel: {
         //坐标轴刻度标签
-        show: false,
+        show: true,
       },
+      max: seriesForm.max === "" ? undefined : seriesForm.max,
+      min: seriesForm.min === "" ? undefined : seriesForm.min,
       axisTick: {
-        show: false, // 可取消y轴刻度线
+        show:  true, // 可取消y轴刻度线
       },
       splitLine: {
         show: false, // 去除网格线
@@ -1722,6 +1759,11 @@ const updateRenderRealSeriesData = () => {
 
   seriesChart &&
     seriesChart.setOption({
+      yAxis: channel.value.map((item) => ({
+        name: item,
+        max: seriesForm.max === "" ? undefined : seriesForm.max,
+        min: seriesForm.min === "" ? undefined : seriesForm.min,
+      })),
       xAxis: channel.value.map((item, index) => ({
         gridIndex: index,
         splitNumber: seriesStep.value,
@@ -1863,7 +1905,6 @@ const undateRenderAbsoule = () => {
 
 // 更新渲染--related
 const updateRenderRelated = () => {
-
   relatedChart &&
     relatedChart.setOption({
       series: [
@@ -1918,7 +1959,6 @@ const updateRenderRelated = () => {
 
 // 更新渲染--barns
 const updateRenderBarnsTime = () => {
-
   barnsTimeChart &&
     barnsTimeChart.setOption({
       xAxis: [

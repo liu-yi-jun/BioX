@@ -1,5 +1,5 @@
 {
-  "name": "vite-vue3-electron-ts-template",
+  "name": "biox_0.1",
   "private": true,
   "version": "0.0.1",
   "author": "Your Name",
@@ -38,6 +38,7 @@
       ]
     },
     "win": {
+      "requestedExecutionLevel": "highestAvailable",
       "target": [
         {
           "target": "nsis",

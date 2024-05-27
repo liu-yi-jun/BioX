@@ -11,15 +11,13 @@ let bluetoothPinCallback: any;
 let selectBluetoothCallback: any;
 let selectBluetoothCb: Function;
 let __static = "";
-if (process.env.NODE_ENV !== "development") {
-  __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
-}
-
 let _product_path = join(__dirname, "../../../../product");
-if (process.env.NODE_ENV !== "development") {
+if (isDev) {
+  __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
   _product_path = join(__dirname, "../../../product");
 }
 
+log.error("process.env.NODE_ENV:" + process.env.NODE_ENV);
 log.error("main:path:" + _product_path);
 
 async function handleFileOpen() {
@@ -67,18 +65,37 @@ function createWindow() {
 
   // 确认连接设备
   ipcMain.on("connect-bluetooth-device", (event, deviceItem) => {
-    console.log("connect-bluetooth-device", JSON.parse(deviceItem));
-    selectBluetoothCallback(JSON.parse(deviceItem).deviceId);
+    if (selectBluetoothCallback) {
+      console.log("connect-bluetooth-device", JSON.parse(deviceItem));
+      selectBluetoothCallback(JSON.parse(deviceItem).deviceId);
+      selectBluetoothCallback = null;
+    } else {
+      // 执行失败
+      mainWindow.webContents.send("select-bluetooth-callback", false);
+    }
   });
 
   // 取消蓝牙扫描
   ipcMain.on("cancel-bluetooth-request", (event) => {
-    console.log("cancel-bluetooth-request");
-    selectBluetoothCallback("");
+    if (selectBluetoothCallback) {
+      console.log("cancel-bluetooth-request");
+      selectBluetoothCallback("");
+      selectBluetoothCallback = null;
+    } else {
+      // 执行失败
+      mainWindow.webContents.send("select-bluetooth-callback", false);
+    }
   });
 
   // python生成蓝牙uuid
   ipcMain.on("python-uuid", (event, deviceId) => {
+    log.error(
+      "python-uuid:" +
+        join(
+          _product_path,
+          `/exe/bluetooth_scanner.exe device-info --address ${deviceId}`
+        )
+    );
     child_process.exec(
       join(
         _product_path,
@@ -99,7 +116,6 @@ function createWindow() {
     );
   });
 
-
   // 关闭子进程
   ipcMain.on("close-child", (event) => {
     child.connected && child.kill();
@@ -109,6 +125,13 @@ function createWindow() {
   ipcMain.on("close-window", (event) => {
     app.quit();
   });
+
+  // 打开开发者工具
+  ipcMain.on("open-devtools", (event) => {
+    mainWindow.webContents.openDevTools();
+  });
+
+
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
@@ -185,6 +208,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(__dirname, "../../index.html"));
+    // mainWindow.webContents.openDevTools();
   }
   // mainWindow.loadURL( //this doesn't work on macOS in build and preview mode
   //     isDev ?

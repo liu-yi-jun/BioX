@@ -70,7 +70,7 @@ import { DeploymentUnitOutlined } from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
 import { CustomDatabase } from "../utils/db";
 import { CloseCircleOutlined } from "@ant-design/icons-vue";
-import { createVNode } from 'vue';
+import { createVNode } from "vue";
 const isConnect = ref(false);
 const connectVisible = ref<boolean>(false);
 import { message } from "ant-design-vue";
@@ -78,6 +78,7 @@ const bluetooth = new CustomBluetooth();
 const app = getCurrentInstance();
 const db = new CustomDatabase();
 import { Modal } from "ant-design-vue";
+let timer_uuid: any = null;
 
 interface DeviceItem {
   deviceId: string;
@@ -147,9 +148,15 @@ const connectDevice = (item) => {
       // 连接过的设备，直接连接
       findDevice();
     } else {
-      app?.proxy?.loading.show("获取UUID中...");
-      // 未连接过的设备，调python生成uuid
-      ipcRenderer.send("python-uuid", item.deviceId);
+      findDevice();
+      // app?.proxy?.loading.show("获取UUID中...");
+      // timer_uuid = setTimeout(() => {
+      //   app?.proxy?.loading.hide();
+      //   timer_uuid && clearTimeout(timer_uuid);
+      //   return message.error("获取UUID失败");
+      // }, 120 * 1000);
+      // // 未连接过的设备，调python生成uuid
+      // ipcRenderer.send("python-uuid", item.deviceId);
     }
   });
 
@@ -189,7 +196,12 @@ onMounted(() => {
   });
   // python生成uuid
   ipcRenderer.on("python-uuid-response", (event, data) => {
+    timer_uuid && clearTimeout(timer_uuid);
     data = JSON.parse(data);
+    if (!data.address) {
+      app?.proxy?.loading.hide();
+      return message.error("获取UUID失败");
+    }
     db.insert("device", {
       deviceId: data.address,
       uuidList: JSON.stringify(data.services),
@@ -201,7 +213,14 @@ onMounted(() => {
         // 获取uuid后，直接调用会报错，所以得弹出框对话框
         Modal.confirm({
           title: "确认要连接设备",
-          content: createVNode("div", null, [createVNode("p", null, `Name：${data.name}`),createVNode("p", null, `UUID：${data.services[data.services.length - 1].uuid}`)]),
+          content: createVNode("div", null, [
+            createVNode("p", null, `Name：${data.name}`),
+            createVNode(
+              "p",
+              null,
+              `UUID：${data.services[data.services.length - 1].uuid}`
+            ),
+          ]),
           okText: "确认",
           cancelText: "取消",
           onOk() {
@@ -216,6 +235,15 @@ onMounted(() => {
         console.log("error", err);
       });
   });
+  // 
+  ipcRenderer.on("select-bluetooth-callback", (event, data) => {
+    debugger
+    if(!data) {
+      // 执行失败
+      app?.proxy?.loading.hide();
+      return message.error("执行失败，请不用频繁操作，并确保蓝牙设备处于广播状态！");
+    }
+  })
 });
 </script>
 <style scoped></style>

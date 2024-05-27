@@ -9,6 +9,21 @@ let handleNotifications = function (event) {
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
 
+let handleEndDataDecode = (event, data) => {
+  for (let i = 0; i < noticeList.length; i++) {
+    noticeList[i]({
+      ...data.pkg,
+      ps_s: data.ps_s,
+      psd_s: data.psd_s,
+      hexString: data.hexString,
+      psd_relative_s: data.psd_relative_s,
+      psd_relative_percent_s: data.psd_relative_percent_s,
+      time_e_s: data.time_e_s,
+      timer: new Date().getTime(),
+    });
+  }
+};
+
 CustomBluetooth.prototype.scan = async function () {
   await navigator.bluetooth.requestDevice({
     acceptAllDevices: true,
@@ -23,27 +38,31 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     // },3000)
 
     // cb(true);
-    let deviceInfo = await db.get(
-      `select * from device where deviceId = "${deviceId}"`
-    );
+    // let deviceInfo = await db.get(
+    //   `select * from device where deviceId = "${deviceId}"`
+    // );
 
-    deviceInfo.uuidList = JSON.parse(deviceInfo.uuidList).filter((i) => {
-      return (
-        i.uuid !== "00001801-0000-1000-8000-00805f9b34fb" &&
-        i.uuid !== "00001800-0000-1000-8000-00805f9b34fb"
-      );
-    });
+    // deviceInfo.uuidList = JSON.parse(deviceInfo.uuidList).filter((i) => {
+    //   return (
+    //     i.uuid !== "00001801-0000-1000-8000-00805f9b34fb" &&
+    //     i.uuid !== "00001800-0000-1000-8000-00805f9b34fb"
+    //   );
+    // });
 
-    const serverUUID = deviceInfo.uuidList[deviceInfo.uuidList.length - 1].uuid;
-    const character1 =
-      deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[0]
-        .uuid;
-    const character2 =
-      deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[1]
-        .uuid;
+    // const serverUUID = deviceInfo.uuidList[deviceInfo.uuidList.length - 1].uuid;
+    // const character1 =
+    //   deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[0]
+    //     .uuid;
+    // const character2 =
+    //   deviceInfo.uuidList[deviceInfo.uuidList.length - 1].characteristics[1]
+    //     .uuid;
+    const serverUUID = "00000000-cc7a-482a-984a-7f2ed5b3e58f";
+    const character1 = "00000001-8e22-4541-9d4c-21edae82ed19";
+    const character2 = "00000002-8e22-4541-9d4c-21edae82ed19";
     setTimeout(() => {
       cb(true, "initComplete");
     }, 1000);
+
     if (!server) {
       device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
@@ -101,18 +120,7 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     // 创建子进程
     ipcRenderer.send("create-child");
     // 解码后的蓝牙数据
-    ipcRenderer.on("end-data-decode", (event, data) => {
-      for (let i = 0; i < noticeList.length; i++) {
-        noticeList[i]({
-          ...data.pkg,
-          ps_s: data.ps_s,
-          psd_s: data.psd_s,
-          psd_relative_s: data.psd_relative_s,
-          psd_relative_percent_s: data.psd_relative_percent_s,
-          time_e_s: data.time_e_s,
-        });
-      }
-    });
+    ipcRenderer.on("end-data-decode", handleEndDataDecode);
     cb(true, "hide");
     cb(true, "success");
   } catch (err) {
@@ -132,6 +140,7 @@ CustomBluetooth.prototype.close = function (cb: Function) {
     server.disconnect();
     server = null;
     device = null;
+    ipcRenderer.removeListener("end-data-decode", handleEndDataDecode);
     ipcRenderer.send("close-child");
     cb(true, "设备连接已断开");
   } else {

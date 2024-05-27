@@ -7,32 +7,44 @@ let __static = process.argv[2];
 let _product_path = process.argv[3];
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
+// const PKG = Struct({
+//   pkglen: ref.types.int16,
+//   time_mark: ref.types.int32,
+//   brain_elec_channel: ArrayType(ref.types.int32, 8),
+//   near_infrared_channel: ArrayType(ref.types.int32, 6),
+//   acceleration_x: ref.types.uint16,
+//   acceleration_y: ref.types.uint16,
+//   acceleration_z: ref.types.uint16,
+//   temperature: ref.types.int16,
+//   fall_off: ref.types.uint8,
+//   error_state: ref.types.int16,
+// });
 const PKG = Struct({
   pkglen: ref.types.int16,
+  pkgnum: ref.types.int32,
   time_mark: ref.types.int32,
-  brain_elec_channel: ArrayType(ref.types.int32, 8),
-  near_infrared_channel: ArrayType(ref.types.int32, 6),
-  acceleration_x: ref.types.uint16,
-  acceleration_y: ref.types.uint16,
-  acceleration_z: ref.types.uint16,
-  temperature: ref.types.int16,
-  fall_off: ref.types.uint8,
-  error_state: ref.types.int16,
+  brain_elec_channel: ArrayType(ref.types.float, 2),
+  near_infrared_channel_1_wavelength_1: ArrayType(ref.types.float, 4), // IR第1通道第1个波长
+  near_infrared_channel_1_wavelength_2: ArrayType(ref.types.float, 4), // IR第1通道第2个波长
+  near_infrared_channel_1_wavelength_13: ArrayType(ref.types.float, 4), // IR第1通道λ3，（与λ1同时采集）
+  near_infrared_channel_1_wavelength_23: ArrayType(ref.types.float, 4), // IR第1通道λ3，（与λ2同时采集）
+  near_infrared_channel_2_wavelength_1: ArrayType(ref.types.float, 4), // IR第2通道第1个波长
+  near_infrared_channel_2_wavelength_2: ArrayType(ref.types.float, 4), // IR第2通道第2个波长
+  near_infrared_channel_2_wavelength_13: ArrayType(ref.types.float, 4), // IR第2通道λ3，（与λ1同时采集）
+  near_infrared_channel_2_wavelength_23: ArrayType(ref.types.float, 4), // IR第2通道λ3，（与λ2同时采集）
+  acceleration_x: ref.types.float,
+  acceleration_y: ref.types.float,
+  acceleration_z: ref.types.float,
+  temperature: ref.types.float,
+  Battery_State: ref.types.float,
+  fall_off: ref.types.int32,
+  error_state: ref.types.int32,
+  pkg: ArrayType(ref.types.uint8, 300),
 });
 
 // 加载DLL
 // 解析数据
 var pkg_decode_path = join(_product_path, "/dll/pkg_decode.dll");
-// var bluetooth_lib_path = join(_product_path, "/so/cpython.so");
-// var mymodule = join(_product_path, "/pyd/mymodule.pyd");
-
-// const bluetoothDecode = ffi.Library(bluetooth_lib_path, {
-//   get_devices: ["void", []],
-// });
-
-// const bluetoothDecode = ffi.Library(mymodule, {
-//   'my_function': ['int', ['int', 'int']]
-// });
 
 const pkgDecode = ffi.Library(pkg_decode_path, {
   get_pkg_buffer_length: ["int", []],
@@ -44,7 +56,7 @@ const pkgDecode = ffi.Library(pkg_decode_path, {
 });
 
 // 滤波、功率谱计算
-var signal_process_path = join(_product_path, "/dll/signal_process(3).dll");
+var signal_process_path = join(_product_path, "/dll/signal_process.dll");
 // 定义类型
 const Float = ref.types.float;
 const Int = ref.types.int;
@@ -87,7 +99,7 @@ const signalProcess = ffi.Library(signal_process_path, {
 let test_i = 0;
 
 // 初始化参数
-const window = 8; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为500
+const window = 500; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为500
 const step = 2; //fft 步长
 const sample_rate = 500;
 const d = new DoubleArray(2);
@@ -106,6 +118,15 @@ const ps_s: any = [0, 0];
 const psd_s: any = [0, 0];
 const psd_relative_s: any = [0, 0];
 const psd_relative_percent_s: any = [0, 0];
+
+const  arrayToHexString = (array: any) =>{
+  let hexString = '';
+  for (let i = 0; i < array.length; i++) {
+    const hexValue = array[i].toString(16).padStart(2, '0'); // 确保每个值都是两位数
+    hexString = hexString + ' ' + hexValue;
+  }
+  return hexString;
+}
 
 // 接收消息
 process.on("message", async function ({ type, data }) {
@@ -126,9 +147,21 @@ process.on("message", async function ({ type, data }) {
       const pkg = ptrpkg.deref();
       // console.log('pkg.pkglen',pkg.pkglen);
       // console.log('pkg.time_mark',pkg.time_mark);
-      // console.log('brain_elec_channel.0',pkg.brain_elec_channel[0]);
-      // console.log('brain_elec_channel.1',pkg.brain_elec_channel[1]);
-      // console.log('brain_elec_channel.1',pkg.brain_elec_channel[0],Array.from({ length: pkg.brain_elec_channel.buffer.length / 4 }, (_, i) => pkg.brain_elec_channel.buffer.readInt32LE(i * 4)));
+      // 原始数据转16位
+      let hexString = arrayToHexString(pkg.pkg);
+      
+      console.log(
+        "brain_elec_channel",
+        pkg.brain_elec_channel[0],
+        pkg.brain_elec_channel[1],
+      );
+      console.log(
+        "pkglen,pkgnum,time_mark,error_state",
+        pkg.pkglen,
+        pkg.pkgnum,
+        pkg.time_mark,
+        pkg.error_state
+      );
       // console.log('near_infrared_channel.0',pkg.near_infrared_channel[0]); 1-1
       // console.log('near_infrared_channel.1',pkg.near_infrared_channel[1]); 1-2
       // console.log('near_infrared_channel.2',pkg.near_infrared_channel[2]); 1-3
@@ -141,7 +174,6 @@ process.on("message", async function ({ type, data }) {
       // console.log('temperature',pkg.temperature);
       // console.log('fall_off',pkg.fall_off);
       // console.log('error_state',pkg.error_state);
-
       // 滤波处理
       signalProcess.run_pre_process_filter(
         channel,
@@ -151,7 +183,7 @@ process.on("message", async function ({ type, data }) {
 
       // // 时域信号处理
       signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
-      let time_e_s = []
+      let time_e_s = [];
 
       //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
       for (
@@ -159,7 +191,13 @@ process.on("message", async function ({ type, data }) {
         current_channel < channel;
         current_channel++
       ) {
-        time_e_s.push([e1[current_channel], e2[current_channel], e3[current_channel], e4[current_channel], e5[current_channel]]);
+        time_e_s.push([
+          e1[current_channel],
+          e2[current_channel],
+          e3[current_channel],
+          e4[current_channel],
+          e5[current_channel],
+        ]);
         signalProcess.fft_ps(
           current_channel,
           sample_rate,
@@ -178,10 +216,10 @@ process.on("message", async function ({ type, data }) {
       }
       test_i++;
 
-    
       process.send!({
         type: "end-data-decode",
         data: {
+          hexString:hexString,
           pkg,
           ps_s,
           psd_s,

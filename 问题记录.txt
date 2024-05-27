@@ -13,7 +13,7 @@
 [0]       43 │     const AWSMock = require('mock-aws-s3');
 重新跑一下
 11、终端中文乱码 输入chcp 65001
-12、npm ERR! 'C:\Program' is not recognized as an internal or external command, 解决：多打包几次
+12、npm ERR! 'C:\Program' is not recognized as an internal or external command, 解决：多打包几次，可能是网络问题，开代理试试，重启电脑
 13、electron-log为error才会被生产环境记录
 14、不打包成asar，package.json设置 "asar": false,
 15、C:\Users\Administrator\AppData\Roaming\vite-vue3-electron-ts-template\logs
