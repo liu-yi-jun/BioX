@@ -13,158 +13,170 @@
       <div class="eig-card">
         <p class="card-title">Channel Selection</p>
         <div class="selection-box-wrap">
-          <div class="selection" id="selection"> 
-          <div class="selection-box">
-            <div class="S1-D5 round-line" :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
-              <div class="S1 round"></div>
+          <div class="selection" id="selection">
+            <div class="selection-box">
               <div
-                class="S1-D5 line-box"
-                @click="channelLineClick(1)"
-                :class="{ active: channels.includes(1) }"
+                class="S1-D5 round-line"
+                :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
               >
-                <span class="line"></span>
+                <div class="S1 round"></div>
+                <div
+                  class="S1-D5 line-box"
+                  @click="channelLineClick(1)"
+                  :class="{ active: channels.includes(1) }"
+                >
+                  <span class="line"></span>
+                </div>
+                <div class="D5 round" @click="channelLineClick(1)">
+                  <span class="D5-text text">D5</span>
+                </div>
               </div>
-              <div class="D5 round" @click="channelLineClick(1)">
-                <span class="D5-text text">D5</span>
-              </div>
-            </div>
-            <div class="S1-D7 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
               <div
-                class="S1 round"
-                @click="channelLineClick([1, 2, 3, 4])"
-              ></div>
-              <span class="S1-text text">S1</span>
+                class="S1-D7 round-line"
+                :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
+              >
+                <div
+                  class="S1 round"
+                  @click="channelLineClick([1, 2, 3, 4])"
+                ></div>
+                <span class="S1-text text">S1</span>
+                <div
+                  class="S1-D7 line-box"
+                  @click="channelLineClick(3)"
+                  :class="{ active: channels.includes(3) }"
+                >
+                  <span class="line"></span>
+                </div>
+                <div class="D7 round" @click="channelLineClick(3)">
+                  <span class="D7-text text">D7</span>
+                </div>
+              </div>
+              <div class="D8 round" @click="channelLineClick(4)">
+                <span class="D8-text text">D8</span>
+              </div>
+              <div class="D6 round" @click="channelLineClick(2)">
+                <span class="D6-text text">D6</span>
+              </div>
               <div
-                class="S1-D7 line-box"
-                @click="channelLineClick(3)"
-                :class="{ active: channels.includes(3) }"
+                class="S1-D8 line-box"
+                :class="{ active: channels.includes(4) }"
               >
-                <span class="line"></span>
+                <svg
+                  class="S1-D8-SVG"
+                  width="100%"
+                  @click="channelLineClick(4)"
+                  height="25"
+                  viewBox="0 0 220 25"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,25 Q110,-20, 220,25"
+                    :stroke="channels.includes(4) ? '#00D008' : '#848484'"
+                    fill="transparent"
+                    stroke-width="3"
+                  />
+                </svg>
+                <!-- <span class="line"></span> -->
               </div>
-              <div class="D7 round" @click="channelLineClick(3)">
-                <span class="D7-text text">D7</span>
+              <div class="S1-D6 line-box">
+                <svg
+                  class="S1-D6-SVG"
+                  width="100%"
+                  @click="channelLineClick(2)"
+                  height="16"
+                  viewBox="0 0 220 16"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,0 Q110,16, 220,0"
+                    :stroke="channels.includes(2) ? '#00D008' : '#848484'"
+                    fill="transparent"
+                    stroke-width="3"
+                  />
+                </svg>
               </div>
             </div>
-            <div class="D8 round" @click="channelLineClick(4)">
-              <span class="D8-text text">D8</span>
-            </div>
-            <div class="D6 round" @click="channelLineClick(2)">
-              <span class="D6-text text">D6</span>
-            </div>
-            <div
-              class="S1-D8 line-box"
-              :class="{ active: channels.includes(4) }"
-            >
-              <svg
-                class="S1-D8-SVG"
-                width="100%"
-                @click="channelLineClick(4)"
-                height="25"
-                viewBox="0 0 220 25"  
-                preserveAspectRatio="none"
+            <div class="selection-box selection-box-right">
+              <div
+                class="S1-D5 round-line"
+                :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
               >
-                <path
-                  d="M0,25 Q110,-20, 220,25"
-                  :stroke="channels.includes(4) ? '#00D008' : '#848484'"
-                  fill="transparent"
-                  stroke-width="3"
-                />
-              </svg>
-              <!-- <span class="line"></span> -->
-            </div>
-            <div class="S1-D6 line-box">
-              <svg
-                class="S1-D6-SVG"
-                width="100%"
-                @click="channelLineClick(2)"
-                height="16"
-                viewBox="0 0 220 16"
-                preserveAspectRatio="none"
+                <div class="D5 round" @click="channelLineClick(5)">
+                  <span class="D5-text text">D1</span>
+                </div>
+                <div
+                  @click="channelLineClick(5)"
+                  :class="{ active: channels.includes(5) }"
+                  class="S1-D5 line-box"
+                >
+                  <span class="line"></span>
+                </div>
+                <div class="S1 round"></div>
+              </div>
+              <div
+                class="S1-D7 round-line"
+                :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
               >
-                <path
-                  d="M0,0 Q110,16, 220,0"
-                  :stroke="channels.includes(2) ? '#00D008' : '#848484'"
-                  fill="transparent"
-                  stroke-width="3"
-                />
-              </svg>
+                <div class="D7 round" @click="channelLineClick(7)">
+                  <span class="D7-text text">D3</span>
+                </div>
+                <div
+                  class="S1-D7 line-box"
+                  @click="channelLineClick(7)"
+                  :class="{ active: channels.includes(7) }"
+                >
+                  <span class="line"></span>
+                </div>
+                <div class="S1 round" @click="channelLineClick([5, 6, 7, 8])">
+                  <span class="S1-text text">S2</span>
+                </div>
+              </div>
+              <div class="D8 round" @click="channelLineClick(8)">
+                <span class="D8-text text">D4</span>
+              </div>
+              <div class="D6 round" @click="channelLineClick(6)">
+                <span class="D6-text text">D2</span>
+              </div>
+              <div
+                class="S1-D8 line-box"
+                :class="{ active: channels.includes(8) }"
+              >
+                <svg
+                  class="S1-D8-SVG"
+                  width="100%"
+                  @click="channelLineClick(8)"
+                  height="25"
+                  viewBox="0 0 220 25"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,25 Q110,-20, 220,25"
+                    :stroke="channels.includes(8) ? '#00D008' : '#848484'"
+                    fill="transparent"
+                    stroke-width="3"
+                  />
+                </svg>
+                <!-- <span class="line"></span> -->
+              </div>
+              <div class="S1-D6 line-box">
+                <svg
+                  class="S1-D6-SVG"
+                  width="100%"
+                  @click="channelLineClick(6)"
+                  height="16"
+                  viewBox="0 0 220 16"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,0 Q110,16, 220,0"
+                    :stroke="channels.includes(6) ? '#00D008' : '#848484'"
+                    fill="transparent"
+                    stroke-width="3"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
-          <div class="selection-box selection-box-right">
-            <div class="S1-D5 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
-              <div class="D5 round" @click="channelLineClick(5)">
-                <span class="D5-text text">D1</span>
-              </div>
-              <div
-                @click="channelLineClick(5)"
-                :class="{ active: channels.includes(5) }"
-                class="S1-D5 line-box"
-              >
-                <span class="line"></span>
-              </div>
-              <div class="S1 round"></div>
-            </div>
-            <div class="S1-D7 round-line"  :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`">
-              <div class="D7 round" @click="channelLineClick(7)">
-                <span class="D7-text text">D3</span>
-              </div>
-              <div
-                class="S1-D7 line-box"
-                @click="channelLineClick(7)"
-                :class="{ active: channels.includes(7) }"
-              >
-                <span class="line"></span>
-              </div>
-              <div class="S1 round" @click="channelLineClick([5, 6, 7, 8])">
-                <span class="S1-text text">S2</span>
-              </div>
-            </div>
-            <div class="D8 round" @click="channelLineClick(8)">
-              <span class="D8-text text">D4</span>
-            </div>
-            <div class="D6 round" @click="channelLineClick(6)">
-              <span class="D6-text text">D2</span>
-            </div>
-            <div
-              class="S1-D8 line-box"
-              :class="{ active: channels.includes(8) }"
-            >
-              <svg
-                class="S1-D8-SVG"
-                width="100%"
-                @click="channelLineClick(8)"
-                height="25"
-                viewBox="0 0 220 25"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M0,25 Q110,-20, 220,25"
-                  :stroke="channels.includes(8) ? '#00D008' : '#848484'"
-                  fill="transparent"
-                  stroke-width="3"
-                />
-              </svg>
-              <!-- <span class="line"></span> -->
-            </div>
-            <div class="S1-D6 line-box">
-              <svg
-                class="S1-D6-SVG"
-                width="100%"
-                @click="channelLineClick(6)"
-                height="16"
-                viewBox="0 0 220 16"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M0,0 Q110,16, 220,0"
-                  :stroke="channels.includes(6) ? '#00D008' : '#848484'"
-                  fill="transparent"
-                  stroke-width="3"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
         </div>
       </div>
       <div class="eig-card view-setting-card">
@@ -230,16 +242,20 @@ const selectionHeight = ref(0);
 const selectionWidth = ref(0);
 const seriesStep = ref(30);
 const seriesMaxStep = 30;
+const isRender = ref(false);
+const minTimeGap = 250;
+let isRenderTimer,realTimer;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
 import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
+let pkgDataList: any = [];
+let pkgSourceData: any = [];
+let pkgMaxTime = 30;
 const indexStore = useIndexStore();
 const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
 const db = new CustomDatabase();
-let sourceData;
-let seriesData: any = [];
 let bluetooth = new CustomBluetooth();
 let myChart: echarts.EChartsType;
 let timerPlay, timer;
@@ -361,16 +377,13 @@ watch(
   (newValue) => {
     if (newValue) {
       timerPlay = setInterval(() => {
-        if (sourceData) {
-          if (playIndex.value >= sourceData.length) {
+        if (pkgSourceData.length) {
+          if (playIndex.value * minTimeGap >= pkgSourceData[pkgSourceData.length - 1].time_mark) {
             timerPlay && clearInterval(timerPlay);
             return;
           }
-          handleRealTimeData({
-            RD: sourceData[playIndex.value].RD,
-            OD: sourceData[playIndex.value].OD,
-            Conc: sourceData[playIndex.value].Conc,
-          });
+          pkgDataList = joinPkgList();
+          renderData();
         }
       }, 250);
     } else {
@@ -382,11 +395,20 @@ watch(
   }
 );
 
+watch(isRender, (newValue) => {
+  if (newValue) {
+    realTimerRenderData();
+  } else {
+    realTimer && clearInterval(realTimer);
+  }
+});
+
+
 watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
   if (newValue) {
     indexStore.isDragSlider = false;
-    handleOldData();
+    // handleOldData();
   }
 });
 watch(recordId, (value) => {
@@ -408,100 +430,85 @@ onBeforeUnmount(() => {
   bluetooth.removeNotice(bluetoothNotice);
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
+  realTimer && clearInterval(realTimer);
+  isRenderTimer && clearTimeout(isRenderTimer);
 });
 
 // 获取元素高度
 const getSelectionHeight = () => {
   selectionHeight.value =
     document.getElementById("selection")?.clientHeight || 0;
-  selectionWidth.value =
-    document.getElementById("selection")?.clientWidth || 0;
+  selectionWidth.value = document.getElementById("selection")?.clientWidth || 0;
 };
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
-  handleRealTimeData(blueToothdataMapping(data));
+  handlePkgList(data);
+  // handleRealTimeData(blueToothdataMapping(data));
+  isRender.value = true;
+  isRenderTimer && clearTimeout(isRenderTimer);
+  isRenderTimer = setTimeout(() => {
+    isRender.value = false;
+  }, 4 * 1000);
 };
 
-// 将蓝牙数据进行映射
-const blueToothdataMapping = (data) => {
-  let RD: number[] = [],
-    OD: number[] = [],
-    Conc: number[] = [];
-  for (let i = 0; i < 8 * 3; i++) {
-    RD.push(Math.round(Math.random() * 20 + 30));
-    OD.push(Math.round(Math.random() * 20 + 30));
-    Conc.push(Math.round(Math.random() * 20 + 30));
+
+// 定时渲染
+const realTimerRenderData = () => {
+  realTimer && clearInterval(realTimer);
+  realTimer = setInterval(() => {
+    renderData();
+  }, minTimeGap);
+};
+
+
+// 渲染
+const renderData = () => {
+  generateSeries();
+  initSeries()
+};
+
+// 数据包处理
+const handlePkgList = (data) => {
+  if (
+    pkgDataList.length &&
+    pkgDataList[pkgDataList.length - 1].time_mark - pkgDataList[0].time_mark >
+      pkgMaxTime * 1000
+  ) {
+    pkgDataList.shift();
   }
-
-  
-  RD[0] = data.near_infrared_channel_1_wavelength_1[0];
-  RD[1] = data.near_infrared_channel_1_wavelength_2[0];
-  RD[2] = data.near_infrared_channel_1_wavelength_13[0];
-  RD[3] = data.near_infrared_channel_2_wavelength_1[0];
-  RD[4] = data.near_infrared_channel_2_wavelength_2[0];
-  RD[5] = data.near_infrared_channel_2_wavelength_13[0];
-
-  RD[6] = data.near_infrared_channel_1_wavelength_1[1];
-  RD[7] = data.near_infrared_channel_1_wavelength_2[1];
-  RD[8] = data.near_infrared_channel_1_wavelength_13[1];
-  RD[9] = data.near_infrared_channel_2_wavelength_1[1];
-  RD[10] = data.near_infrared_channel_2_wavelength_2[1];
-  RD[11] = data.near_infrared_channel_2_wavelength_13[1];
-
-  RD[12] = data.near_infrared_channel_1_wavelength_1[2];
-  RD[13] = data.near_infrared_channel_1_wavelength_2[2];
-  RD[14] = data.near_infrared_channel_1_wavelength_13[2];
-  RD[15] = data.near_infrared_channel_2_wavelength_1[2];
-  RD[16] = data.near_infrared_channel_2_wavelength_2[2];
-  RD[17] = data.near_infrared_channel_2_wavelength_13[2];
-
-  RD[18] = data.near_infrared_channel_1_wavelength_1[3];
-  RD[19] = data.near_infrared_channel_1_wavelength_2[3];
-  RD[20] = data.near_infrared_channel_1_wavelength_13[3];
-  RD[21] = data.near_infrared_channel_2_wavelength_1[3];
-  RD[22] = data.near_infrared_channel_2_wavelength_2[3];
-  RD[23] = data.near_infrared_channel_2_wavelength_13[3];
-  return {
-    RD,
-    OD,
-    Conc,
-  };
+  pkgDataList.push(data);
 };
+
+// 判断是否加入数据包队列
+const joinPkgList = () => {
+  let tempPkgDataList: any = [];
+  if (!pkgSourceData.length) {
+    return [];
+  }
+  for (let index = 0; index < pkgSourceData.length; index++) {
+    const item = pkgSourceData[index];
+    if (item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * minTimeGap) {
+      tempPkgDataList.push(item);
+    } else {
+      break;
+    }
+  }
+  return tempPkgDataList;
+};
+
+
+
 
 const initialize = () => {
-  sourceData = [];
-  seriesData = [];
+  pkgSourceData = [];
   if (!recordId.value) {
     bluetooth.addNotice(bluetoothNotice);
-    // timer && clearInterval(timer);
-    // timer = setInterval(() => {
-    //   // [通道1-735nm，通道1-805nm，通道1-850nm，通道2...]
-    //   let RD: number[] = [],
-    //     OD: number[] = [],
-    //     Conc: number[] = [];
-    //   for (let i = 0; i < 8 * 3; i++) {
-    //     RD.push(Math.round(Math.random() * 20 + 30));
-    //     OD.push(Math.round(Math.random() * 20 + 30));
-    //     Conc.push(Math.round(Math.random() * 20 + 30));
-    //   }
-    //   handleRealTimeData({
-    //     RD,
-    //     OD,
-    //     Conc,
-    //   });
-    // }, 250);
   } else {
     bluetooth.removeNotice(bluetoothNotice);
     db.get(`select sourceData from record where id = ${recordId.value}`).then(
       (res) => {
-        sourceData = JSON.parse(res.sourceData).map((item) => {
-          return blueToothdataMapping(item);
-        });
-        if (playIndex.value > 0) {
-          // X轴与时间相关的才需要把之前的数据加进去
-          handleOldData();
-        }
+        pkgSourceData = JSON.parse(res.sourceData);
       }
     );
   }
@@ -513,33 +520,6 @@ const initialize = () => {
   });
 };
 
-// 处理之前数据
-const handleOldData = () => {
-  let tempPlayIndex = playIndex.value;
-  seriesData = sourceData
-    .map((item) => {
-      return {
-        RD: item.RD,
-        OD: item.OD,
-        Conc: item.Conc,
-      };
-    })
-    .slice(0, tempPlayIndex)
-    .slice(-seriesMaxStep * 4);
-  generateSeries();
-  initSeries();
-};
-
-// 处理实时数据
-const handleRealTimeData = (data: any) => {
-  seriesData.push(data);
-  if (seriesData.length > seriesMaxStep * 4) {
-    seriesData.shift();
-  }
-
-  generateSeries();
-  initSeries();
-};
 
 // 配置改变
 const handleChange = () => {
@@ -696,7 +676,7 @@ const generateYAxisArr = () => {
 const generateGrid = () => {
   gridArr = showSeriesData.map((item, index) => {
     return {
-      left: "10%",
+      left: "7%",
       right: "4%",
       top: (100 / showSeriesData.length) * index + "%",
       bottom: 100 - (100 / showSeriesData.length) * (index + 1) + "%",
@@ -707,8 +687,8 @@ const generateGrid = () => {
 
 // 生成series
 const generateSeries = () => {
-  let tempSeriesData;
-  tempSeriesData = Object.assign([], seriesData.slice(-seriesStep.value * 4));
+  // let tempSeriesData;
+  // tempSeriesData = Object.assign([], seriesData.slice(-seriesStep.value * 4));
 
   // seriesData
   // [{
@@ -734,35 +714,22 @@ const generateSeries = () => {
       Conc: [],
     };
 
-    tempSeriesData.forEach((j, i) => {
-      if (item.type === "RD") {
-        tempObj.RD.push({
-          value: [
-            (tempObj.RD.length + 1) * 250,
-            j.RD[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
-          ],
-          "j.RD": j.RD,
-          index: (item.chanIndex - 1) * 3 + item.radioIndex - 1,
-        });
-      }
-      if (item.type === "OD") {
-        tempObj.OD.push({
-          value: [
-            (tempObj.OD.length + 1) * 250,
-            j.OD[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
-          ],
-        });
-      }
-      if (item.type === "Conc") {
-        tempObj.Conc.push({
-          value: [
-            (tempObj.Conc.length + 1) * 250,
-            j.Conc[(item.chanIndex - 1) * 3 + item.radioIndex - 1],
-          ],
-        });
-      }
-    });
-
+    tempObj.RD = conversionPkgtoTimeSeries(
+      mapChanToField(item.chanIndex),
+      mapRadioToField(item.radioIndex),
+      seriesStep.value
+    );
+        
+    tempObj.OD = conversionPkgtoTimeSeries(
+      mapChanToField(item.chanIndex),
+      mapRadioToField(item.radioIndex),
+      seriesStep.value
+    );
+    tempObj.Conc = conversionPkgtoTimeSeries(
+      mapChanToField(item.chanIndex),
+      mapRadioToField(item.radioIndex),
+      seriesStep.value
+    );  
     return {
       data: tempObj[item.type],
       type: "line",
@@ -782,10 +749,53 @@ const generateSeries = () => {
           width: 2,
           color: "#FFECE4",
         },
-        data: [{ xAxis: 3 }],
+        // data: [{ xAxis: 3 }],
       },
       xAxisIndex: index,
       yAxisIndex: index,
+    };
+  });
+};
+
+const mapChanToField = (index) => {
+  switch (index) { // 通道索引
+    case 1:
+      return "near_infrared_channel_1_wavelength_1";
+    case 2:
+      return "near_infrared_channel_1_wavelength_2";
+    case 3:
+      return "near_infrared_channel_1_wavelength_13";
+    default:
+      return "near_infrared_channel_1_wavelength_23";
+  }
+};
+const mapRadioToField = (index) => {
+  switch (index) { // 波形索引
+    case 1:
+      return 0;
+    case 2:
+      return 1;
+    case 3:
+      return 2;
+    default:
+      return 0;
+  }
+};
+
+const conversionPkgtoTimeSeries = (field, index, step) => {
+  if (pkgDataList.length < 1) return [];
+  let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
+  let minTime = maxTimer - step * 1000;
+  let sliceData = pkgDataList.filter(
+    (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
+  );
+  let baseTime = 0;
+  return sliceData.map((item, sliceIndex) => {
+    if (sliceIndex !== 0) {
+      baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
+    }
+    return {
+      value: [baseTime, item[field][index]],
     };
   });
 };

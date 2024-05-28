@@ -8,7 +8,7 @@ let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
-
+let textIndex = 1
 let handleEndDataDecode = (event, data) => {
   for (let i = 0; i < noticeList.length; i++) {
     noticeList[i]({
@@ -19,9 +19,9 @@ let handleEndDataDecode = (event, data) => {
       psd_relative_s: data.psd_relative_s,
       psd_relative_percent_s: data.psd_relative_percent_s,
       time_e_s: data.time_e_s,
-      timer: new Date().getTime(),
     });
   }
+  textIndex++
 };
 
 CustomBluetooth.prototype.scan = async function () {

@@ -63,11 +63,12 @@ const Int = ref.types.int;
 const Bool = ref.types.bool;
 const Double = ref.types.double;
 const DoubleArray = ArrayType(Double);
+const FloatArray = ArrayType(Float);
 // 加载库
 const signalProcess = ffi.Library(signal_process_path, {
   init_filter: ["void", [Int, Int]],
   init_bp_filter: ["void", [Int, Int]],
-  run_pre_process_filter: ["void", [Int, DoubleArray, DoubleArray]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
+  run_pre_process_filter: ["void", [Int, FloatArray, DoubleArray]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
   run_bp_filter: [
     "void",
     [
@@ -99,20 +100,20 @@ const signalProcess = ffi.Library(signal_process_path, {
 let test_i = 0;
 
 // 初始化参数
-const window = 500; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为500
+const window = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
 const step = 2; //fft 步长
 const sample_rate = 500;
 const d = new DoubleArray(2);
-const e1 = new DoubleArray(2);
-const e2 = new DoubleArray(2);
-const e3 = new DoubleArray(2);
-const e4 = new DoubleArray(2);
-const e5 = new DoubleArray(2);
+const e1 = new DoubleArray(2); //Delta频段各通道时域数据数组
+const e2 = new DoubleArray(2); //Theta频段各通道时域数据数组
+const e3 = new DoubleArray(2); //Alpha频段各通道时域数据数组
+const e4 = new DoubleArray(2); //Beta频段各通道时域数据数组
+const e5 = new DoubleArray(2); //Gamma频段各通道时域数据数组
 const channel = 2;
 const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
 const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
-const psd_relative = new DoubleArray(window / 2 + 1); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
-const psd_relative_percent = new DoubleArray(window / 2 + 1); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
+const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
 
 const ps_s: any = [0, 0];
 const psd_s: any = [0, 0];
@@ -177,9 +178,12 @@ process.on("message", async function ({ type, data }) {
       // 滤波处理
       signalProcess.run_pre_process_filter(
         channel,
-        new DoubleArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
+        new FloatArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
         d
       );
+      
+      pkg.brain_elec_channel[0] = d[0];
+      pkg.brain_elec_channel[1] = d[1];
 
       // // 时域信号处理
       signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);

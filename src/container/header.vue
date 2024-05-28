@@ -237,7 +237,6 @@ onMounted(() => {
   });
   // 
   ipcRenderer.on("select-bluetooth-callback", (event, data) => {
-    debugger
     if(!data) {
       // 执行失败
       app?.proxy?.loading.hide();
