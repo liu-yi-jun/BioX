@@ -155,6 +155,7 @@ process.on("message", async function ({ type, data }) {
         "brain_elec_channel",
         pkg.brain_elec_channel[0],
         pkg.brain_elec_channel[1],
+
       );
       console.log(
         "pkglen,pkgnum,time_mark,error_state",
@@ -176,14 +177,16 @@ process.on("message", async function ({ type, data }) {
       // console.log('fall_off',pkg.fall_off);
       // console.log('error_state',pkg.error_state);
       // 滤波处理
-      signalProcess.run_pre_process_filter(
-        channel,
-        new FloatArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
-        d
-      );
+      // signalProcess.run_pre_process_filter(
+      //   channel,
+      //   new FloatArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
+      //   d
+      // );
+      d[0] = pkg.brain_elec_channel[0]
+      d[1] = pkg.brain_elec_channel[1]
       
-      pkg.brain_elec_channel[0] = d[0];
-      pkg.brain_elec_channel[1] = d[1];
+      // pkg.brain_elec_channel[0] = d[0];
+      // pkg.brain_elec_channel[1] = d[1];
 
       // // 时域信号处理
       signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);

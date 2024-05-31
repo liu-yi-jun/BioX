@@ -5,6 +5,7 @@ export const useIndexStore = defineStore({
   state: () => ({
     play: false,
     recordId: 0,
+    isConnect: false,
     // 播放的时刻 index * 250
     playIndex: 0,
     isDragSlider:false

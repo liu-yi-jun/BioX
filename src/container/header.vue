@@ -1,6 +1,13 @@
 <template>
   <div class="header">
-    <div @click="findDeviceList">BraInward BioX</div>
+    <div>
+      BraInward BioX
+      <a-button @click="openAtDebug">
+        <template #icon>
+          <BugOutlined />
+        </template>
+      </a-button>
+    </div>
     <a-popover
       v-if="!isConnect"
       overlayClassName="header-device-popover"
@@ -54,38 +61,84 @@
       </a-dropdown>
     </div>
     <div>
-      <a-button danger type="primary" @click="closeWindow">
-        <template #icon>
-          <CloseCircleOutlined />
-        </template>
-      </a-button>
+      <a-space>
+        <a-button danger type="primary" @click="closeWindow">
+          <template #icon>
+            <CloseCircleOutlined />
+          </template>
+        </a-button>
+      </a-space>
     </div>
   </div>
+  <a-modal
+    v-model:open="openATModal"
+    title="AT指令调试"
+    cancelText="取消"
+    width="40%"
+    :maskClosable="false"
+    okText="发送"
+    @ok="handleStartATModal"
+    @cancel="handleEndATModal"
+  >
+    <span style="color: #999">例：AT+STOP_ALL(无需回车)</span>
+    <a-textarea
+      style="margin-top: 5px"
+      v-model:value="ATValue"
+      placeholder=""
+      :rows="6"
+    />
+    <br />
+    <br />
+    <div class="at-content" ref="atContent">
+      <p v-for="(item, index) in atNoticeList" :key="index">
+        <span style="margin-right: 5px">{{
+          formatTimestamp(item.time, "yyyy-MM-dd HH:mm:ss", true)
+        }}</span>
+        <span style="margin-right: 5px">{{
+          item.type === 1 ? "发:" : "收:"
+        }}</span>
+        <span>{{ item.content }}</span>
+      </p>
+    </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, getCurrentInstance, watch } from "vue";
+import { ref, reactive, onMounted, getCurrentInstance, watch ,nextTick} from "vue";
 const ipcRenderer = require("electron").ipcRenderer;
 import { DeploymentUnitOutlined } from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
 import { CustomDatabase } from "../utils/db";
-import { CloseCircleOutlined } from "@ant-design/icons-vue";
+import { formatTimestamp } from "../utils/common";
+import { CloseCircleOutlined, BugOutlined } from "@ant-design/icons-vue";
+import { useIndexStore } from "../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { isConnect } = storeToRefs(indexStore);
 import { createVNode } from "vue";
-const isConnect = ref(false);
 const connectVisible = ref<boolean>(false);
+const ATValue = ref("");
 import { message } from "ant-design-vue";
 const bluetooth = new CustomBluetooth();
 const app = getCurrentInstance();
 const db = new CustomDatabase();
+const openATModal = ref(false);
 import { Modal } from "ant-design-vue";
 let timer_uuid: any = null;
+const atContent: any = ref(null);
 
 interface DeviceItem {
   deviceId: string;
   deviceName: string;
 }
+interface NoticeItem {
+  time: number;
+  type: number;
+  content: string;
+}
 let selectDeviceItem: DeviceItem | null = null;
 const deviceList = ref<DeviceItem[]>([]);
+const atNoticeList = reactive<NoticeItem[]>([]);
 
 const openConnectVisible = () => {
   connectVisible.value = true;
@@ -180,13 +233,58 @@ const closeDevice = () => {
   });
 };
 
-// 蓝牙扫描
+// 测试蓝牙扫描
 const findDeviceList = () => {
   bluetooth.bluetoothScan();
 };
 // 用户点击，开始连接蓝牙
 const clickme = () => {
   findDevice();
+};
+
+// at通知事件
+const atNotice = (value: string) => {
+  console.log("at通知事件", value);
+  atNoticeList.push({
+    time: new Date().getTime(),
+    type: 2,
+    content: value,
+  });
+  scrollToBottom()
+};
+
+// 打开AT调试
+const openAtDebug = () => {
+  ATValue.value = "";
+  bluetooth.addATNotice(atNotice);
+  openATModal.value = true;
+  scrollToBottom()
+};
+
+// 关闭AT调试
+const handleEndATModal = () => {
+  bluetooth.removeATNotice(atNotice);
+  openATModal.value = false;
+};
+
+// 发送AT指令
+const handleStartATModal = () => {
+  atNoticeList.push({
+    time: new Date().getTime(),
+    type: 1,
+    content: ATValue.value,
+  });
+  bluetooth.sendAT(ATValue.value);
+  scrollToBottom()
+};
+
+const scrollToBottom = () => {
+  nextTick(()=> {
+    if (atContent.value) {
+    atContent.value.scrollTo({ behavior: "smooth", top: atContent.value.scrollHeight });
+  }
+  })
+
 };
 
 onMounted(() => {
@@ -235,14 +333,16 @@ onMounted(() => {
         console.log("error", err);
       });
   });
-  // 
+  //
   ipcRenderer.on("select-bluetooth-callback", (event, data) => {
-    if(!data) {
+    if (!data) {
       // 执行失败
       app?.proxy?.loading.hide();
-      return message.error("执行失败，请不用频繁操作，并确保蓝牙设备处于广播状态！");
+      return message.error(
+        "执行失败，请不用频繁操作，并确保蓝牙设备处于广播状态！"
+      );
     }
-  })
+  });
 });
 </script>
 <style scoped></style>

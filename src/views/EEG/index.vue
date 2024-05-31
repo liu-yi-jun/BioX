@@ -11,6 +11,7 @@
                 <a-input
                   type="number"
                   style="width: 100px"
+                  @blur="updateRenderRealSeriesData"
                   v-model:value="seriesForm.min"
                   placeholder="auto"
                 />
@@ -19,6 +20,7 @@
                 <a-input
                   type="number"
                   style="width: 100px"
+                  @blur="updateRenderRealSeriesData"
                   v-model:value="seriesForm.max"
                   placeholder="auto"
                 />
@@ -71,6 +73,7 @@
                   v-model:value="spectrumShowTime"
                   style="width: 100px"
                   v-if="spectrumType === 'Heatmap'"
+                  @change="undateRenderPsdMap"
                   aria-placeholder="Show Time"
                   :options="spectrumShowTimeOptions"
                   size="small"
@@ -97,6 +100,7 @@
                 <a-select
                   v-if="spectrumType === 'Heatmap'"
                   v-model:value="heatmapChannel"
+                  @change="undateRenderPsdMap"
                   style="width: 100px"
                   aria-placeholder="Show Time"
                   :options="heatmapChannelOptions"
@@ -136,6 +140,7 @@
                 <a-select
                   v-model:value="bandsChannel"
                   style="width: 100px"
+                  @change="handleChangeBandsType"
                   aria-placeholder="Show Time"
                   :options="bandsChannelOptions"
                   size="small"
@@ -144,6 +149,7 @@
                   v-if="bandsType !== 'Time Series'"
                   v-model:value="relatedChannel"
                   style="width: 100px"
+                  @change="handleChangeBandsType"
                   aria-placeholder="Show Time"
                   :options="relatedChannelOptions"
                   size="small"
@@ -152,7 +158,7 @@
                   v-if="bandsType === 'Time Series'"
                   v-model:value="barnsTimeStep"
                   style="width: 100px"
-                  @change="handleChangeBarnsTimeStep"
+                  @change="updateRenderBarnsTime"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -229,7 +235,8 @@ import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
+const { play, recordId, playIndex, isDragSlider, isConnect } =
+  storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
@@ -382,6 +389,12 @@ watch(isRender, (newValue) => {
   }
 });
 
+watch(isConnect, (newValue) => {
+  if (newValue) {
+    pkgDataList = [];
+  }
+});
+
 onMounted(function () {
   initialize();
   // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -487,6 +500,7 @@ const initHeatmap = () => {
     xData.push(i);
   }
   heatmapChart = echarts.init(document.getElementById("heatmap"));
+  heatmapChart && heatmapChart.clear();
   heatmapChart.setOption({
     animation: false,
     tooltip: {
@@ -632,7 +646,7 @@ const initPSD = () => {
 };
 const initAbsolute = () => {
   absoluteChart = echarts.init(document.getElementById("absolute"));
-
+  absoluteChart && absoluteChart.clear();
   absoluteChart.setOption({
     animation: false,
     grid: {
@@ -695,6 +709,7 @@ const initAbsolute = () => {
 };
 const initRelated = () => {
   relatedChart = echarts.init(document.getElementById("related"));
+  relatedChart && relatedChart.clear();
   relatedChart.setOption({
     animation: false,
     color: ["#0721E6", "#4C68FF", "#7A83FF", "#A19CFF", "#E4CDFF"],
@@ -828,6 +843,7 @@ const initRelated = () => {
 };
 const initBarnsTime = () => {
   barnsTimeChart = echarts.init(document.getElementById("barnsTime"));
+  barnsTimeChart && barnsTimeChart.clear();
   barnsTimeChart.setOption({
     animation: false,
     color: ["#737373", "#D5D5D6", "#A4A4FF", "#7BFFFF", "#FF72FF", "#E6E689"],
@@ -1278,9 +1294,11 @@ const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
       initPSD();
+      undateRenderPsd()
     }
     if (spectrumType.value === "Heatmap") {
       initHeatmap();
+      undateRenderPsdMap()
     }
   });
 };
@@ -1289,12 +1307,15 @@ const handleChangeBandsType = () => {
   nextTick(() => {
     if (bandsType.value === "Absolute Power") {
       initAbsolute();
+      undateRenderAbsoule()
     }
     if (bandsType.value === "Related Power") {
       initRelated();
+      updateRenderRelated()
     }
     if (bandsType.value === "Time Series") {
       initBarnsTime();
+      updateRenderBarnsTime()
     }
   });
 };
@@ -1728,12 +1749,10 @@ const calculateMinTimeGap = () => {
 
 const handleChangePsdChannel = () => {
   initPSD();
+  undateRenderPsd()
 };
 const handleChangeSeriesStep = () => {
   updateRenderRealSeriesData();
-};
-const handleChangeBarnsTimeStep = () => {
-  updateRenderBarnsTime();
 };
 
 const parseChannel = (channel: string) => {

@@ -254,7 +254,7 @@ let pkgDataList: any = [];
 let pkgSourceData: any = [];
 let pkgMaxTime = 30;
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
+const { play, recordId, playIndex, isDragSlider,isConnect } = storeToRefs(indexStore);
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
 let myChart: echarts.EChartsType;
@@ -414,6 +414,12 @@ watch(isDragSlider, (newValue) => {
 watch(recordId, (value) => {
   if (value !== undefined) {
     initialize();
+  }
+});
+
+watch(isConnect, (newValue) => {
+  if (newValue) {
+    pkgDataList = [];
   }
 });
 

@@ -287,7 +287,7 @@ $roundRadius: 18px;
 .selection {
   height: 100%;
   width: 1000px;
-  margin: auto; 
+  margin: auto;
   position: absolute;
   left: 50%;
   top: 50%;
@@ -576,19 +576,18 @@ $roundRadius: 18px;
   }
 }
 
-
-.eig-icon-btn:hover .anticon{
+.eig-icon-btn:hover .anticon {
   color: #4096ff !important;
 }
 
-.header-device-popover .ant-popover-inner{
+.header-device-popover .ant-popover-inner {
   padding: 0px;
 }
 
 .header-device-list {
   padding: 8px 0;
   max-height: 500px;
-    overflow: auto;
+  overflow: auto;
   .anticon-deployment-unit {
     font-size: 24px;
     color: rgba(0, 0, 0, 0.45);
@@ -601,7 +600,7 @@ $roundRadius: 18px;
     border-bottom: 1px solid #f0f0f0;
     cursor: pointer;
     &:hover {
-      background-color:  #f7f7f7;
+      background-color: #f7f7f7;
     }
     &:last-child {
       border: none;
@@ -621,4 +620,12 @@ $roundRadius: 18px;
   flex-direction: column;
   color: #1677ff;
   font-size: 16px;
+}
+
+.at-content {
+  height: 200px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
 }

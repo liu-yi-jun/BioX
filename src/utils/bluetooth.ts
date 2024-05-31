@@ -1,15 +1,18 @@
 export function CustomBluetooth() {}
 const ipcRenderer = require("electron").ipcRenderer;
 let noticeList: Function[] = [];
+let atNoticeList: Function[] = [];
 import { CustomDatabase } from "../utils/db";
 const db = new CustomDatabase();
-let server, device;
+import { message } from "ant-design-vue";
+let server, device, characteristic1, characteristic2;
 let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
-let textIndex = 1
-let handleEndDataDecode = (event, data) => {
+let textIndex = 1;
+// 蓝牙通知函数
+const handleEndDataDecode = (event, data) => {
   for (let i = 0; i < noticeList.length; i++) {
     noticeList[i]({
       ...data.pkg,
@@ -21,7 +24,31 @@ let handleEndDataDecode = (event, data) => {
       time_e_s: data.time_e_s,
     });
   }
-  textIndex++
+  textIndex++;
+};
+
+// at通知函数
+const atNotice = (event) => {
+  for (let i = 0; i < atNoticeList.length; i++) {
+    console.log(event.target.value);
+    let uint8Data = new Uint8Array(event.target.value.buffer);
+    // 搜索 0x0D (回车符) 的位置
+    let carriageReturnIndex = -1;
+    for (let i = 0; i < uint8Data.length; i++) {
+      if (uint8Data[i] === 0x0d) {
+        carriageReturnIndex = i;
+        break;
+      }
+    }
+    let relevantData = uint8Data;
+    if (carriageReturnIndex !== -1) {
+      // 截取到回车符之前的数据
+      relevantData = uint8Data.slice(0, carriageReturnIndex);
+    }
+    let decoder = new TextDecoder("utf-8");
+    let decodedString = decoder.decode(relevantData);
+    atNoticeList[i](decodedString);
+  }
 };
 
 CustomBluetooth.prototype.scan = async function () {
@@ -84,25 +111,23 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     const service = await server.getPrimaryService(serverUUID); // 替换为实际的服务UUID
 
     // 获取特征
-    const characteristic1 = await service.getCharacteristic(character1); // 替换为实际的特征UUID
+    characteristic1 = await service.getCharacteristic(character1); // 替换为实际的特征UUID
 
     // 获取特征
-    const characteristic2 = await service.getCharacteristic(character2); // 替换为实际的特征UUID
+    characteristic2 = await service.getCharacteristic(character2); // 替换为实际的特征UUID
 
     // 绑定通知事件
     characteristic2.addEventListener(
       "characteristicvaluechanged",
       handleNotifications
     );
-    characteristic1.addEventListener("characteristicvaluechanged", (event) => {
-      console.log("characteristic1", event.target.value);
-    });
+    characteristic1.addEventListener("characteristicvaluechanged", atNotice);
     // 开始监听通知
     await characteristic2.startNotifications();
     await characteristic1.startNotifications();
 
     // AT指令
-    const atCommand = "AT+START_ALL\r\n";
+    const atCommand = "AT+START_ALL\r";
 
     // 将AT指令转换为Uint8Array
     const commandBuffer = new TextEncoder().encode(atCommand);
@@ -110,11 +135,6 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     // 发送写请求
     characteristic1.writeValue(commandBuffer);
 
-    // setTimeout(() => {
-    //   console.log("发送停止指令");
-    //   // 发送写请求
-    //   characteristic1.writeValue(new TextEncoder().encode("AT+STOP_ALL\r\n"));
-    // }, 10000);
     console.log("create-child");
 
     // 创建子进程
@@ -127,10 +147,11 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     cb(false, err.message);
   }
 };
-
+// 添加蓝牙通知事件
 CustomBluetooth.prototype.addNotice = function (cb: Function) {
   noticeList.push(cb);
 };
+// 移除蓝牙通知事件
 CustomBluetooth.prototype.removeNotice = function (cb: Function) {
   noticeList = noticeList.filter((item) => item !== cb);
 };
@@ -140,12 +161,39 @@ CustomBluetooth.prototype.close = function (cb: Function) {
     server.disconnect();
     server = null;
     device = null;
+    characteristic1 = null;
+    characteristic2 = null;
     ipcRenderer.removeListener("end-data-decode", handleEndDataDecode);
     ipcRenderer.send("close-child");
     cb(true, "设备连接已断开");
   } else {
     cb(false, "蓝牙未连接");
   }
+};
+
+// 添加AT通知事件
+CustomBluetooth.prototype.addATNotice = function (cb: Function) {
+  if (!characteristic1) {
+    return message.error("请先连接设备!");
+  }
+  atNoticeList.push(cb);
+};
+// 移除AT通知事件
+CustomBluetooth.prototype.removeATNotice = function (cb: Function) {
+  atNoticeList = atNoticeList.filter((item) => item !== cb);
+};
+
+CustomBluetooth.prototype.sendAT = function (atCommand) {
+  if (!characteristic1) {
+    return message.error("请先连接设备!");
+  }
+  if (!atCommand) {
+    return message.error("请输入AT指令!");
+  }
+  // 将AT指令转换为Uint8Array
+  // 发送写请求
+  const commandBuffer = new TextEncoder().encode(atCommand + "\r");
+  characteristic1.writeValue(commandBuffer);
 };
 
 CustomBluetooth.prototype.bluetoothScan = function () {
