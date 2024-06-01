@@ -22,6 +22,11 @@ const handleEndDataDecode = (event, data) => {
       psd_relative_s: data.psd_relative_s,
       psd_relative_percent_s: data.psd_relative_percent_s,
       time_e_s: data.time_e_s,
+      ps_s_multiple: data.ps_s_multiple,
+      psd_s_multiple: data.psd_s_multiple,
+      psd_relative_s_multiple: data.psd_relative_s_multiple,
+      psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
+      time_e_s_multiple: data.time_e_s_multiple,
     });
   }
   textIndex++;

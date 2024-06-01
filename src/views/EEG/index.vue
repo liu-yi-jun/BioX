@@ -210,6 +210,7 @@ let series: echarts.EChartOption.Series[] = [];
 let pkgSourceData: any = [];
 let pkgDataList: any = [];
 let pkgMaxTime = 30;
+const EEGTimeGap = 4; // 采样间隔
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
 const seriesStep = ref(30);
@@ -219,7 +220,7 @@ const spectrumShowTime = ref(5);
 const relatedStep = ref(30);
 const barnsTimeStep = ref(30);
 const barnsTimeMaxStep = 30;
-const minTimeGap = 250;
+const minTimeGap = 250; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
 const timeGap = Math.round(1000 / minTimeGap);
 const isRender = ref(false);
 const channel = ref(["Fp1", "Fp2"]);
@@ -234,6 +235,7 @@ import * as echarts from "echarts";
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
+import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
 const { play, recordId, playIndex, isDragSlider, isConnect } =
   storeToRefs(indexStore);
@@ -437,7 +439,10 @@ const handlePkgList = (data) => {
   ) {
     pkgDataList.shift();
   }
-  pkgDataList.push(data);
+  //  有EEG数据标志位
+  if (data.EEG_DATA) {
+    pkgDataList.push(data);
+  }
 };
 
 // 判断是否加入数据包队列
@@ -449,12 +454,11 @@ const joinPkgList = () => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      item.time_mark - pkgSourceData[0].time_mark <=
-      playIndex.value * minTimeGap
+      (item.time_mark - pkgSourceData[0].time_mark <=
+        playIndex.value * minTimeGap) &&
+      item.EEG_DATA
     ) {
       tempPkgDataList.push(item);
-    } else {
-      break;
     }
   }
   return tempPkgDataList;
@@ -1294,11 +1298,11 @@ const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
       initPSD();
-      undateRenderPsd()
+      undateRenderPsd();
     }
     if (spectrumType.value === "Heatmap") {
       initHeatmap();
-      undateRenderPsdMap()
+      undateRenderPsdMap();
     }
   });
 };
@@ -1307,15 +1311,15 @@ const handleChangeBandsType = () => {
   nextTick(() => {
     if (bandsType.value === "Absolute Power") {
       initAbsolute();
-      undateRenderAbsoule()
+      undateRenderAbsoule();
     }
     if (bandsType.value === "Related Power") {
       initRelated();
-      updateRenderRelated()
+      updateRenderRelated();
     }
     if (bandsType.value === "Time Series") {
       initBarnsTime();
-      updateRenderBarnsTime()
+      updateRenderBarnsTime();
     }
   });
 };
@@ -1667,6 +1671,7 @@ const updateRenderBarnsTime = () => {
     });
 };
 
+// 现在只取EEG最后一个数据进行渲染,太卡了
 const conversionPkgtoPsdMap = (typeChannel, step) => {
   if (pkgDataList.length < 1) return 0;
   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
@@ -1686,6 +1691,36 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
   });
   return psdMapData;
 };
+
+
+// const conversionPkgtoPsdMap = (typeChannel, step) => {
+//   if (pkgDataList.length < 1) return 0;
+//   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
+//   let minTime = maxTimer - step * 1000;
+//   let sliceData = pkgDataList.filter(
+//     (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
+//   );
+//   let psdMapData: number[][] = [];
+//   let baseTime = 0;
+
+
+//   for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
+//     const item = sliceData[sliceIndex];
+//     if (sliceIndex !== 0) {
+//       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
+//     }
+//     let dataList = item.psd_s_multiple;
+//     for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
+//       dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
+//         psdMapData.push([(baseTime + dataIndex * EEGTimeGap) / calculateMinTimeGap(), y, value]);
+//       });
+//     }
+//   }
+//   console.log(psdMapData);
+  
+
+//   return psdMapData;
+// };
 
 const conversionPkgtoPsd = (typeChannel) => {
   if (pkgDataList.length < 1) return 0;
@@ -1707,14 +1742,23 @@ const conversionPkgtoBarnsTimeOrRelated = (field, typeChannel, index, step) => {
     (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
   );
   let baseTime = 0;
-  return sliceData.map((item, sliceIndex) => {
+  let tempSliceData: any = [];
+  for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
+    const item = sliceData[sliceIndex];
     if (sliceIndex !== 0) {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
-    return {
-      value: [baseTime, item[field][parseChannel(typeChannel)][index]],
-    };
-  });
+    let fieldDataList = item[field + "_multiple"];
+    for (let fieldIndex = 0; fieldIndex < fieldDataList.length; fieldIndex++) {
+      tempSliceData.push({
+        value: [
+          baseTime + fieldIndex * EEGTimeGap,
+          fieldDataList[fieldIndex][parseChannel(typeChannel)][index],
+        ],
+      });
+    }
+  }
+  return tempSliceData;
 };
 
 const conversionPkgtoSeriesData = (typeChannel, step) => {
@@ -1726,14 +1770,33 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
   );
   let baseTime = 0;
 
-  return sliceData.map((item, sliceIndex) => {
+  let tempSliceData: any = [];
+  for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
+    const item = sliceData[sliceIndex];
     if (sliceIndex !== 0) {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
-    return {
-      value: [baseTime, item.brain_elec_channel[parseChannel(typeChannel)]],
-    };
-  });
+    let brain_elec_channel =
+      item[
+        parseChannel(typeChannel) === 1
+          ? "brain_elec_channel2"
+          : "brain_elec_channel1"
+      ];
+    for (
+      let brainIndex = 0;
+      brainIndex < brain_elec_channel.length;
+      brainIndex++
+    ) {
+      tempSliceData.push({
+        value: [
+          baseTime + brainIndex * EEGTimeGap,
+          brain_elec_channel[brainIndex],
+        ],
+      });
+    }
+  }
+
+  return tempSliceData;
 };
 
 const calculateMinTimeGap = () => {
@@ -1749,7 +1812,7 @@ const calculateMinTimeGap = () => {
 
 const handleChangePsdChannel = () => {
   initPSD();
-  undateRenderPsd()
+  undateRenderPsd();
 };
 const handleChangeSeriesStep = () => {
   updateRenderRealSeriesData();

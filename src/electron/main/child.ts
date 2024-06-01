@@ -7,23 +7,14 @@ let __static = process.argv[2];
 let _product_path = process.argv[3];
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
-// const PKG = Struct({
-//   pkglen: ref.types.int16,
-//   time_mark: ref.types.int32,
-//   brain_elec_channel: ArrayType(ref.types.int32, 8),
-//   near_infrared_channel: ArrayType(ref.types.int32, 6),
-//   acceleration_x: ref.types.uint16,
-//   acceleration_y: ref.types.uint16,
-//   acceleration_z: ref.types.uint16,
-//   temperature: ref.types.int16,
-//   fall_off: ref.types.uint8,
-//   error_state: ref.types.int16,
-// });
+
 const PKG = Struct({
   pkglen: ref.types.int16,
   pkgnum: ref.types.int32,
   time_mark: ref.types.int32,
   brain_elec_channel: ArrayType(ref.types.float, 2),
+  brain_elec_channel1: ArrayType(ref.types.float, 10), //EEG通道1的10个数据
+  brain_elec_channel2: ArrayType(ref.types.float, 10), //EEG通道2的10个数据
   near_infrared_channel_1_wavelength_1: ArrayType(ref.types.float, 4), // IR第1通道第1个波长
   near_infrared_channel_1_wavelength_2: ArrayType(ref.types.float, 4), // IR第1通道第2个波长
   near_infrared_channel_1_wavelength_13: ArrayType(ref.types.float, 4), // IR第1通道λ3，（与λ1同时采集）
@@ -35,16 +26,18 @@ const PKG = Struct({
   acceleration_x: ref.types.float,
   acceleration_y: ref.types.float,
   acceleration_z: ref.types.float,
-  temperature: ref.types.float,
-  Battery_State: ref.types.float,
-  fall_off: ref.types.int32,
-  error_state: ref.types.int32,
+  temperature: ref.types.float, //额温
+  Battery_State: ref.types.float, //电池剩余电量
+  fall_off: ref.types.int32, //电极脱落状态，Lead-Off Detection status  (32)  int32
+  error_state: ref.types.int32, //错误状态
+  EEG_DATA: ref.types.bool, //EEG数据标志位
+  ELSE_DATA: ref.types.bool, //其他数据标志位
   pkg: ArrayType(ref.types.uint8, 300),
 });
 
 // 加载DLL
 // 解析数据
-var pkg_decode_path = join(_product_path, "/dll/pkg_decode.dll");
+var pkg_decode_path = join(_product_path, "/dll/pkg_decode(9).dll");
 
 const pkgDecode = ffi.Library(pkg_decode_path, {
   get_pkg_buffer_length: ["int", []],
@@ -101,8 +94,10 @@ let test_i = 0;
 
 // 初始化参数
 const window = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
-const step = 2; //fft 步长
-const sample_rate = 500;
+const step = 10; //fft 步长
+const sample_rate = 250;
+const EEGNumber = 10; // eeg数据量
+const isFilter = false;
 const d = new DoubleArray(2);
 const e1 = new DoubleArray(2); //Delta频段各通道时域数据数组
 const e2 = new DoubleArray(2); //Theta频段各通道时域数据数组
@@ -115,19 +110,25 @@ const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为win
 const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
 const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
 
+const time_e_s: any = [0, 0];
 const ps_s: any = [0, 0];
 const psd_s: any = [0, 0];
 const psd_relative_s: any = [0, 0];
 const psd_relative_percent_s: any = [0, 0];
+const time_e_s_multiple: any = [];
+const ps_s_multiple: any = [];
+const psd_s_multiple: any = [];
+const psd_relative_s_multiple: any = [];
+const psd_relative_percent_s_multiple: any = [];
 
-const  arrayToHexString = (array: any) =>{
-  let hexString = '';
+const arrayToHexString = (array: any) => {
+  let hexString = "";
   for (let i = 0; i < array.length; i++) {
-    const hexValue = array[i].toString(16).padStart(2, '0'); // 确保每个值都是两位数
-    hexString = hexString + ' ' + hexValue;
+    const hexValue = array[i].toString(16).padStart(2, "0"); // 确保每个值都是两位数
+    hexString = hexString + " " + hexValue;
   }
   return hexString;
-}
+};
 
 // 接收消息
 process.on("message", async function ({ type, data }) {
@@ -146,17 +147,11 @@ process.on("message", async function ({ type, data }) {
       const ptrpkg = pkgDecode.decode();
       // 获取值
       const pkg = ptrpkg.deref();
-      // console.log('pkg.pkglen',pkg.pkglen);
-      // console.log('pkg.time_mark',pkg.time_mark);
+
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
-      
-      console.log(
-        "brain_elec_channel",
-        pkg.brain_elec_channel[0],
-        pkg.brain_elec_channel[1],
 
-      );
+
       console.log(
         "pkglen,pkgnum,time_mark,error_state",
         pkg.pkglen,
@@ -164,75 +159,87 @@ process.on("message", async function ({ type, data }) {
         pkg.time_mark,
         pkg.error_state
       );
-      // console.log('near_infrared_channel.0',pkg.near_infrared_channel[0]); 1-1
-      // console.log('near_infrared_channel.1',pkg.near_infrared_channel[1]); 1-2
-      // console.log('near_infrared_channel.2',pkg.near_infrared_channel[2]); 1-3
-      // console.log('near_infrared_channel.3',pkg.near_infrared_channel[3]); 2-1
-      // console.log('near_infrared_channel.4',pkg.near_infrared_channel[4]); 2-2
-      // console.log('near_infrared_channel.5',pkg.near_infrared_channel[5]); 2-3
-      // console.log('acceleration_x',pkg.acceleration_x);
-      // console.log('acceleration_y',pkg.acceleration_y);
-      // console.log('acceleration_z',pkg.acceleration_z);
-      // console.log('temperature',pkg.temperature);
-      // console.log('fall_off',pkg.fall_off);
-      // console.log('error_state',pkg.error_state);
-      // 滤波处理
-      // signalProcess.run_pre_process_filter(
-      //   channel,
-      //   new FloatArray([pkg.brain_elec_channel[0], pkg.brain_elec_channel[1]]),
-      //   d
-      // );
-      d[0] = pkg.brain_elec_channel[0]
-      d[1] = pkg.brain_elec_channel[1]
-      
-      // pkg.brain_elec_channel[0] = d[0];
-      // pkg.brain_elec_channel[1] = d[1];
 
-      // // 时域信号处理
-      signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
-      let time_e_s = [];
+      // 有EEG数据标志位
+      if (pkg.EEG_DATA) {
+        // 循环EEG数据
+        for (let i = 0; i < EEGNumber; i++) {
+          if (isFilter) {
+            // 滤波处理
+            signalProcess.run_pre_process_filter(
+              channel,
+              new FloatArray([
+                pkg.brain_elec_channel1[i],
+                pkg.brain_elec_channel2[i],
+              ]),
+              d
+            );
+            pkg.brain_elec_channel1[i] = d[0];
+            pkg.brain_elec_channel2[i] = d[1];
+          } else {
+            // 不滤波
+            d[0] = pkg.brain_elec_channel1[i];
+            d[1] = pkg.brain_elec_channel2[i];
+          }
 
-      //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
-      for (
-        let current_channel = 0;
-        current_channel < channel;
-        current_channel++
-      ) {
-        time_e_s.push([
-          e1[current_channel],
-          e2[current_channel],
-          e3[current_channel],
-          e4[current_channel],
-          e5[current_channel],
-        ]);
-        signalProcess.fft_ps(
-          current_channel,
-          sample_rate,
-          d[current_channel], //(test_i + 1) % 32
-          step,
-          window,
-          ps,
-          psd,
-          psd_relative,
-          psd_relative_percent
-        ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
-        ps_s[current_channel] = ps;
-        psd_s[current_channel] = psd;
-        psd_relative_s[current_channel] = psd_relative;
-        psd_relative_percent_s[current_channel] = psd_relative_percent;
+          signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
+
+          //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
+          for (
+            let current_channel = 0;
+            current_channel < channel;
+            current_channel++
+          ) {
+            time_e_s[current_channel] = [
+              e1[current_channel],
+              e2[current_channel],
+              e3[current_channel],
+              e4[current_channel],
+              e5[current_channel],
+            ];
+
+            signalProcess.fft_ps(
+              current_channel,
+              sample_rate,
+              d[current_channel], //(test_i + 1) % 32
+              step,
+              window,
+              ps,
+              psd,
+              psd_relative,
+              psd_relative_percent
+            ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
+
+            // ps_s[current_channel] = ps;
+            psd_s[current_channel] = psd;
+            psd_relative_s[current_channel] = psd_relative;
+            psd_relative_percent_s[current_channel] = psd_relative_percent;
+          }
+          time_e_s_multiple[i] = time_e_s;
+          // ps_s_multiple[i] = ps_s;
+          psd_s_multiple[i] = psd_s;
+          psd_relative_s_multiple[i] = psd_relative_s;
+          psd_relative_percent_s_multiple[i] = psd_relative_percent_s;
+        }
       }
+
       test_i++;
 
       process.send!({
         type: "end-data-decode",
         data: {
-          hexString:hexString,
+          hexString: hexString,
           pkg,
-          ps_s,
+          // ps_s,
           psd_s,
           psd_relative_s,
-          psd_relative_percent_s,
+          // psd_relative_percent_s,
           time_e_s,
+          // ps_s_multiple,
+          psd_s_multiple,
+          psd_relative_s_multiple,
+          psd_relative_percent_s_multiple,
+          time_e_s_multiple,
         },
       });
 

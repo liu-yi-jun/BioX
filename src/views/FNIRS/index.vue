@@ -244,7 +244,7 @@ const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const isRender = ref(false);
 const minTimeGap = 250;
-let isRenderTimer,realTimer;
+let isRenderTimer, realTimer;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
@@ -254,7 +254,8 @@ let pkgDataList: any = [];
 let pkgSourceData: any = [];
 let pkgMaxTime = 30;
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider,isConnect } = storeToRefs(indexStore);
+const { play, recordId, playIndex, isDragSlider, isConnect } =
+  storeToRefs(indexStore);
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
 let myChart: echarts.EChartsType;
@@ -378,11 +379,14 @@ watch(
     if (newValue) {
       timerPlay = setInterval(() => {
         if (pkgSourceData.length) {
-          if (playIndex.value * minTimeGap >= pkgSourceData[pkgSourceData.length - 1].time_mark) {
+          if (
+            playIndex.value * minTimeGap >=
+            pkgSourceData[pkgSourceData.length - 1].time_mark
+          ) {
             timerPlay && clearInterval(timerPlay);
             return;
           }
-          pkgDataList = joinPkgList();
+          pkgDataList = joinPkgList();  
           renderData();
         }
       }, 250);
@@ -402,7 +406,6 @@ watch(isRender, (newValue) => {
     realTimer && clearInterval(realTimer);
   }
 });
-
 
 watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
@@ -458,7 +461,6 @@ const bluetoothNotice = (data) => {
   }, 4 * 1000);
 };
 
-
 // 定时渲染
 const realTimerRenderData = () => {
   realTimer && clearInterval(realTimer);
@@ -467,11 +469,10 @@ const realTimerRenderData = () => {
   }, minTimeGap);
 };
 
-
 // 渲染
 const renderData = () => {
   generateSeries();
-  initSeries()
+  initSeries();
 };
 
 // 数据包处理
@@ -483,7 +484,10 @@ const handlePkgList = (data) => {
   ) {
     pkgDataList.shift();
   }
-  pkgDataList.push(data);
+  //  有其他数据标志位
+  if (data.ELSE_DATA) {
+    pkgDataList.push(data);
+  }
 };
 
 // 判断是否加入数据包队列
@@ -494,17 +498,16 @@ const joinPkgList = () => {
   }
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
-    if (item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * minTimeGap) {
+    if (
+      item.time_mark - pkgSourceData[0].time_mark <=
+        playIndex.value * minTimeGap &&
+      item.ELSE_DATA
+    ) {
       tempPkgDataList.push(item);
-    } else {
-      break;
-    }
+    } 
   }
   return tempPkgDataList;
 };
-
-
-
 
 const initialize = () => {
   pkgSourceData = [];
@@ -525,7 +528,6 @@ const initialize = () => {
     initSeries();
   });
 };
-
 
 // 配置改变
 const handleChange = () => {
@@ -725,7 +727,7 @@ const generateSeries = () => {
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
-        
+
     tempObj.OD = conversionPkgtoTimeSeries(
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
@@ -735,7 +737,7 @@ const generateSeries = () => {
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
-    );  
+    );
     return {
       data: tempObj[item.type],
       type: "line",
@@ -764,7 +766,9 @@ const generateSeries = () => {
 };
 
 const mapChanToField = (index) => {
-  switch (index) { // 通道索引
+  switch (
+    index // 通道索引
+  ) {
     case 1:
       return "near_infrared_channel_1_wavelength_1";
     case 2:
@@ -776,7 +780,9 @@ const mapChanToField = (index) => {
   }
 };
 const mapRadioToField = (index) => {
-  switch (index) { // 波形索引
+  switch (
+    index // 波形索引
+  ) {
     case 1:
       return 0;
     case 2:
