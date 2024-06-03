@@ -8,11 +8,36 @@ let _product_path = process.argv[3];
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
 
+// 测试数据包
+// import * as fs from "fs";
+// import * as readline from "readline";
+// const fileStream = fs.createReadStream("LOG.txt");
+// const rl = readline.createInterface({
+//   input: fileStream,
+//   crlfDelay: Infinity,
+// });
+
+// let buffers: Buffer[] = [];
+// rl.on("line", (line: any) => {
+//   // 去除时间戳和箭头
+//   line = line.replace(/^[\d:.]+\s+->\s+/, "").replace(/\s+/g, "");
+
+//   // 将十六进制字符串转换为字节数组
+//   const byteArray = line.match(/.{2}/g).map((byte: any) => parseInt(byte, 16));
+
+//   // 将字节数组转换为Buffer对象
+//   const buffer = Buffer.from(byteArray);
+
+//   // 将Buffer对象添加到数组中
+//   buffers.push(buffer);
+//   // console.log("buffer", buffer);
+// });
+
 const PKG = Struct({
   pkglen: ref.types.int16,
   pkgnum: ref.types.int32,
   time_mark: ref.types.int32,
-  brain_elec_channel: ArrayType(ref.types.float, 2),
+  // brain_elec_channel: ArrayType(ref.types.float, 2),
   brain_elec_channel1: ArrayType(ref.types.float, 10), //EEG通道1的10个数据
   brain_elec_channel2: ArrayType(ref.types.float, 10), //EEG通道2的10个数据
   near_infrared_channel_1_wavelength_1: ArrayType(ref.types.float, 4), // IR第1通道第1个波长
@@ -137,7 +162,16 @@ process.on("message", async function ({ type, data }) {
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
+    
+    // 测试数据包
+    // if (buffers.length < 178) {
+    //   return;
+    // }
+    // let recvBuffer = Buffer.from(buffers[test_i % 178]);
+
     let recvBuffer = Buffer.from(data.data);
+
+
     for (let i = 0; i < recvBuffer.length; i++) {
       pkgDecode.push_to_databuffer(recvBuffer[i]);
     }
@@ -151,13 +185,14 @@ process.on("message", async function ({ type, data }) {
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
 
-
       console.log(
         "pkglen,pkgnum,time_mark,error_state",
         pkg.pkglen,
         pkg.pkgnum,
         pkg.time_mark,
-        pkg.error_state
+        pkg.error_state,
+        pkg.EEG_DATA,
+        pkg.ELSE_DATA
       );
 
       // 有EEG数据标志位

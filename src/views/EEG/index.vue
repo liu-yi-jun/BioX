@@ -454,8 +454,8 @@ const joinPkgList = () => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      (item.time_mark - pkgSourceData[0].time_mark <=
-        playIndex.value * minTimeGap) &&
+      item.time_mark - pkgSourceData[0].time_mark <=
+        playIndex.value * minTimeGap &&
       item.EEG_DATA
     ) {
       tempPkgDataList.push(item);
@@ -467,11 +467,21 @@ const joinPkgList = () => {
 // 渲染
 const renderData = () => {
   updateRenderRealSeriesData();
-  undateRenderPsd();
-  undateRenderPsdMap();
-  undateRenderAbsoule();
-  updateRenderRelated();
-  updateRenderBarnsTime();
+  if (spectrumType.value === "PSD") {
+    undateRenderPsd();
+  }
+  if (spectrumType.value === "Heatmap") {
+    undateRenderPsdMap();
+  }
+  if (bandsType.value === "Absolute Power") {
+    undateRenderAbsoule();
+  }
+  if (bandsType.value === "Related Power") {
+    updateRenderRelated();
+  }
+  if (bandsType.value === "Time Series") {
+    updateRenderBarnsTime();
+  }
 };
 
 const initialize = () => {
@@ -1692,7 +1702,6 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
   return psdMapData;
 };
 
-
 // const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   if (pkgDataList.length < 1) return 0;
 //   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
@@ -1702,7 +1711,6 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   );
 //   let psdMapData: number[][] = [];
 //   let baseTime = 0;
-
 
 //   for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
 //     const item = sliceData[sliceIndex];
@@ -1717,7 +1725,6 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
 //     }
 //   }
 //   console.log(psdMapData);
-  
 
 //   return psdMapData;
 // };
