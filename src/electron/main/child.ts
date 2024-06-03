@@ -5,6 +5,12 @@ const Struct = require("ref-struct-napi");
 var ArrayType = require("ref-array-napi");
 let __static = process.argv[2];
 let _product_path = process.argv[3];
+// 加载配置项
+// 是否开启滤波
+const isFilter = JSON.parse(process.argv[4]).isFilter;
+console.log('isFilter',isFilter);
+
+
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
 
@@ -116,13 +122,18 @@ const signalProcess = ffi.Library(signal_process_path, {
 });
 
 let test_i = 0;
+let packetLossRate = 0; //数据包丢失率
+let packetLossNum = 0; //数据包丢失总数
+let baseAdjustedTimestamps = 0;
+let priorPkgnum = 0; //上一个包的包号
+// const isTestPkg = false;
+
 
 // 初始化参数
 const window = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
 const step = 10; //fft 步长
 const sample_rate = 250;
 const EEGNumber = 10; // eeg数据量
-const isFilter = false;
 const d = new DoubleArray(2);
 const e1 = new DoubleArray(2); //Delta频段各通道时域数据数组
 const e2 = new DoubleArray(2); //Theta频段各通道时域数据数组
@@ -155,6 +166,11 @@ const arrayToHexString = (array: any) => {
   return hexString;
 };
 
+const adjustTimestamps = (timestamp: number): number => {
+  const remainder = timestamp % 1000;
+  return timestamp - remainder;
+};
+
 // 接收消息
 process.on("message", async function ({ type, data }) {
   if (type === "filter-init") {
@@ -162,15 +178,16 @@ process.on("message", async function ({ type, data }) {
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
-    
-    // 测试数据包
-    // if (buffers.length < 178) {
-    //   return;
-    // }
-    // let recvBuffer = Buffer.from(buffers[test_i % 178]);
 
     let recvBuffer = Buffer.from(data.data);
 
+    // if (isTestPkg) {
+    //   // 测试数据包
+    //   if (buffers.length < 178) {
+    //     return;
+    //   }
+    //   recvBuffer = Buffer.from(buffers[test_i % 178]);
+    // }
 
     for (let i = 0; i < recvBuffer.length; i++) {
       pkgDecode.push_to_databuffer(recvBuffer[i]);
@@ -182,17 +199,44 @@ process.on("message", async function ({ type, data }) {
       // 获取值
       const pkg = ptrpkg.deref();
 
+
+      //  测试数据包时间戳调整
+      // if (isTestPkg) {
+      //   pkg.time_mark = test_i * 40;
+      // }
+      
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
 
+      // 计算丢包率
+      let adjustedTimestamps = adjustTimestamps(pkg.time_mark);
+
+      if (baseAdjustedTimestamps !== adjustedTimestamps) {
+        baseAdjustedTimestamps = adjustedTimestamps;
+        packetLossRate = 0;
+      }
+      if (
+        pkg.time_mark >= baseAdjustedTimestamps &&
+        pkg.time_mark < baseAdjustedTimestamps + 1000
+      ) {
+        if (priorPkgnum !== 0 && pkg.pkgnum - priorPkgnum > 1) {
+          packetLossRate = pkg.pkgnum - priorPkgnum + packetLossRate;
+          packetLossNum = pkg.pkgnum - priorPkgnum + packetLossNum;
+        }
+      }
+      priorPkgnum = pkg.pkgnum;
+
+      // 打印
       console.log(
-        "pkglen,pkgnum,time_mark,error_state",
+        "pkglen,pkgnum,time_mark,error_state,EEG_DATA,ELSE_DATA,packetLossRate",
         pkg.pkglen,
         pkg.pkgnum,
         pkg.time_mark,
         pkg.error_state,
         pkg.EEG_DATA,
-        pkg.ELSE_DATA
+        pkg.ELSE_DATA,
+        packetLossRate,
+        packetLossNum
       );
 
       // 有EEG数据标志位
@@ -275,6 +319,8 @@ process.on("message", async function ({ type, data }) {
           psd_relative_s_multiple,
           psd_relative_percent_s_multiple,
           time_e_s_multiple,
+          packetLossRate,
+          packetLossNum,
         },
       });
 

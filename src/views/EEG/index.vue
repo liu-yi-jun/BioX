@@ -2,7 +2,11 @@
   <div class="charts-wrap eeg-wrap">
     <p class="eig-nav-title">EEG</p>
     <div class="eig-card card-top">
-      <p class="card-title">Time Series</p>
+      <p class="card-title">
+        Time Series
+        <span style="margin-left: 10px">plr:{{ packetLossRate }}</span>
+        <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
+      </p>
       <div class="time-series">
         <div class="eig-filter eig-select-wrap">
           <div class="filter-right">
@@ -227,7 +231,9 @@ const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
 const bandsChannel = ref("Fp1");
-const maxFreq = ref(250);
+const maxFreq = ref(256);
+const packetLossRate = ref(0);
+const packetLossNum = ref(0);
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
@@ -289,26 +295,27 @@ const relatedChannelOptions = ref<SelectProps["options"]>([
     label: "Low/High",
   },
 ]);
+//257个fft数据是对应0～125Hz的，假如要画到125Hz，就要全画，假如只画到50Hz，那就按比例取前面的点 2.056
 const maxFreqOptions = ref<SelectProps["options"]>([
   {
-    value: 50,
+    value: 51,
+    label: "25Hz",
+  },
+  {
+    value: 102,
     label: "50Hz",
   },
   {
-    value: 100,
+    value: 154,
+    label: "75Hz",
+  },
+  {
+    value: 205,
     label: "100Hz",
   },
   {
-    value: 150,
-    label: "150Hz",
-  },
-  {
-    value: 200,
-    label: "200Hz",
-  },
-  {
-    value: 250,
-    label: "250Hz",
+    value: 256,
+    label: "125Hz",
   },
 ]);
 const spectrumTypeOptions = ref<SelectProps["options"]>([
@@ -432,6 +439,8 @@ const realTimerRenderData = () => {
 
 // 数据包处理
 const handlePkgList = (data) => {
+  packetLossRate.value = data.packetLossRate;
+  packetLossNum.value = data.packetLossNum;
   if (
     pkgDataList.length &&
     pkgDataList[pkgDataList.length - 1].time_mark - pkgDataList[0].time_mark >
@@ -607,6 +616,12 @@ const initPSD = () => {
         axisTick: {
           length: 3,
           show: true,
+     
+        },
+        axisLabel: {
+          formatter: function (value, index) {
+            return Math.round(value / 2.056);
+          },
         },
         boundaryGap: false,
         data: XAxisData,

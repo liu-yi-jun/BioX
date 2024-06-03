@@ -20,6 +20,9 @@ if (isDev) {
 log.error("process.env.NODE_ENV:" + process.env.NODE_ENV);
 log.error("main:path:" + _product_path);
 
+// 定义child配置项
+let config = {}
+
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: "Open File",
@@ -131,7 +134,12 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   });
 
-
+  // 修改配置项
+  ipcMain.on("change-config", (event, data) => {
+    config = Object.assign(config, JSON.parse(data));
+    console.log('change-config', config);
+    
+  });
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
@@ -153,7 +161,7 @@ function createWindow() {
     log.error("create-child", join(__dirname, "./child.js"));
     child = child_process.fork(
       join(__dirname, "./child.js"),
-      [__static, _product_path],
+      [__static, _product_path, JSON.stringify(config)],
       {
         // 关闭子进程打印，开启ipc
         stdio: ["ignore", "pipe", "pipe", "ipc"],

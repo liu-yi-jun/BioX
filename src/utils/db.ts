@@ -33,6 +33,11 @@ CustomDatabase.prototype.init = function (isMain = true) {
           describe VARCHAR(255) NOT NULL,
           createTime INTEGER NOT NULL default(0)
           )`);
+        // 配置表
+        await this.run(`CREATE TABLE if not exists config(
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            configData text
+            )`);
 
         resolve(true);
       } catch (err) {
