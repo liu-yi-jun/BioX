@@ -204,7 +204,7 @@ process.on("message", async function ({ type, data }) {
       // if (isTestPkg) {
       //   pkg.time_mark = test_i * 40;
       // }
-      
+
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
 

@@ -1042,13 +1042,13 @@ const initBarnsTime = () => {
           show: true,
         },
         axisLabel: {
-          show: false,
+          show: true,
         },
         axisTick: {
-          show: false,
+          show: true,
         },
         splitLine: {
-          show: false,
+          show: true,
         },
         nameRotate: 0,
         name: "DELTA",
@@ -1066,13 +1066,13 @@ const initBarnsTime = () => {
           show: true,
         },
         axisLabel: {
-          show: false,
+          show: true,
         },
         axisTick: {
-          show: false,
+          show: true,
         },
         splitLine: {
-          show: false,
+          show: true,
         },
         nameRotate: 0,
         name: "THETA",
@@ -1090,13 +1090,13 @@ const initBarnsTime = () => {
           show: true,
         },
         axisLabel: {
-          show: false,
+          show: true,
         },
         axisTick: {
-          show: false,
+          show: true,
         },
         splitLine: {
-          show: false,
+          show: true,
         },
         nameRotate: 0,
         name: "ALPHA",
@@ -1114,13 +1114,13 @@ const initBarnsTime = () => {
           show: true,
         },
         axisLabel: {
-          show: false,
+          show: true,
         },
         axisTick: {
-          show: false,
+          show: true,
         },
         splitLine: {
-          show: false,
+          show: true,
         },
         nameRotate: 0,
         name: "BETA",
@@ -1138,13 +1138,13 @@ const initBarnsTime = () => {
           show: true,
         },
         axisLabel: {
-          show: false,
+          show: true,
         },
         axisTick: {
-          show: false,
+          show: true,
         },
         splitLine: {
-          show: false,
+          show: true,
         },
         nameRotate: 0,
         name: "GAMMA",
