@@ -15,7 +15,7 @@
                 <a-input
                   type="number"
                   style="width: 100px"
-                  @blur="updateRenderRealSeriesData"
+                  @change="updateRenderRealSeriesData('yAxis')"
                   v-model:value="seriesForm.min"
                   placeholder="auto"
                 />
@@ -24,7 +24,7 @@
                 <a-input
                   type="number"
                   style="width: 100px"
-                  @blur="updateRenderRealSeriesData"
+                  @change="updateRenderRealSeriesData('yAxis')"
                   v-model:value="seriesForm.max"
                   placeholder="auto"
                 />
@@ -33,7 +33,7 @@
                 <a-select
                   v-model:value="seriesStep"
                   style="width: 100px"
-                  @change="handleChangeSeriesStep"
+                  @change="updateRenderRealSeriesData('channel')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -162,7 +162,7 @@
                   v-if="bandsType === 'Time Series'"
                   v-model:value="barnsTimeStep"
                   style="width: 100px"
-                  @change="updateRenderBarnsTime"
+                  @change="updateRenderBarnsTime('xAxis')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -255,6 +255,10 @@ const seriesForm = reactive({
 });
 
 const showTimeOptionsData = [
+  {
+    value: 1,
+    label: "1 sec",
+  },
   {
     value: 5,
     label: "5 sec",
@@ -616,7 +620,6 @@ const initPSD = () => {
         axisTick: {
           length: 3,
           show: true,
-     
         },
         axisLabel: {
           formatter: function (value, index) {
@@ -1439,40 +1442,65 @@ const generateSeries = () => {
 };
 
 // 更新渲染--seriesData
-const updateRenderRealSeriesData = () => {
-  seriesChart &&
-    seriesChart.setOption({
-      yAxis: channel.value.map((item) => ({
-        name: item,
-        max: seriesForm.max === "" ? undefined : seriesForm.max,
-        min: seriesForm.min === "" ? undefined : seriesForm.min,
-      })),
-      xAxis: channel.value.map((item, index) => ({
-        gridIndex: index,
-        splitNumber: seriesStep.value,
-        max: seriesStep.value * 1000,
-      })),
+const updateRenderRealSeriesData = (type?: string) => {
+  if (!seriesChart) return;
+  switch (type) {
+    case "yAxis":
+      seriesChart.setOption({
+        yAxis: channel.value.map((item) => ({
+          name: item,
+          max: seriesForm.max === "" ? undefined : seriesForm.max,
+          min: seriesForm.min === "" ? undefined : seriesForm.min,
+        })),
+      });
+      break;
+    case "channel":
+      seriesChart.setOption({
+        yAxis: channel.value.map((item) => ({
+          name: item,
+          max: seriesForm.max === "" ? undefined : seriesForm.max,
+          min: seriesForm.min === "" ? undefined : seriesForm.min,
+        })),
+        xAxis: channel.value.map((item, index) => ({
+          gridIndex: index,
+          splitNumber: seriesStep.value,
+          max: seriesStep.value * 1000,
+        })),
+      });
+      break;
+  }
+  seriesChart.setOption(
+    {
       series: channel.value.map((item) => ({
         name: item,
         data: conversionPkgtoSeriesData(item, seriesStep.value),
       })),
-    });
+    },
+    {
+      lazyUpdate: true,
+    }
+  );
 };
 // 更新渲染--psd
 const undateRenderPsd = () => {
   psdChart &&
-    psdChart.setOption({
-      series: [
-        {
-          name: "Fp1",
-          data: conversionPkgtoPsd("Fp1"),
-        },
-        {
-          name: "Fp2",
-          data: conversionPkgtoPsd("Fp2"),
-        },
-      ],
-    });
+    psdChart.setOption(
+      {
+        series: [
+          {
+            name: "Fp1",
+            data: conversionPkgtoPsd("Fp1"),
+          },
+          {
+            name: "Fp2",
+            data: conversionPkgtoPsd("Fp2"),
+          },
+        ],
+      },
+      {
+        lazyUpdate: true,
+      }
+    );
 };
 
 // 更新渲染-- psdMap
@@ -1491,157 +1519,179 @@ const undateRenderPsdMap = () => {
     yData.push(i);
   }
   heatmapChart &&
-    heatmapChart.setOption({
-      xAxis: {
-        data: xData,
-      },
-      yAxis: {
-        data: yData,
-      },
-      series: [
-        {
-          data: conversionPkgtoPsdMap(
-            heatmapChannel.value,
-            spectrumShowTime.value
-          ),
+    heatmapChart.setOption(
+      {
+        xAxis: {
+          data: xData,
         },
-      ],
-    });
+        yAxis: {
+          data: yData,
+        },
+        series: [
+          {
+            data: conversionPkgtoPsdMap(
+              heatmapChannel.value,
+              spectrumShowTime.value
+            ),
+          },
+        ],
+      }
+      // {
+      //   lazyUpdate: true,
+      // }
+    );
 };
 
 // 更新渲染-- absoule
 const undateRenderAbsoule = () => {
   absoluteChart &&
-    absoluteChart.setOption({
-      series: [
-        {
-          data: [
-            {
-              value: conversionPkgtoAbsolute(bandsChannel.value, 0),
-              itemStyle: {
-                color: "rgb(255, 67, 72, 0.8)",
+    absoluteChart.setOption(
+      {
+        series: [
+          {
+            data: [
+              {
+                value: conversionPkgtoAbsolute(bandsChannel.value, 0),
+                itemStyle: {
+                  color: "rgb(255, 67, 72, 0.8)",
+                },
               },
-            },
-            {
-              value: conversionPkgtoAbsolute(bandsChannel.value, 1),
-              itemStyle: {
-                color: "rgb(241, 189, 0, 0.8)",
+              {
+                value: conversionPkgtoAbsolute(bandsChannel.value, 1),
+                itemStyle: {
+                  color: "rgb(241, 189, 0, 0.8)",
+                },
               },
-            },
-            {
-              value: conversionPkgtoAbsolute(bandsChannel.value, 2),
-              itemStyle: {
-                color: "rgb(37, 146, 121, 0.8)",
+              {
+                value: conversionPkgtoAbsolute(bandsChannel.value, 2),
+                itemStyle: {
+                  color: "rgb(37, 146, 121, 0.8)",
+                },
               },
-            },
-            {
-              value: conversionPkgtoAbsolute(bandsChannel.value, 3),
-              itemStyle: {
-                color: "rgb(78, 123, 187, 0.8)",
+              {
+                value: conversionPkgtoAbsolute(bandsChannel.value, 3),
+                itemStyle: {
+                  color: "rgb(78, 123, 187, 0.8)",
+                },
               },
-            },
-            {
-              value: conversionPkgtoAbsolute(bandsChannel.value, 4),
-              itemStyle: {
-                color: "rgb(165, 107, 172, 0.8)",
+              {
+                value: conversionPkgtoAbsolute(bandsChannel.value, 4),
+                itemStyle: {
+                  color: "rgb(165, 107, 172, 0.8)",
+                },
               },
-            },
-          ],
-        },
-      ],
-    });
+            ],
+          },
+        ],
+      },
+      {
+        lazyUpdate: true,
+      }
+    );
 };
 
 // 更新渲染--related
 const updateRenderRelated = () => {
   relatedChart &&
-    relatedChart.setOption({
-      series: [
-        {
-          name: "γ wave",
-          data: conversionPkgtoBarnsTimeOrRelated(
-            "psd_relative_percent_s",
-            bandsChannel.value,
-            0,
-            barnsTimeMaxStep
-          ),
-        },
-        {
-          name: "β wave",
-          data: conversionPkgtoBarnsTimeOrRelated(
-            "psd_relative_percent_s",
-            bandsChannel.value,
-            1,
-            barnsTimeMaxStep
-          ),
-        },
-        {
-          name: "α wave",
-          data: conversionPkgtoBarnsTimeOrRelated(
-            "psd_relative_percent_s",
-            bandsChannel.value,
-            2,
-            barnsTimeMaxStep
-          ),
-        },
-        {
-          name: "θ wave",
-          data: conversionPkgtoBarnsTimeOrRelated(
-            "psd_relative_percent_s",
-            bandsChannel.value,
-            3,
-            barnsTimeMaxStep
-          ),
-        },
-        {
-          name: "δ wave",
-          data: conversionPkgtoBarnsTimeOrRelated(
-            "psd_relative_percent_s",
-            bandsChannel.value,
-            4,
-            barnsTimeMaxStep
-          ),
-        },
-      ],
-    });
+    relatedChart.setOption(
+      {
+        series: [
+          {
+            name: "γ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              0,
+              barnsTimeMaxStep
+            ),
+          },
+          {
+            name: "β wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              1,
+              barnsTimeMaxStep
+            ),
+          },
+          {
+            name: "α wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              2,
+              barnsTimeMaxStep
+            ),
+          },
+          {
+            name: "θ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              3,
+              barnsTimeMaxStep
+            ),
+          },
+          {
+            name: "δ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              4,
+              barnsTimeMaxStep
+            ),
+          },
+        ],
+      },
+      {
+        lazyUpdate: true,
+      }
+    );
 };
 
 // 更新渲染--barns
-const updateRenderBarnsTime = () => {
-  barnsTimeChart &&
-    barnsTimeChart.setOption({
-      xAxis: [
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 0,
-        },
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 1,
-        },
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 2,
-        },
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 3,
-        },
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 4,
-        },
-        {
-          splitNumber: barnsTimeStep.value,
-          max: barnsTimeStep.value * 1000,
-          gridIndex: 5,
-        },
-      ],
+const updateRenderBarnsTime = (type?: string) => {
+  if (!barnsTimeChart) return;
+  switch (type) {
+    case "xAxis":
+      barnsTimeChart.setOption({
+        xAxis: [
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 0,
+          },
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 1,
+          },
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 2,
+          },
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 3,
+          },
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 4,
+          },
+          {
+            splitNumber: barnsTimeStep.value,
+            max: barnsTimeStep.value * 1000,
+            gridIndex: 5,
+          },
+        ],
+      });
+      break;
+  }
+  barnsTimeChart.setOption(
+    {
       series: [
         {
           name: "EEG",
@@ -1693,7 +1743,11 @@ const updateRenderBarnsTime = () => {
           ),
         },
       ],
-    });
+    },
+    {
+      lazyUpdate: true,
+    }
+  );
 };
 
 // 现在只取EEG最后一个数据进行渲染,太卡了
@@ -1814,6 +1868,11 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
           baseTime + brainIndex * EEGTimeGap,
           brain_elec_channel[brainIndex],
         ],
+        // 点演示
+        // itemStyle: {
+        //   color: item.color ? "red" : "#ffde33",
+        //   borderWidth: 1,
+        // },
       });
     }
   }
@@ -1835,9 +1894,6 @@ const calculateMinTimeGap = () => {
 const handleChangePsdChannel = () => {
   initPSD();
   undateRenderPsd();
-};
-const handleChangeSeriesStep = () => {
-  updateRenderRealSeriesData();
 };
 
 const parseChannel = (channel: string) => {

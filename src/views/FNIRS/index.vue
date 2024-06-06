@@ -820,6 +820,8 @@ const initSeries = () => {
     grid: gridArr,
     yAxis: yAxisArr,
     series: seriesArr,
+  },{
+    lazyUpdate: true,
   });
 };
 

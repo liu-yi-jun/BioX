@@ -8,8 +8,7 @@ let _product_path = process.argv[3];
 // 加载配置项
 // 是否开启滤波
 const isFilter = JSON.parse(process.argv[4]).isFilter;
-console.log('isFilter',isFilter);
-
+console.log("isFilter", isFilter);
 
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
@@ -92,7 +91,7 @@ const FloatArray = ArrayType(Float);
 const signalProcess = ffi.Library(signal_process_path, {
   init_filter: ["void", [Int, Int]],
   init_bp_filter: ["void", [Int, Int]],
-  run_pre_process_filter: ["void", [Int, FloatArray, DoubleArray]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
+  run_pre_process_filter: ["void", [Int, FloatArray, DoubleArray, Bool]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
   run_bp_filter: [
     "void",
     [
@@ -110,7 +109,7 @@ const signalProcess = ffi.Library(signal_process_path, {
     [
       Int,
       Int,
-      Float,
+      Double,
       Int,
       Int,
       DoubleArray,
@@ -128,7 +127,6 @@ let baseAdjustedTimestamps = 0;
 let priorPkgnum = 0; //上一个包的包号
 // const isTestPkg = false;
 
-
 // 初始化参数
 const window = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
 const step = 10; //fft 步长
@@ -145,6 +143,7 @@ const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1
 const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
 const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
 const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+const timeGap = 40; //包时间间隔，单位ms
 
 const time_e_s: any = [0, 0];
 const ps_s: any = [0, 0];
@@ -156,6 +155,10 @@ const ps_s_multiple: any = [];
 const psd_s_multiple: any = [];
 const psd_relative_s_multiple: any = [];
 const psd_relative_percent_s_multiple: any = [];
+
+let losspkg = false;
+let lossNum = 0; // 当前丢包数
+let orderGap = 1; // 包序号间隔
 
 const arrayToHexString = (array: any) => {
   let hexString = "";
@@ -199,7 +202,6 @@ process.on("message", async function ({ type, data }) {
       // 获取值
       const pkg = ptrpkg.deref();
 
-
       //  测试数据包时间戳调整
       // if (isTestPkg) {
       //   pkg.time_mark = test_i * 40;
@@ -207,6 +209,13 @@ process.on("message", async function ({ type, data }) {
 
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
+
+      // 假设丢包
+      // if (pkg.pkgnum && pkg.pkgnum % 77 === 0) {
+      //   console.log("假设丢包", pkg.pkgnum);
+      //   pkgDecode.pkgbuffer_pop();
+      //   return;
+      // }
 
       // 计算丢包率
       let adjustedTimestamps = adjustTimestamps(pkg.time_mark);
@@ -219,113 +228,55 @@ process.on("message", async function ({ type, data }) {
         pkg.time_mark >= baseAdjustedTimestamps &&
         pkg.time_mark < baseAdjustedTimestamps + 1000
       ) {
-        if (priorPkgnum !== 0 && pkg.pkgnum - priorPkgnum > 1) {
-          packetLossRate = pkg.pkgnum - priorPkgnum + packetLossRate;
-          packetLossNum = pkg.pkgnum - priorPkgnum + packetLossNum;
+        // 1秒内丢包计算
+        if (priorPkgnum !== 0 && pkg.pkgnum - priorPkgnum > orderGap) {
+          packetLossRate = pkg.pkgnum - priorPkgnum + packetLossRate - orderGap;
+          packetLossNum = pkg.pkgnum - priorPkgnum + packetLossNum - orderGap;
         }
+      }
+      // 当前是否丢包
+      if (priorPkgnum !== 0 && pkg.pkgnum - priorPkgnum > orderGap) {
+        lossNum = pkg.pkgnum - priorPkgnum - orderGap;
+        losspkg = true;
+      } else {
+        losspkg = false;
+        lossNum = 0;
       }
       priorPkgnum = pkg.pkgnum;
 
       // 打印
-      console.log(
-        "pkglen,pkgnum,time_mark,error_state,EEG_DATA,ELSE_DATA,packetLossRate",
-        pkg.pkglen,
-        pkg.pkgnum,
-        pkg.time_mark,
-        pkg.error_state,
-        pkg.EEG_DATA,
-        pkg.ELSE_DATA,
-        packetLossRate,
-        packetLossNum
-      );
+      // console.log(
+      //   "pkglen,pkgnum,time_mark,error_state,EEG_DATA,ELSE_DATA,packetLossRate",
+      //   pkg.pkglen,
+      //   pkg.pkgnum,
+      //   pkg.time_mark,
+      //   pkg.error_state,
+      //   pkg.EEG_DATA,
+      //   pkg.ELSE_DATA,
+      //   packetLossRate,
+      //   packetLossNum
+      // );
+      // console.log(pkg, "pkg");
 
-      // 有EEG数据标志位
-      if (pkg.EEG_DATA) {
-        // 循环EEG数据
-        for (let i = 0; i < EEGNumber; i++) {
-          if (isFilter) {
-            // 滤波处理
-            signalProcess.run_pre_process_filter(
-              channel,
-              new FloatArray([
-                pkg.brain_elec_channel1[i],
-                pkg.brain_elec_channel2[i],
-              ]),
-              d
-            );
-            pkg.brain_elec_channel1[i] = d[0];
-            pkg.brain_elec_channel2[i] = d[1];
-          } else {
-            // 不滤波
-            d[0] = pkg.brain_elec_channel1[i];
-            d[1] = pkg.brain_elec_channel2[i];
-          }
-
-          signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
-
-          //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
-          for (
-            let current_channel = 0;
-            current_channel < channel;
-            current_channel++
-          ) {
-            time_e_s[current_channel] = [
-              e1[current_channel],
-              e2[current_channel],
-              e3[current_channel],
-              e4[current_channel],
-              e5[current_channel],
-            ];
-
-            signalProcess.fft_ps(
-              current_channel,
-              sample_rate,
-              d[current_channel], //(test_i + 1) % 32
-              step,
-              window,
-              ps,
-              psd,
-              psd_relative,
-              psd_relative_percent
-            ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
-
-            // ps_s[current_channel] = ps;
-            psd_s[current_channel] = psd;
-            psd_relative_s[current_channel] = psd_relative;
-            psd_relative_percent_s[current_channel] = psd_relative_percent;
-          }
-          time_e_s_multiple[i] = time_e_s;
-          // ps_s_multiple[i] = ps_s;
-          psd_s_multiple[i] = psd_s;
-          psd_relative_s_multiple[i] = psd_relative_s;
-          psd_relative_percent_s_multiple[i] = psd_relative_percent_s;
+      if (losspkg && isFilter) {
+        //丢包插值暂时只支持开启滤波的工作模式
+        for (let i = lossNum; i >= 1; i--) {
+          // 复制包
+          const newPkg = JSON.parse(JSON.stringify(pkg));
+          newPkg.pkgnum = pkg.pkgnum - orderGap * i;
+          newPkg.time_mark = pkg.time_mark - timeGap * i;
+          newPkg.color = "red";
+          console.log("复制的包", newPkg.pkgnum, newPkg.time_mark);
+          console.log("当前的包", pkg.pkgnum, pkg.time_mark);
+          processSend(newPkg, hexString);
+          test_i++;
         }
       }
-
+      losspkg = false;
+      processSend(pkg, hexString);
       test_i++;
 
-      process.send!({
-        type: "end-data-decode",
-        data: {
-          hexString: hexString,
-          pkg,
-          // ps_s,
-          psd_s,
-          psd_relative_s,
-          // psd_relative_percent_s,
-          time_e_s,
-          // ps_s_multiple,
-          psd_s_multiple,
-          psd_relative_s_multiple,
-          psd_relative_percent_s_multiple,
-          time_e_s_multiple,
-          packetLossRate,
-          packetLossNum,
-        },
-      });
-
-      // console.log(e,'111');
-
+      // 释放内存
       pkgDecode.pkgbuffer_pop();
     }
   }
@@ -335,40 +286,94 @@ process.on("message", async function ({ type, data }) {
   }
 });
 
+function processSend(pkg: any, hexString: any) {
+  // 有EEG数据标志位
+  if (pkg.EEG_DATA) {
+    // 循环EEG数据
+    for (let i = 0; i < EEGNumber; i++) {
+      if (isFilter) {
+        // 滤波处理
+        signalProcess.run_pre_process_filter(
+          channel,
+          new FloatArray([
+            pkg.brain_elec_channel1[i],
+            pkg.brain_elec_channel2[i],
+          ]),
+          d,
+          losspkg
+        );
+        pkg.brain_elec_channel1[i] = d[0];
+        pkg.brain_elec_channel2[i] = d[1];
+      } else {
+        // 不滤波
+        d[0] = pkg.brain_elec_channel1[i];
+        d[1] = pkg.brain_elec_channel2[i];
+      }
+
+      signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
+
+      //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
+      for (
+        let current_channel = 0;
+        current_channel < channel;
+        current_channel++
+      ) {
+        time_e_s[current_channel] = [
+          e1[current_channel],
+          e2[current_channel],
+          e3[current_channel],
+          e4[current_channel],
+          e5[current_channel],
+        ];
+
+        signalProcess.fft_ps(
+          current_channel,
+          sample_rate,
+          d[current_channel], //(test_i + 1) % 32
+          step,
+          window,
+          ps,
+          psd,
+          psd_relative,
+          psd_relative_percent
+        ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
+
+        // ps_s[current_channel] = ps;
+        psd_s[current_channel] = psd;
+        psd_relative_s[current_channel] = psd_relative;
+        psd_relative_percent_s[current_channel] = psd_relative_percent;
+      }
+      time_e_s_multiple[i] = time_e_s;
+      // ps_s_multiple[i] = ps_s;
+      psd_s_multiple[i] = psd_s;
+      psd_relative_s_multiple[i] = psd_relative_s;
+      psd_relative_percent_s_multiple[i] = psd_relative_percent_s;
+    }
+  }
+  process.send!({
+    type: "end-data-decode",
+    data: {
+      hexString: hexString,
+      pkg,
+      // ps_s,
+      psd_s,
+      psd_relative_s,
+      // psd_relative_percent_s,
+      time_e_s,
+      // ps_s_multiple,
+      psd_s_multiple,
+      psd_relative_s_multiple,
+      psd_relative_percent_s_multiple,
+      time_e_s_multiple,
+      packetLossRate,
+      packetLossNum,
+    },
+  });
+}
+
 // new DoubleArray数据转普通数组
 function doubleArrayToArray(data: any) {
   return Array.from({ length: data.buffer.length / 8 }, (_, i) =>
     data.buffer.readDoubleLE(i * 8)
   );
 }
-
-// //计算功率谱、计算功率谱密度、计算相对功率谱
-
-// function calculatePowerSpectrum(d: number) {
-//   // let psState = signalProcess.fft_ps(d, step, window, y); //计算功率谱：假设d1为上述存储的最终滤波后数组,当fft_ps（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
-//   let psdState = signalProcess.fft_psd(d, sample_rate, step, window, y); //计算功率谱密度：假设d1为上述存储的最终滤波后数组,当fft_psd（d1[i],step,window,y）返回值为true,fft输出频域数组y[]会更新，此时需要将y[]画图显示；单位为db
-//   // let relatedState = signalProcess.fft_psd_relative(
-//   //   d,
-//   //   sample_rate,
-//   //   step,
-//   //   window,
-//   //   y2
-//   // ); //计算相对功率谱：假设d1为上述存储的最终滤波后数组,当fft_psd_relative（d1[i],sample_rate,step,window,y）返回值为true,数组y2[]会更新，此时需要将y[]画图显示,y2[]为相对频谱密度数组，长度为7，存储每个频段能量百分比单位为%单位为%
-
-//   return {
-//     // psState: psState,
-//     // ps: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
-//     //   y.buffer.readDoubleLE(i * 8)
-//     // ),
-//     psdState: psdState,
-//     psd: Array.from({ length: y.buffer.length / 8 }, (_, i) =>
-//       y.buffer.readDoubleLE(i * 8)
-//     ),
-//     relatedState: true,
-//     related: [0, 0, 0, 0, 0, 0, 0],
-//     // relatedState: relatedState,
-//     // related: Array.from({ length: y2.buffer.length / 8 }, (_, i) =>
-//     //   y2.buffer.readDoubleLE(i * 8)
-//     // ),
-//   };
-// }
