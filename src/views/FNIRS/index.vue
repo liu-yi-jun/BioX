@@ -484,8 +484,8 @@ const handlePkgList = (data) => {
   ) {
     pkgDataList.shift();
   }
-  //  有其他数据标志位
-  if (data.ELSE_DATA) {
+  //  有IR标识
+  if (data.pkg_type === 2) {
     pkgDataList.push(data);
   }
 };
@@ -501,7 +501,7 @@ const joinPkgList = () => {
     if (
       item.time_mark - pkgSourceData[0].time_mark <=
         playIndex.value * minTimeGap &&
-      item.ELSE_DATA
+      item.pkg_type === 2
     ) {
       tempPkgDataList.push(item);
     } 
@@ -766,17 +766,18 @@ const generateSeries = () => {
 };
 
 const mapChanToField = (index) => {
+  return index - 1;
   switch (
     index // 通道索引
   ) {
     case 1:
-      return "near_infrared_channel_1_wavelength_1";
+      return "near_infrared";
     case 2:
-      return "near_infrared_channel_1_wavelength_2";
+      return "near_infrared";
     case 3:
-      return "near_infrared_channel_1_wavelength_13";
+      return "near_infrared";
     default:
-      return "near_infrared_channel_1_wavelength_23";
+      return "near_infrared";
   }
 };
 const mapRadioToField = (index) => {
@@ -786,9 +787,9 @@ const mapRadioToField = (index) => {
     case 1:
       return 0;
     case 2:
-      return 1;
-    case 3:
       return 2;
+    case 3:
+      return 1;
     default:
       return 0;
   }
@@ -807,7 +808,7 @@ const conversionPkgtoTimeSeries = (field, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     return {
-      value: [baseTime, item[field][index]],
+      value: [baseTime, item.near_infrared[field][index]],
     };
   });
 };

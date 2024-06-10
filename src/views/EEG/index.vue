@@ -443,8 +443,6 @@ const realTimerRenderData = () => {
 
 // 数据包处理
 const handlePkgList = (data) => {
-  packetLossRate.value = data.packetLossRate;
-  packetLossNum.value = data.packetLossNum;
   if (
     pkgDataList.length &&
     pkgDataList[pkgDataList.length - 1].time_mark - pkgDataList[0].time_mark >
@@ -453,7 +451,9 @@ const handlePkgList = (data) => {
     pkgDataList.shift();
   }
   //  有EEG数据标志位
-  if (data.EEG_DATA) {
+  if (data.pkg_type === 1) {
+    packetLossRate.value = data.loss_data_info_el.packetLossRate;
+    packetLossNum.value = data.loss_data_info_el.packetLossNum;
     pkgDataList.push(data);
   }
 };
@@ -469,7 +469,7 @@ const joinPkgList = () => {
     if (
       item.time_mark - pkgSourceData[0].time_mark <=
         playIndex.value * minTimeGap &&
-      item.EEG_DATA
+      item.pkg_type === 1
     ) {
       tempPkgDataList.push(item);
     }
@@ -1852,17 +1852,8 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
     if (sliceIndex !== 0) {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
-    let brain_elec_channel =
-      item[
-        parseChannel(typeChannel) === 1
-          ? "brain_elec_channel2"
-          : "brain_elec_channel1"
-      ];
-    for (
-      let brainIndex = 0;
-      brainIndex < brain_elec_channel.length;
-      brainIndex++
-    ) {
+    let brain_elec_channel = item.brain_elec_channel[parseChannel(typeChannel)];
+    for (let brainIndex = 0; brainIndex < item.eeg_data_num; brainIndex++) {
       tempSliceData.push({
         value: [
           baseTime + brainIndex * EEGTimeGap,
@@ -1880,6 +1871,7 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
   return tempSliceData;
 };
 
+// 计算时间间隔
 const calculateMinTimeGap = () => {
   if (pkgDataList.length >= 2) {
     return (

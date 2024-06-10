@@ -193,6 +193,7 @@ function createWindow() {
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     child.on("message", ({ type, data }: { type: string; data: any }) => {
+
       if (type === "end-data-decode") {
         event.sender.send("end-data-decode", data);
       }
@@ -201,7 +202,6 @@ function createWindow() {
 
   //  开始蓝牙数据解码
   ipcMain.on("start-data-decode", (event, data) => {
-    // console.log("start-data-decode", data);
     child.connected &&
       child.send({ type: "start-data-decode", data: Buffer.from(data) });
   });

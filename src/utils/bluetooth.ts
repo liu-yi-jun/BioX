@@ -6,7 +6,7 @@ import { CustomDatabase } from "../utils/db";
 const db = new CustomDatabase();
 import { message } from "ant-design-vue";
 let server, device, characteristic1, characteristic2;
-let handleNotifications = function (event) {
+let handleNotifications = function (event) {  
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
@@ -27,8 +27,7 @@ const handleEndDataDecode = (event, data) => {
       psd_relative_s_multiple: data.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
       time_e_s_multiple: data.time_e_s_multiple,
-      packetLossRate: data.packetLossRate,
-      packetLossNum: data.packetLossNum,
+      loss_data_info_el: data.LDInfoEl,
     });
   }
   textIndex++;
@@ -151,6 +150,7 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     cb(true, "hide");
     cb(true, "success");
   } catch (err) {
+    debugger
     cb(false, err.message);
   }
 };
