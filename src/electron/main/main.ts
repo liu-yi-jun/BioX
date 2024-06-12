@@ -21,7 +21,7 @@ log.error("process.env.NODE_ENV:" + process.env.NODE_ENV);
 log.error("main:path:" + _product_path);
 
 // 定义child配置项
-let config = {}
+let config = {};
 
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -121,11 +121,12 @@ function createWindow() {
 
   // 关闭子进程
   ipcMain.on("close-child", (event) => {
-    child.connected && child.kill();
+    child && child.connected && child.kill();
   });
 
   // 关闭应用
   ipcMain.on("close-window", (event) => {
+    child && child.connected && child.kill();
     app.quit();
   });
 
@@ -137,8 +138,7 @@ function createWindow() {
   // 修改配置项
   ipcMain.on("change-config", (event, data) => {
     config = Object.assign(config, JSON.parse(data));
-    console.log('change-config', config);
-    
+    console.log("change-config", config);
   });
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
@@ -193,7 +193,6 @@ function createWindow() {
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     child.on("message", ({ type, data }: { type: string; data: any }) => {
-
       if (type === "end-data-decode") {
         event.sender.send("end-data-decode", data);
       }
@@ -202,12 +201,13 @@ function createWindow() {
 
   //  开始蓝牙数据解码
   ipcMain.on("start-data-decode", (event, data) => {
-    child.connected &&
+    child &&
+      child.connected &&
       child.send({ type: "start-data-decode", data: Buffer.from(data) });
   });
 
   ipcMain.on("bluetooth-scan", (event) => {
-    child.connected && child.send({ type: "bluetooth-scan" });
+    child && child.connected && child.send({ type: "bluetooth-scan" });
   });
 
   // and load the index.html of the app.

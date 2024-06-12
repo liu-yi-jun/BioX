@@ -6,7 +6,7 @@ import { CustomDatabase } from "../utils/db";
 const db = new CustomDatabase();
 import { message } from "ant-design-vue";
 let server, device, characteristic1, characteristic2;
-let handleNotifications = function (event) {  
+let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
@@ -94,9 +94,9 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     const character2 = "00000002-8e22-4541-9d4c-21edae82ed19";
     setTimeout(() => {
       cb(true, "initComplete");
-    }, 1000);
+    }, 1500);
 
-    if (!server) {
+    // if (!server || !device.gatt) {
       device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [serverUUID], //将服务UUID添加到这里
@@ -105,11 +105,11 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
       });
       // 连接到设备
       server = await device.gatt.connect();
-    } else {
-      if (!device.gatt.connected) {
-        server = await device.gatt.connect();
-      }
-    }
+    // } else {
+    //   if (!device.gatt.connected) {
+    //     server = await device.gatt.connect();
+    //   }
+    // }
 
     cb(true, "loading");
 
@@ -150,7 +150,9 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     cb(true, "hide");
     cb(true, "success");
   } catch (err) {
-    debugger
+    if (server) {
+      clearBluetooth();
+    }
     cb(false, err.message);
   }
 };
@@ -164,19 +166,29 @@ CustomBluetooth.prototype.removeNotice = function (cb: Function) {
 };
 
 CustomBluetooth.prototype.close = function (cb: Function) {
-  if (server && device.gatt.connected) {
-    server.disconnect();
-    server = null;
-    device = null;
-    characteristic1 = null;
-    characteristic2 = null;
-    ipcRenderer.removeListener("end-data-decode", handleEndDataDecode);
-    ipcRenderer.send("close-child");
+  if (server) {
+    clearBluetooth();
     cb(true, "设备连接已断开");
   } else {
     cb(false, "蓝牙未连接");
   }
 };
+
+function clearBluetooth() {
+  server.disconnect();
+  server = null;
+  device = null;
+  if(characteristic1) {
+    characteristic1.removeEventListener("characteristicvaluechanged", atNotice);
+  }
+  if(characteristic2) {
+    characteristic2.removeEventListener("characteristicvaluechanged", handleNotifications);
+  }
+  characteristic1 = null;
+  characteristic2 = null;
+  ipcRenderer.removeListener("end-data-decode", handleEndDataDecode);
+  ipcRenderer.send("close-child");
+}
 
 // 添加AT通知事件
 CustomBluetooth.prototype.addATNotice = function (cb: Function) {

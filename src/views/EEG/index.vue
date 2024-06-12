@@ -901,7 +901,7 @@ const initBarnsTime = () => {
           const seriesName = item.seriesName; // 系列名称
           const value = item.value; // 数据值
           const marker = item.marker; // 标志图形
-          result += `${marker}${seriesName}: ${value[1]}<br/>`;
+          result += `${marker}${seriesName}:${value[0]}: ${value[1]}<br/>`;
         });
         return result;
       },
@@ -1690,6 +1690,7 @@ const updateRenderBarnsTime = (type?: string) => {
       });
       break;
   }
+  
   barnsTimeChart.setOption(
     {
       series: [
@@ -1825,6 +1826,7 @@ const conversionPkgtoBarnsTimeOrRelated = (field, typeChannel, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     let fieldDataList = item[field + "_multiple"];
+    
     for (let fieldIndex = 0; fieldIndex < fieldDataList.length; fieldIndex++) {
       tempSliceData.push({
         value: [

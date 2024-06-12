@@ -141,16 +141,7 @@ const step = 10; //fft 步长
 const sample_rate = 250;
 
 const channel = 2;
-const d = new DoubleArray(channel);
-const e1 = new DoubleArray(channel); //Delta频段各通道时域数据数组
-const e2 = new DoubleArray(channel); //Theta频段各通道时域数据数组
-const e3 = new DoubleArray(channel); //Alpha频段各通道时域数据数组
-const e4 = new DoubleArray(channel); //Beta频段各通道时域数据数组
-const e5 = new DoubleArray(channel); //Gamma频段各通道时域数据数组
-const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
-const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
-const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
-const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+
 const timeGap = 40; //包时间间隔，单位ms
 
 const time_e_s: any = [0, 0];
@@ -163,6 +154,11 @@ const ps_s_multiple: any = [];
 const psd_s_multiple: any = [];
 const psd_relative_s_multiple: any = [];
 const psd_relative_percent_s_multiple: any = [];
+
+const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
+const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
+const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
+const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
 
 let lossDataTemplate = {
   baseAdjustedTimestamps: 0, //基础某秒时间戳
@@ -319,9 +315,9 @@ process.on("message", async function ({ type, data }) {
         pkg.eeg_data_num,
         pkg.error_state
       );
-     
+
       let LDInfoEl = mapLossDataInfo(pkg.pkg_type);
-      if (pkg.pkg_type === 1 && LDInfoEl.losspkg && isFilter) {
+      if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && isFilter) {
         //丢包插值暂时只支持开启滤波的工作模式
         for (let i = LDInfoEl.lossNum; i >= 1; i--) {
           // 复制包
@@ -333,7 +329,7 @@ process.on("message", async function ({ type, data }) {
           test_i++;
         }
       }
-      LDInfoEl.losspkg = false;
+      LDInfoEl.isLosspkg = false;
       processSend(pkg, LDInfoEl, hexString);
       test_i++;
 
@@ -358,6 +354,12 @@ function processSend(
     // 循环EEG数据
     for (let i = 0; i < pkg.eeg_data_num; i++) {
       let inputData = [];
+      const d = new DoubleArray(channel);
+      const e1 = new DoubleArray(channel); //Delta频段各通道时域数据数组
+      const e2 = new DoubleArray(channel); //Theta频段各通道时域数据数组
+      const e3 = new DoubleArray(channel); //Alpha频段各通道时域数据数组
+      const e4 = new DoubleArray(channel); //Beta频段各通道时域数据数组
+      const e5 = new DoubleArray(channel); //Gamma频段各通道时域数据数组
 
       if (isFilter) {
         // 滤波处理
@@ -420,17 +422,24 @@ function processSend(
         ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
 
         // ps_s[current_channel] = ps;
-        psd_s[current_channel] = psd;
-        psd_relative_s[current_channel] = psd_relative;
-        psd_relative_percent_s[current_channel] = psd_relative_percent;
+        psd_s[current_channel] = JSON.parse(JSON.stringify(psd));
+        psd_relative_s[current_channel] = JSON.parse(
+          JSON.stringify(psd_relative)
+        );
+        psd_relative_percent_s[current_channel] = JSON.parse(
+          JSON.stringify(psd_relative_percent)
+        );
       }
-      time_e_s_multiple[i] = time_e_s;
+      time_e_s_multiple[i] = JSON.parse(JSON.stringify(time_e_s));
       // ps_s_multiple[i] = ps_s;
-      psd_s_multiple[i] = psd_s;
-      psd_relative_s_multiple[i] = psd_relative_s;
-      psd_relative_percent_s_multiple[i] = psd_relative_percent_s;
+      psd_s_multiple[i] = JSON.parse(JSON.stringify(psd_s));
+      psd_relative_s_multiple[i] = JSON.parse(JSON.stringify(psd_relative_s));
+      psd_relative_percent_s_multiple[i] = JSON.parse(
+        JSON.stringify(psd_relative_percent_s)
+      );
     }
   }
+
   // console.log("LDInfoEl", LDInfoEl);
 
   process.send!({
