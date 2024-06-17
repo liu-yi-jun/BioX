@@ -2,57 +2,60 @@
   <div class="charts-wrap eeg-wrap">
     <p class="eig-nav-title">EEG</p>
     <div class="eig-card card-top">
-      <p class="card-title">
-        Time Series
-        <span style="margin-left: 10px">plr:{{ packetLossRate }}</span>
-        <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
-      </p>
-      <div class="time-series">
-        <div class="eig-filter eig-select-wrap">
-          <div class="filter-right">
-            <a-form size="small" :model="seriesForm" layout="inline">
-              <a-form-item label="min">
-                <a-input
-                  type="number"
-                  style="width: 100px"
-                  @change="updateRenderRealSeriesData('yAxis')"
-                  v-model:value="seriesForm.min"
-                  placeholder="auto"
-                />
-              </a-form-item>
-              <a-form-item label="max">
-                <a-input
-                  type="number"
-                  style="width: 100px"
-                  @change="updateRenderRealSeriesData('yAxis')"
-                  v-model:value="seriesForm.max"
-                  placeholder="auto"
-                />
-              </a-form-item>
-              <a-form-item>
-                <a-select
-                  v-model:value="seriesStep"
-                  style="width: 100px"
-                  @change="updateRenderRealSeriesData('channel')"
-                  aria-placeholder="Show Time"
-                  :options="showTimeOptions"
-                  size="small"
-                ></a-select>
-              </a-form-item>
-              <a-form-item>
-                <a-select
-                  v-model:value="channel"
-                  mode="multiple"
-                  :style="{ 'min-width': '100px' }"
-                  placeholder="Channels"
-                  :options="channelOptions"
-                  size="small"
-                  @change="generateSeries"
-                ></a-select>
-              </a-form-item>
-            </a-form>
-          </div>
+      <div class="eig-filter eig-select-wrap">
+        <div class="filter-left">
+          <p class="card-title">
+            Time Series
+            <span style="margin-left: 10px">plr:{{ packetLossRate }}</span>
+            <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
+          </p>
         </div>
+        <div class="filter-right">
+          <a-form size="small" :model="seriesForm" layout="inline">
+            <a-form-item label="min">
+              <a-input
+                type="number"
+                style="width: 100px"
+                @change="updateRenderRealSeriesData('yAxis')"
+                v-model:value="seriesForm.min"
+                placeholder="auto"
+              />
+            </a-form-item>
+            <a-form-item label="max">
+              <a-input
+                type="number"
+                style="width: 100px"
+                @change="updateRenderRealSeriesData('yAxis')"
+                v-model:value="seriesForm.max"
+                placeholder="auto"
+              />
+            </a-form-item>
+            <a-form-item>
+              <a-select
+                v-model:value="seriesStep"
+                style="width: 100px"
+                @change="updateRenderRealSeriesData('channel')"
+                aria-placeholder="Show Time"
+                :options="showTimeOptions"
+                size="small"
+              ></a-select>
+            </a-form-item>
+            <a-form-item>
+              <a-select
+                v-model:value="channel"
+                mode="multiple"
+                :style="{ 'min-width': '100px' }"
+                placeholder="Channels"
+                :options="channelOptions"
+                size="small"
+                @change="generateSeries"
+              ></a-select>
+            </a-form-item>
+          </a-form>
+        </div>
+      </div>
+
+      <div class="time-series">
         <div style="width: 100%; height: 100%" id="series"></div>
       </div>
     </div>
@@ -156,6 +159,15 @@
                   @change="handleChangeBandsType"
                   aria-placeholder="Show Time"
                   :options="relatedChannelOptions"
+                  size="small"
+                ></a-select>
+                <a-select
+                  v-if="bandsType === 'Related Power'"
+                  v-model:value="relatedStep"
+                  style="width: 100px"
+                  @change="updateRenderRelated('xAxis')"
+                  aria-placeholder="Show Time"
+                  :options="showTimeOptions"
                   size="small"
                 ></a-select>
                 <a-select
@@ -266,6 +278,10 @@ const showTimeOptionsData = [
   {
     value: 10,
     label: "10 sec",
+  },
+  {
+    value: 20,
+    label: "20 sec",
   },
   {
     value: 30,
@@ -744,9 +760,11 @@ const initRelated = () => {
   relatedChart && relatedChart.clear();
   relatedChart.setOption({
     animation: false,
-    color: ["#0721E6", "#4C68FF", "#7A83FF", "#A19CFF", "#E4CDFF"],
+    color: ["#E4CDFF","#A19CFF", "#7A83FF", "#4C68FF","#0721E6"],
 
     legend: {
+      // 0，1，2，3，4
+      // DELTA（δ）、THETA（θ）、ALPHA （α）、BETA （β）、GAMMA （γ）
       data: ["γ wave", "β wave", "α wave", "θ wave", "δ wave"],
       top: 5,
       icon: "circle",
@@ -795,66 +813,10 @@ const initRelated = () => {
       },
     ],
     series: [
-      {
-        name: "γ wave",
-        type: "line",
-
-        smooth: true,
-        lineStyle: {
-          width: 0,
-        },
-        emphasis: {
-          disabled: true,
-        },
-        showSymbol: false,
-        areaStyle: {},
-        data: [],
-      },
-      {
-        name: "β wave",
-        type: "line",
-        emphasis: {
-          disabled: true,
-        },
-        smooth: true,
-        lineStyle: {
-          width: 0,
-        },
-        showSymbol: false,
-        areaStyle: {},
-        data: [],
-      },
-      {
-        name: "α wave",
-        type: "line",
-        emphasis: {
-          disabled: true,
-        },
-        smooth: true,
-        lineStyle: {
-          width: 0,
-        },
-        showSymbol: false,
-        areaStyle: {},
-        data: [],
-      },
-      {
-        name: "θ wave",
-        type: "line",
-        emphasis: {
-          disabled: true,
-        },
-        smooth: true,
-        lineStyle: {
-          width: 0,
-        },
-        showSymbol: false,
-        areaStyle: {},
-        data: [],
-      },
-      {
+    {
         name: "δ wave",
         type: "line",
+        stack: "Total",
         emphasis: {
           disabled: true,
         },
@@ -870,6 +832,70 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
+  
+      {
+        name: "θ wave",
+        type: "line",
+        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
+        smooth: true,
+        lineStyle: {
+          width: 0,
+        },
+        showSymbol: false,
+        areaStyle: {},
+        data: [],
+      },
+    
+      {
+        name: "α wave",
+        type: "line",
+        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
+        smooth: true,
+        lineStyle: {
+          width: 0,
+        },
+        showSymbol: false,
+        areaStyle: {},
+        data: [],
+      },
+      {
+        name: "β wave",
+        type: "line",
+        stack: "Total",
+        emphasis: {
+          disabled: true,
+        },
+        smooth: true,
+        lineStyle: {
+          width: 0,
+        },
+        showSymbol: false,
+        areaStyle: {},
+        data: [],
+      },
+
+      {
+        name: "γ wave",
+        type: "line",
+        stack: "Total",
+        smooth: true,
+        lineStyle: {
+          width: 0,
+        },
+        emphasis: {
+          disabled: true,
+        },
+        showSymbol: false,
+        areaStyle: {},
+        data: [],
+      },
+
     ],
   });
 };
@@ -1591,54 +1617,74 @@ const undateRenderAbsoule = () => {
 };
 
 // 更新渲染--related
-const updateRenderRelated = () => {
+const updateRenderRelated = (type?: string) => {
+  switch (type) {
+    case "xAxis":
+      relatedChart.setOption({
+        xAxis: [
+          {
+            splitNumber: relatedStep.value,
+            max: relatedStep.value * 1000,
+          },
+        ],
+      });
+      break;
+  }
+
   relatedChart &&
     relatedChart.setOption(
       {
         series: [
-          {
-            name: "γ wave",
+        {
+            name: "δ wave",
+            stack: "Total",
             data: conversionPkgtoBarnsTimeOrRelated(
               "psd_relative_percent_s",
               bandsChannel.value,
               0,
-              barnsTimeMaxStep
-            ),
-          },
-          {
-            name: "β wave",
-            data: conversionPkgtoBarnsTimeOrRelated(
-              "psd_relative_percent_s",
-              bandsChannel.value,
-              1,
-              barnsTimeMaxStep
-            ),
-          },
-          {
-            name: "α wave",
-            data: conversionPkgtoBarnsTimeOrRelated(
-              "psd_relative_percent_s",
-              bandsChannel.value,
-              2,
-              barnsTimeMaxStep
+              relatedStep.value
             ),
           },
           {
             name: "θ wave",
+            stack: "Total",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              1,
+              relatedStep.value
+            ),
+          },
+         
+         
+          {
+            name: "α wave",
+            stack: "Total",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              2,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "β wave",
+            stack: "Total",
             data: conversionPkgtoBarnsTimeOrRelated(
               "psd_relative_percent_s",
               bandsChannel.value,
               3,
-              barnsTimeMaxStep
+              relatedStep.value
             ),
           },
           {
-            name: "δ wave",
+            name: "γ wave",
+            stack: "Total",
             data: conversionPkgtoBarnsTimeOrRelated(
               "psd_relative_percent_s",
               bandsChannel.value,
               4,
-              barnsTimeMaxStep
+              relatedStep.value
             ),
           },
         ],
@@ -1690,7 +1736,7 @@ const updateRenderBarnsTime = (type?: string) => {
       });
       break;
   }
-  
+
   barnsTimeChart.setOption(
     {
       series: [
@@ -1826,7 +1872,7 @@ const conversionPkgtoBarnsTimeOrRelated = (field, typeChannel, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     let fieldDataList = item[field + "_multiple"];
-    
+
     for (let fieldIndex = 0; fieldIndex < fieldDataList.length; fieldIndex++) {
       tempSliceData.push({
         value: [

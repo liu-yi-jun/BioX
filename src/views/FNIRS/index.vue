@@ -2,12 +2,51 @@
   <div class="charts-wrap fnirs-wrap">
     <p class="eig-nav-title">FNIRS</p>
     <div class="eig-card card-top">
-      <p class="card-title">Time Series</p>
-      <div
-        style="width: 100%; height: 100%"
-        class="time-series"
-        id="series"
-      ></div>
+      <div class="eig-filter eig-select-wrap">
+        <div class="filter-left">
+          <p class="card-title">
+            Time Series
+            <span style="margin-left: 10px">plr:{{ packetLossRate }}</span>
+            <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
+          </p>
+        </div>
+        <div class="filter-right">
+          <a-form size="small" :model="seriesForm" layout="inline">
+            <a-form-item label="min">
+              <a-input
+                type="number"
+                style="width: 100px"
+                @change="handleChange"
+                v-model:value="seriesForm.min"
+                placeholder="auto"
+              />
+            </a-form-item>
+            <a-form-item label="max">
+              <a-input
+                type="number"
+                style="width: 100px"
+                @change="handleChange"
+                v-model:value="seriesForm.max"
+                placeholder="auto"
+              />
+            </a-form-item>
+            <a-form-item>
+              <a-select
+                v-model:value="seriesStep"
+                style="width: 100px"
+                @change="handleChange"
+                aria-placeholder="Show Time"
+                :options="showTimeOptions"
+                size="small"
+              ></a-select>
+            </a-form-item>
+          </a-form>
+        </div>
+      </div>
+
+      <div class="time-series">
+        <div style="width: 100%; height: 100%" id="series"></div>
+      </div>
     </div>
     <div class="card-bottom">
       <div class="eig-card">
@@ -225,6 +264,7 @@
 </template>
 
 <script setup lang="ts">
+import type { SelectProps } from "ant-design-vue";
 import {
   ref,
   reactive,
@@ -244,6 +284,31 @@ const seriesStep = ref(30);
 const seriesMaxStep = 30;
 const isRender = ref(false);
 const minTimeGap = 250;
+const packetLossRate = ref(0);
+const packetLossNum = ref(0);
+const showTimeOptionsData = [
+  {
+    value: 1,
+    label: "1 sec",
+  },
+  {
+    value: 5,
+    label: "5 sec",
+  },
+  {
+    value: 10,
+    label: "10 sec",
+  },
+  {
+    value: 30,
+    label: "30 sec",
+  },
+];
+const seriesForm = reactive({
+  min: "",
+  max: "",
+});
+const showTimeOptions = ref<SelectProps["options"]>(showTimeOptionsData);
 let isRenderTimer, realTimer;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
 import { CustomDatabase } from "../../utils/db";
@@ -386,7 +451,7 @@ watch(
             timerPlay && clearInterval(timerPlay);
             return;
           }
-          pkgDataList = joinPkgList();  
+          pkgDataList = joinPkgList();
           renderData();
         }
       }, 250);
@@ -486,6 +551,8 @@ const handlePkgList = (data) => {
   }
   //  有IR标识
   if (data.pkg_type === 2) {
+    packetLossRate.value = data.loss_data_info_el.packetLossRate;
+    packetLossNum.value = data.loss_data_info_el.packetLossNum;
     pkgDataList.push(data);
   }
 };
@@ -504,7 +571,7 @@ const joinPkgList = () => {
       item.pkg_type === 2
     ) {
       tempPkgDataList.push(item);
-    } 
+    }
   }
   return tempPkgDataList;
 };
@@ -632,6 +699,7 @@ const generateXAxisArr = () => {
       show: index === showSeriesData.length - 1,
       boundaryGap: false,
       gridIndex: index,
+      splitNumber: seriesStep.value,
       max: seriesStep.value * 1000,
       axisLabel: {
         color: "#666666",
@@ -655,14 +723,23 @@ const generateYAxisArr = () => {
     return {
       show: true,
       axisLine: {
-        show: false, // 显示y轴线
+        show: true, // 显示y轴线
+        // lineStyle: {
+        //   width: 0.5, 
+        // },
       },
       axisLabel: {
+        fontSize: 8,
         //坐标轴刻度标签
-        show: false,
+        show: showSeriesData.length <= 8,
       },
+      max: seriesForm.max === "" ? undefined : seriesForm.max,
+      min: seriesForm.min === "" ? undefined : seriesForm.min,
       axisTick: {
-        show: false, // 可取消y轴刻度线
+        show: showSeriesData.length <= 8, // 可取消y轴刻度线
+        // lineStyle: {
+        //   width: 0.5,
+        // },
       },
       splitLine: {
         show: false, // 去除网格线
@@ -672,6 +749,7 @@ const generateYAxisArr = () => {
       nameLocation: "middle",
       nameTextStyle: {
         fontSize: 12,
+        padding: 10, // 设置与坐标轴的距离，单位为像素
         fontWeight: "bold",
       },
       type: "value",
@@ -684,10 +762,10 @@ const generateYAxisArr = () => {
 const generateGrid = () => {
   gridArr = showSeriesData.map((item, index) => {
     return {
-      left: "7%",
+      left: "8%",
       right: "4%",
-      top: (100 / showSeriesData.length) * index + "%",
-      bottom: 100 - (100 / showSeriesData.length) * (index + 1) + "%",
+      top: index == 0 ? "2%" : (94 / showSeriesData.length) * index + "%",
+      bottom: 100 - (94 / showSeriesData.length) * (index + 1) + "%",
       containLabel: false,
     };
   });
@@ -787,9 +865,9 @@ const mapRadioToField = (index) => {
     case 1:
       return 0;
     case 2:
-      return 2;
-    case 3:
       return 1;
+    case 3:
+      return 2;
     default:
       return 0;
   }
@@ -815,15 +893,18 @@ const conversionPkgtoTimeSeries = (field, index, step) => {
 
 // 渲染图表
 const initSeries = () => {
-  myChart?.setOption({
-    animation: false,
-    xAxis: xAxisArr,
-    grid: gridArr,
-    yAxis: yAxisArr,
-    series: seriesArr,
-  },{
-    lazyUpdate: true,
-  });
+  myChart?.setOption(
+    {
+      animation: false,
+      xAxis: xAxisArr,
+      grid: gridArr,
+      yAxis: yAxisArr,
+      series: seriesArr,
+    },
+    {
+      lazyUpdate: true,
+    }
+  );
 };
 
 // 切换渠道

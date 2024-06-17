@@ -107,7 +107,7 @@ li {
 .eig-filter {
   &.eig-select-wrap {
     background-color: inherit;
-    padding: 10px 20px;
+    padding: 10px 10px 5px;
   }
   background-color: #f4f4f4;
   padding: 10px;
@@ -186,7 +186,7 @@ li {
 
 .eig-card {
   border: 1px solid #c4c4c4;
-  padding: 15px 20px;
+  padding: 10px 15px;
   .card-title {
     color: #7c7a7a;
     font-weight: bold;
@@ -206,7 +206,7 @@ li {
   display: flex;
   flex-direction: column;
   .card-top {
-    margin: 20px;
+    margin: 10px;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -218,7 +218,7 @@ li {
       flex: 1;
       display: flex;
       flex-direction: column;
-      margin: 20px;
+      margin: 10px;
     }
 
     & > .view-setting-card {
@@ -241,7 +241,7 @@ li {
   display: flex;
   flex-direction: column;
   .view-setting-box {
-    margin: 40px 20px;
+    margin: 20px 20px;
     // flex: 1;
     .view-setting {
       display: flex;

@@ -54,7 +54,7 @@ const PKG = Struct({
     ArrayType(ref.types.float, max_eeg_group_num),
     max_channel
   ), //最高支持16个EEG通道的256个连续数据
-  near_infrared: ArrayType(ArrayType(ref.types.float, 4), max__ir_channel), // 8个通道的近红外数据，依次为S1，PD1；S1，PD2；S1，PD3；S1，PD4；S2，PD1；S2，PD2；S2，PD3；S2，PD4；；每个通道内数据依次为λ1 31 λ2 λ32
+  near_infrared: ArrayType(ArrayType(ref.types.float, 4), max__ir_channel), // 8个通道的近红外数据，依次为S1，PD1；S1，PD2；S1，PD3；S1，PD4；S2，PD1；S2，PD2；S2，PD3；S2，PD4；；每个通道内数据依次为λ1 λ31 λ2 λ32
   // brain_elec_channel1: ArrayType(ref.types.float, 10), //EEG通道1的10个数据
   // brain_elec_channel2: ArrayType(ref.types.float, 10), //EEG通道2的10个数据
   // near_infrared_channel_1_wavelength_1: ArrayType(ref.types.float, 4), // IR第1通道第1个波长
@@ -304,17 +304,17 @@ process.on("message", async function ({ type, data }) {
       calculatePacketLoss(pkg);
 
       // 打印
-      console.log(
-        "pkglen,pkgnum,time_mark,pkg_type,eeg_channel,ir_channel,eeg_data_num,error_state",
-        pkg.pkglen,
-        pkg.pkgnum,
-        pkg.time_mark,
-        pkg.pkg_type,
-        pkg.eeg_channel,
-        pkg.ir_channel,
-        pkg.eeg_data_num,
-        pkg.error_state
-      );
+      // console.log(
+      //   "pkglen,pkgnum,time_mark,pkg_type,eeg_channel,ir_channel,eeg_data_num,error_state",
+      //   pkg.pkglen,
+      //   pkg.pkgnum,
+      //   pkg.time_mark,
+      //   pkg.pkg_type,
+      //   pkg.eeg_channel,
+      //   pkg.ir_channel,
+      //   pkg.eeg_data_num,
+      //   pkg.error_state
+      // );
 
       let LDInfoEl = mapLossDataInfo(pkg.pkg_type);
       if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && isFilter) {
@@ -352,14 +352,15 @@ function processSend(
   // 有EEG数据标志位
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
+
     for (let i = 0; i < pkg.eeg_data_num; i++) {
       let inputData = [];
-      const d = new DoubleArray(channel);
-      const e1 = new DoubleArray(channel); //Delta频段各通道时域数据数组
-      const e2 = new DoubleArray(channel); //Theta频段各通道时域数据数组
-      const e3 = new DoubleArray(channel); //Alpha频段各通道时域数据数组
-      const e4 = new DoubleArray(channel); //Beta频段各通道时域数据数组
-      const e5 = new DoubleArray(channel); //Gamma频段各通道时域数据数组
+      let d = new DoubleArray(channel);
+      let e1 = new DoubleArray(channel); //Delta频段各通道时域数据数组
+      let e2 = new DoubleArray(channel); //Theta频段各通道时域数据数组
+      let e3 = new DoubleArray(channel); //Alpha频段各通道时域数据数组
+      let e4 = new DoubleArray(channel); //Beta频段各通道时域数据数组
+      let e5 = new DoubleArray(channel); //Gamma频段各通道时域数据数组
 
       if (isFilter) {
         // 滤波处理
@@ -378,6 +379,8 @@ function processSend(
           LDInfoEl.isLosspkg
         );
       }
+ 
+      
 
       for (
         let current_channel = 0;
@@ -420,7 +423,7 @@ function processSend(
           psd_relative,
           psd_relative_percent
         ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
-
+        // console.log('d',d[0],psd[0],psd_relative[0],psd_relative_percent[0]);
         // ps_s[current_channel] = ps;
         psd_s[current_channel] = JSON.parse(JSON.stringify(psd));
         psd_relative_s[current_channel] = JSON.parse(
@@ -429,18 +432,24 @@ function processSend(
         psd_relative_percent_s[current_channel] = JSON.parse(
           JSON.stringify(psd_relative_percent)
         );
+
       }
       time_e_s_multiple[i] = JSON.parse(JSON.stringify(time_e_s));
       // ps_s_multiple[i] = ps_s;
       psd_s_multiple[i] = JSON.parse(JSON.stringify(psd_s));
       psd_relative_s_multiple[i] = JSON.parse(JSON.stringify(psd_relative_s));
+
       psd_relative_percent_s_multiple[i] = JSON.parse(
         JSON.stringify(psd_relative_percent_s)
       );
+      d = null;
+      e1 = null;
+      e2 = null;
+      e3 = null;
+      e4 = null;
+      e5 = null;
     }
   }
-
-  // console.log("LDInfoEl", LDInfoEl);
 
   process.send!({
     type: "end-data-decode",
