@@ -130,6 +130,13 @@ const signalProcess = ffi.Library(signal_process_path, {
       DoubleArray,
     ],
   ],
+  //初始化ir滤波器
+  init_irbp_filter: ["void", [Double, Int, Double, Double]],//sample_rate:采样率，total_channel:总通道数；fl:下截至频率；fh：上截止频率
+  run_irbp_filter:["void",[Int,Int,DoubleArray,DoubleArray]],//filter_type:字符型变量，“Butterworth”，“ChebyshevI”，“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
+ //基线归零
+  clear_baseline: ["void", []],
+  //计算光密度
+  calc_od:[Bool,[Int,Double,Int,Int,DoubleArray,DoubleArray]],//channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
 });
 
 let test_i = 0;
@@ -159,6 +166,15 @@ const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1
 const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
 const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
 const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+
+// 近红外部分
+const ir_sample_rate = 12.5;
+const baseline_time = 10;
+const ir_channel = 8;
+const ir_step = 2;
+const fl = 0.01; //fl 下截至频率
+const fh = 0.5;  //fh 上截止频率
+const ir_od_date: any = [];
 
 let lossDataTemplate = {
   baseAdjustedTimestamps: 0, //基础某秒时间戳
@@ -259,6 +275,8 @@ function calculatePacketLoss(pkg: any) {
 process.on("message", async function ({ type, data }) {
   if (type === "filter-init") {
     signalProcess.init_filter(sample_rate, channel);
+    signalProcess.clear_baseline();
+    signalProcess.init_irbp_filter(ir_sample_rate, ir_channel,fl,fh);
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
@@ -317,7 +335,8 @@ process.on("message", async function ({ type, data }) {
       // );
 
       let LDInfoEl = mapLossDataInfo(pkg.pkg_type);
-      if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && isFilter) {
+      // pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter
+      if (pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter) {
         //丢包插值暂时只支持开启滤波的工作模式
         for (let i = LDInfoEl.lossNum; i >= 1; i--) {
           // 复制包
@@ -379,8 +398,6 @@ function processSend(
           LDInfoEl.isLosspkg
         );
       }
- 
-      
 
       for (
         let current_channel = 0;
@@ -432,7 +449,6 @@ function processSend(
         psd_relative_percent_s[current_channel] = JSON.parse(
           JSON.stringify(psd_relative_percent)
         );
-
       }
       time_e_s_multiple[i] = JSON.parse(JSON.stringify(time_e_s));
       // ps_s_multiple[i] = ps_s;
@@ -450,6 +466,32 @@ function processSend(
       e5 = null;
     }
   }
+  // 有IR数据标志位
+  if(pkg.pkg_type === 2) {
+
+    for (let current_channel = 0; current_channel < pkg.ir_channel; current_channel++) {
+      let ir_od = new DoubleArray(4); 
+      let ir_filter = new DoubleArray(4); 
+      // 将float数组转换为double数组,float数组直接传不行
+      let ir_input = new DoubleArray(arrayToJs(pkg.near_infrared[current_channel]))
+      let state = signalProcess.calc_od(current_channel,ir_sample_rate,baseline_time,ir_step,ir_input,ir_od);  //state 返回为ture时可以读取OD数据
+      // console.log('state',state);
+
+      
+      if(isFilter) {
+        signalProcess.run_irbp_filter(1,current_channel,ir_od,ir_filter);
+        ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_filter));
+      }else {
+        ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
+      }
+
+      ir_od = null;
+      ir_filter = null;
+    }
+    // console.log('ir_od_date',ir_od_date);
+    // console.log('ir_filter_date',ir_filter_date);
+    
+  }
 
   process.send!({
     type: "end-data-decode",
@@ -466,6 +508,7 @@ function processSend(
       psd_relative_s_multiple,
       psd_relative_percent_s_multiple,
       time_e_s_multiple,
+      ir_od_date,
       LDInfoEl,
     },
   });
@@ -476,4 +519,12 @@ function doubleArrayToArray(data: any) {
   return Array.from({ length: data.buffer.length / 8 }, (_, i) =>
     data.buffer.readDoubleLE(i * 8)
   );
+}
+
+function arrayToJs(array: any) {
+  let newArray = [];
+  for (let i = 0; i < array.length; i++) {
+    newArray[i] = array[i]
+  }
+  return newArray;
 }

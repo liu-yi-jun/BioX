@@ -28,6 +28,7 @@ const handleEndDataDecode = (event, data) => {
       psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
       time_e_s_multiple: data.time_e_s_multiple,
       loss_data_info_el: data.LDInfoEl,
+      ir_od_date: data.ir_od_date,
     });
   }
   textIndex++;

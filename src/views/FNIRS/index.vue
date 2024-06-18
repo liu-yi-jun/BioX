@@ -725,7 +725,7 @@ const generateYAxisArr = () => {
       axisLine: {
         show: true, // 显示y轴线
         // lineStyle: {
-        //   width: 0.5, 
+        //   width: 0.5,
         // },
       },
       axisLabel: {
@@ -801,17 +801,20 @@ const generateSeries = () => {
     };
 
     tempObj.RD = conversionPkgtoTimeSeries(
+      'near_infrared',
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
 
     tempObj.OD = conversionPkgtoTimeSeries(
+      'ir_od_date',
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
     tempObj.Conc = conversionPkgtoTimeSeries(
+      'near_infrared',
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
@@ -873,7 +876,7 @@ const mapRadioToField = (index) => {
   }
 };
 
-const conversionPkgtoTimeSeries = (field, index, step) => {
+const conversionPkgtoTimeSeries = (field, channel, index, step) => {
   if (pkgDataList.length < 1) return [];
   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
   let minTime = maxTimer - step * 1000;
@@ -886,7 +889,7 @@ const conversionPkgtoTimeSeries = (field, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     return {
-      value: [baseTime, item.near_infrared[field][index]],
+      value: [baseTime, item[field][channel][index]],
     };
   });
 };
