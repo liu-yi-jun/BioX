@@ -165,6 +165,8 @@ const exportCsv = async (record: DataItem) => {
   // 获取记录的数据
   const res = await db.get(`select sourceData from record where id = ${record.id}`);
   const sourceData = JSON.parse(res.sourceData);
+  console.log(sourceData);
+  
   // 检查sourceData是否是数组以及是否有数据
   if (!Array.isArray(sourceData) || sourceData.length === 0) {
     alert("记录的数据异常！");

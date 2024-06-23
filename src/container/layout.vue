@@ -67,6 +67,7 @@ const bluetoothNotice = (data) => {
 };
 const startRecord = () => {
   isStartRecord = true;
+  sourceData = [];
   // 开启录制
 };
 // 保存录制
