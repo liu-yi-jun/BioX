@@ -16,7 +16,7 @@
               <a-input
                 type="number"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('yAxis')"
+                @change="undateTimeSerie('yAxis')"
                 v-model:value="seriesForm.min"
                 placeholder="auto"
               />
@@ -25,7 +25,7 @@
               <a-input
                 type="number"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('yAxis')"
+                @change="undateTimeSerie('yAxis')"
                 v-model:value="seriesForm.max"
                 placeholder="auto"
               />
@@ -34,7 +34,7 @@
               <a-select
                 v-model:value="seriesStep"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('channel')"
+                @change="undateTimeSerie('xAxis')"
                 aria-placeholder="Show Time"
                 :options="showTimeOptions"
                 size="small"
@@ -48,7 +48,7 @@
                 placeholder="Channels"
                 :options="channelOptions"
                 size="small"
-                @change="generateSeries"
+                @change="undateTimeSerie('channel')"
               ></a-select>
             </a-form-item>
           </a-form>
@@ -56,7 +56,8 @@
       </div>
 
       <div class="time-series">
-        <div style="width: 100%; height: 100%" id="series"></div>
+        <TimeSeries ref="timeSeriesRef"></TimeSeries>
+        <!-- <div style="width: 100%; height: 100%" id="series"></div> -->
       </div>
     </div>
     <div class="card-bottom">
@@ -91,7 +92,7 @@
                   v-if="spectrumType === 'PSD'"
                   aria-placeholder="Show Time"
                   :options="maxFreqOptions"
-                  @change="handleChangePsdChannel"
+                  @change="undatePsd('xAxis')"
                   size="small"
                 ></a-select>
                 <a-select
@@ -102,7 +103,7 @@
                   placeholder="Channels"
                   :options="psdChannelOptions"
                   size="small"
-                  @change="handleChangePsdChannel"
+                  @change="undatePsd('channel')"
                 ></a-select>
                 <a-select
                   v-if="spectrumType === 'Heatmap'"
@@ -116,11 +117,16 @@
               </a-space>
             </div>
           </div>
-          <div
+          <!-- <div
             v-if="spectrumType === 'PSD'"
             id="psd"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
+          <Psd
+            v-if="spectrumType === 'PSD'"
+            ref="psdRef"
+            style="width: 100%; height: 100%"
+          ></Psd>
           <div
             v-if="spectrumType === 'Heatmap'"
             id="heatmap"
@@ -182,11 +188,16 @@
               </a-space>
             </div>
           </div>
-          <div
+          <AbsolutePower
+            ref="absolutePowerRef"
+            v-if="bandsType === 'Absolute Power'"
+            style="width: 100%; height: 100%"
+          ></AbsolutePower>
+          <!-- <div
             id="absolute"
             v-if="bandsType === 'Absolute Power'"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
           <div
             id="related"
             v-if="bandsType === 'Related Power'"
@@ -217,6 +228,9 @@ import {
 } from "vue";
 import type { SelectProps } from "ant-design-vue";
 
+import TimeSeries from "../../components/TimeSeries.vue";
+import AbsolutePower from "../../components/AbsolutePower.vue";
+import Psd from "../../components/Psd.vue";
 import { HighchartsKey } from "../../types";
 import { CustomBluetooth } from "../../utils/bluetooth";
 let grid: echarts.EChartOption.Grid[] = [];
@@ -229,7 +243,7 @@ let pkgMaxTime = 30;
 const EEGTimeGap = 4; // 采样间隔
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
-const seriesStep = ref(30);
+const seriesStep = ref(20);
 const seriesMaxStep = 30;
 let isRenderTimer: any = null;
 const spectrumShowTime = ref(5);
@@ -243,12 +257,15 @@ const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
 const bandsChannel = ref("Fp1");
-const maxFreq = ref(256);
+const maxFreq = ref(125);
 const packetLossRate = ref(0);
 const packetLossNum = ref(0);
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
+const timeSeriesRef = ref<any>(null);
+const absolutePowerRef = ref<any>(null);
+const psdRef = ref<any>(null);
 import * as echarts from "echarts";
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
@@ -283,10 +300,10 @@ const showTimeOptionsData = [
     value: 20,
     label: "20 sec",
   },
-  {
-    value: 30,
-    label: "30 sec",
-  },
+  // {
+  //   value: 30,
+  //   label: "30 sec",
+  // },
 ];
 const chanOptionsData = [
   {
@@ -318,23 +335,23 @@ const relatedChannelOptions = ref<SelectProps["options"]>([
 //257个fft数据是对应0～125Hz的，假如要画到125Hz，就要全画，假如只画到50Hz，那就按比例取前面的点 2.056
 const maxFreqOptions = ref<SelectProps["options"]>([
   {
-    value: 51,
+    value: 25,
     label: "25Hz",
   },
   {
-    value: 102,
+    value: 50,
     label: "50Hz",
   },
   {
-    value: 154,
+    value: 75,
     label: "75Hz",
   },
   {
-    value: 205,
+    value: 100,
     label: "100Hz",
   },
   {
-    value: 256,
+    value: 125,
     label: "125Hz",
   },
 ]);
@@ -444,6 +461,9 @@ const bluetoothNotice = (data) => {
   handlePkgList(data);
   isRender.value = true;
   isRenderTimer && clearTimeout(isRenderTimer);
+  undateTimeSerie("series");
+  undateAbsolutePower("series");
+  undatePsd("series");
   isRenderTimer = setTimeout(() => {
     isRender.value = false;
   }, 4 * 1000);
@@ -495,15 +515,16 @@ const joinPkgList = () => {
 
 // 渲染
 const renderData = () => {
-  updateRenderRealSeriesData();
+  // updateRenderRealSeriesData();
   if (spectrumType.value === "PSD") {
-    undateRenderPsd();
+    // undateRenderPsd();
   }
   if (spectrumType.value === "Heatmap") {
     undateRenderPsdMap();
   }
   if (bandsType.value === "Absolute Power") {
-    undateRenderAbsoule();
+    // undateRenderAbsoule();
+    // undateAbsolutePower("series");
   }
   if (bandsType.value === "Related Power") {
     updateRenderRelated();
@@ -527,9 +548,9 @@ const initialize = () => {
     );
   }
   nextTick(() => {
-    initSeries();
-    initPSD();
-    initAbsolute();
+    // initSeries();
+    // initPSD();
+    // initAbsolute();
   });
 };
 
@@ -760,7 +781,7 @@ const initRelated = () => {
   relatedChart && relatedChart.clear();
   relatedChart.setOption({
     animation: false,
-    color: ["#E4CDFF","#A19CFF", "#7A83FF", "#4C68FF","#0721E6"],
+    color: ["#E4CDFF", "#A19CFF", "#7A83FF", "#4C68FF", "#0721E6"],
 
     legend: {
       // 0，1，2，3，4
@@ -813,7 +834,7 @@ const initRelated = () => {
       },
     ],
     series: [
-    {
+      {
         name: "δ wave",
         type: "line",
         stack: "Total",
@@ -832,7 +853,7 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-  
+
       {
         name: "θ wave",
         type: "line",
@@ -848,7 +869,7 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-    
+
       {
         name: "α wave",
         type: "line",
@@ -895,7 +916,6 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-
     ],
   });
 };
@@ -1351,8 +1371,8 @@ const initBarnsTime = () => {
 const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
-      initPSD();
-      undateRenderPsd();
+      // initPSD();
+      // undateRenderPsd();
     }
     if (spectrumType.value === "Heatmap") {
       initHeatmap();
@@ -1364,8 +1384,9 @@ const handleChangeSpectrumType = () => {
 const handleChangeBandsType = () => {
   nextTick(() => {
     if (bandsType.value === "Absolute Power") {
-      initAbsolute();
-      undateRenderAbsoule();
+      // initAbsolute();
+      // undateRenderAbsoule();
+      undateAbsolutePower("series");
     }
     if (bandsType.value === "Related Power") {
       initRelated();
@@ -1635,7 +1656,7 @@ const updateRenderRelated = (type?: string) => {
     relatedChart.setOption(
       {
         series: [
-        {
+          {
             name: "δ wave",
             stack: "Total",
             data: conversionPkgtoBarnsTimeOrRelated(
@@ -1655,8 +1676,7 @@ const updateRenderRelated = (type?: string) => {
               relatedStep.value
             ),
           },
-         
-         
+
           {
             name: "α wave",
             stack: "Total",
@@ -1919,6 +1939,85 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
   return tempSliceData;
 };
 
+const undateTimeSerie = (type) => {
+  switch (type) {
+    case "channel":
+      channel.value.sort((a, b) => {
+        return (
+          chanOptionsData.findIndex((i) => i.value == a) -
+          chanOptionsData.findIndex((i) => i.value == b)
+        );
+      });
+      timeSeriesRef.value.setOption({
+        channel: channel.value,
+      });
+      break;
+    case "series":
+      timeSeriesRef.value.setOption({
+        series: channel.value.map((item) => ({
+          name: item,
+          data: conversionPkgtoSeriesData(item, seriesStep.value),
+        })),
+      });
+      break;
+    case "xAxis":
+      timeSeriesRef.value.setOption({
+        xAxis: channel.value.map((item, index) => ({
+          max: seriesStep.value,
+        })),
+      });
+      break;
+    case "yAxis":
+      timeSeriesRef.value.setOption({
+        yAxis: channel.value.map((item) => ({
+          max: seriesForm.max === "" ? undefined : seriesForm.max,
+          min: seriesForm.min === "" ? undefined : seriesForm.min,
+        })),
+      });
+      break;
+  }
+};
+const undateAbsolutePower = (type) => {
+  switch (type) {
+    case "series":
+      absolutePowerRef.value.setOption({
+        series: [
+          conversionPkgtoAbsolute(bandsChannel.value, 0),
+          conversionPkgtoAbsolute(bandsChannel.value, 1),
+          conversionPkgtoAbsolute(bandsChannel.value, 2),
+          conversionPkgtoAbsolute(bandsChannel.value, 3),
+          conversionPkgtoAbsolute(bandsChannel.value, 4),
+        ],
+      });
+      break;
+  }
+};
+
+const undatePsd = (type) => {
+  switch (type) {
+    case "channel":
+      psdRef.value.setOption({
+        channel: psdChannel.value,
+      });
+      break;
+    case "xAxis":
+      psdRef.value.setOption({
+        xAxis: {
+          max: maxFreq.value,
+        },
+      });
+      break;
+    case "series":
+      psdRef.value.setOption({
+        series: psdChannel.value.map((item) => ({
+          name: item,
+          data:  conversionPkgtoPsd(item),
+        })) 
+      });
+      break;
+  }
+};
+
 // 计算时间间隔
 const calculateMinTimeGap = () => {
   if (pkgDataList.length >= 2) {
@@ -1932,8 +2031,8 @@ const calculateMinTimeGap = () => {
 };
 
 const handleChangePsdChannel = () => {
-  initPSD();
-  undateRenderPsd();
+  // initPSD();
+  // undateRenderPsd();
 };
 
 const parseChannel = (channel: string) => {

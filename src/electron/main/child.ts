@@ -131,12 +131,12 @@ const signalProcess = ffi.Library(signal_process_path, {
     ],
   ],
   //初始化ir滤波器
-  init_irbp_filter: ["void", [Double, Int, Double, Double]],//sample_rate:采样率，total_channel:总通道数；fl:下截至频率；fh：上截止频率
-  run_irbp_filter:["void",[Int,Int,DoubleArray,DoubleArray]],//filter_type:字符型变量，“Butterworth”，“ChebyshevI”，“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
- //基线归零
+  init_irbp_filter: ["void", [Double, Int, Double, Double]], //sample_rate:采样率，total_channel:总通道数；fl:下截至频率；fh：上截止频率
+  run_irbp_filter: ["void", [Int, Int, DoubleArray, DoubleArray]], //filter_type:字符型变量，“Butterworth”，“ChebyshevI”，“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
+  //基线归零
   clear_baseline: ["void", []],
   //计算光密度
-  calc_od:[Bool,[Int,Double,Int,Int,DoubleArray,DoubleArray]],//channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
+  calc_od: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]], //channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
 });
 
 let test_i = 0;
@@ -152,20 +152,20 @@ const channel = 2;
 const timeGap = 40; //包时间间隔，单位ms
 
 const time_e_s: any = [0, 0];
-const ps_s: any = [0, 0];
-const psd_s: any = [0, 0];
-const psd_relative_s: any = [0, 0];
-const psd_relative_percent_s: any = [0, 0];
 const time_e_s_multiple: any = [];
 const ps_s_multiple: any = [];
 const psd_s_multiple: any = [];
 const psd_relative_s_multiple: any = [];
 const psd_relative_percent_s_multiple: any = [];
 
-const ps = new DoubleArray(window / 2 + 1); //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
-const psd = new DoubleArray(window / 2 + 1); //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
-const psd_relative = new DoubleArray(5); //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
-const psd_relative_percent = new DoubleArray(5); //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+// 这部分不能乱改，dll里面控制着
+const ps_s = [new DoubleArray(window / 2 + 1), new DoubleArray(window / 2 + 1)]; //频谱数组，长度为window/2+1，存储每个频率能量，单位为dB
+const psd_s = [
+  new DoubleArray(window / 2 + 1),
+  new DoubleArray(window / 2 + 1),
+]; //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
+const psd_relative_s = [new DoubleArray(5), new DoubleArray(5)]; //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
+const psd_relative_percent_s = [new DoubleArray(5), new DoubleArray(5)]; //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
 
 // 近红外部分
 const ir_sample_rate = 12.5;
@@ -173,7 +173,7 @@ const baseline_time = 10;
 const ir_channel = 8;
 const ir_step = 2;
 const fl = 0.01; //fl 下截至频率
-const fh = 0.5;  //fh 上截止频率
+const fh = 0.5; //fh 上截止频率
 const ir_od_date: any = [];
 
 let lossDataTemplate = {
@@ -276,7 +276,7 @@ process.on("message", async function ({ type, data }) {
   if (type === "filter-init") {
     signalProcess.init_filter(sample_rate, channel);
     signalProcess.clear_baseline();
-    signalProcess.init_irbp_filter(ir_sample_rate, ir_channel,fl,fh);
+    signalProcess.init_irbp_filter(ir_sample_rate, ir_channel, fl, fh);
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
@@ -336,7 +336,7 @@ process.on("message", async function ({ type, data }) {
 
       let LDInfoEl = mapLossDataInfo(pkg.pkg_type);
       // pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter
-      if (pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter) {
+      if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && isFilter) {
         //丢包插值暂时只支持开启滤波的工作模式
         for (let i = LDInfoEl.lossNum; i >= 1; i--) {
           // 复制包
@@ -406,6 +406,7 @@ function processSend(
       ) {
         if (isFilter) {
           // 滤波后数据赋值
+          // d[0] = Math.random() * 100;
           pkg.brain_elec_channel[current_channel][i] = d[current_channel];
         } else {
           // 不滤波
@@ -435,26 +436,16 @@ function processSend(
           d[current_channel], //(test_i + 1) % 32
           step,
           window,
-          ps,
-          psd,
-          psd_relative,
-          psd_relative_percent
+          ps_s[current_channel],
+          psd_s[current_channel],
+          psd_relative_s[current_channel],
+          psd_relative_percent_s[current_channel]
         ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
-        // console.log('d',d[0],psd[0],psd_relative[0],psd_relative_percent[0]);
-        // ps_s[current_channel] = ps;
-        psd_s[current_channel] = JSON.parse(JSON.stringify(psd));
-        psd_relative_s[current_channel] = JSON.parse(
-          JSON.stringify(psd_relative)
-        );
-        psd_relative_percent_s[current_channel] = JSON.parse(
-          JSON.stringify(psd_relative_percent)
-        );
       }
       time_e_s_multiple[i] = JSON.parse(JSON.stringify(time_e_s));
       // ps_s_multiple[i] = ps_s;
       psd_s_multiple[i] = JSON.parse(JSON.stringify(psd_s));
       psd_relative_s_multiple[i] = JSON.parse(JSON.stringify(psd_relative_s));
-
       psd_relative_percent_s_multiple[i] = JSON.parse(
         JSON.stringify(psd_relative_percent_s)
       );
@@ -467,21 +458,32 @@ function processSend(
     }
   }
   // 有IR数据标志位
-  if(pkg.pkg_type === 2) {
-
-    for (let current_channel = 0; current_channel < pkg.ir_channel; current_channel++) {
-      let ir_od = new DoubleArray(4); 
-      let ir_filter = new DoubleArray(4); 
+  if (pkg.pkg_type === 2) {
+    for (
+      let current_channel = 0;
+      current_channel < pkg.ir_channel;
+      current_channel++
+    ) {
+      let ir_od = new DoubleArray(4);
+      let ir_filter = new DoubleArray(4);
       // 将float数组转换为double数组,float数组直接传不行
-      let ir_input = new DoubleArray(arrayToJs(pkg.near_infrared[current_channel]))
-      let state = signalProcess.calc_od(current_channel,ir_sample_rate,baseline_time,ir_step,ir_input,ir_od);  //state 返回为ture时可以读取OD数据
+      let ir_input = new DoubleArray(
+        arrayToJs(pkg.near_infrared[current_channel])
+      );
+      let state = signalProcess.calc_od(
+        current_channel,
+        ir_sample_rate,
+        baseline_time,
+        ir_step,
+        ir_input,
+        ir_od
+      ); //state 返回为ture时可以读取OD数据
       // console.log('state',state);
 
-      
-      if(isFilter) {
-        signalProcess.run_irbp_filter(1,current_channel,ir_od,ir_filter);
+      if (isFilter) {
+        signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
         ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_filter));
-      }else {
+      } else {
         ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
       }
 
@@ -490,7 +492,6 @@ function processSend(
     }
     // console.log('ir_od_date',ir_od_date);
     // console.log('ir_filter_date',ir_filter_date);
-    
   }
 
   process.send!({
@@ -524,7 +525,7 @@ function doubleArrayToArray(data: any) {
 function arrayToJs(array: any) {
   let newArray = [];
   for (let i = 0; i < array.length; i++) {
-    newArray[i] = array[i]
+    newArray[i] = array[i];
   }
   return newArray;
 }
