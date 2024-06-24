@@ -1,8 +1,8 @@
 <template>
   <div
     style="width: 100%; height: 100%; font-size: 0px"
-    ref="TimeSeries"
-    id="TimeSeries"
+    ref="BarnsTime"
+    id="BarnsTime"
   ></div>
 </template>
 
@@ -16,7 +16,7 @@ import {
   onBeforeUnmount,
   watch,
 } from "vue";
-const TimeSeries = ref<HTMLElement | null>(null);
+const BarnsTime = ref<HTMLElement | null>(null);
 let numSeconds = 5;
 let maxSeconds = 20;
 const sampleRate = 250;
@@ -24,7 +24,7 @@ let canvasP5: any;
 // 自定义绘制
 let customCanvas: any;
 let customCtx: any;
-let channel = ["Fp1", "Fp2"];
+let channel = ["EEG", "DELTA", "THETA", "ALPHA", "BETA", "GAMMA"];
 let channelBars: ChannelBar[] = [];
 let sketch: any = null;
 let timer: any = null;
@@ -33,11 +33,15 @@ let canvasHeight = 0;
 const leftPadding = 60;
 const rightPadding = 10;
 const topPadding = 10;
-const middlePadding = 30;
+const middlePadding = 10;
 const bottomPadding = 30;
 const colors = {
-  Fp1: "#8FDCFE",
-  Fp2: "#B3B3B3",
+  EEG: "#737373",
+  DELTA: "#D5D5D6",
+  THETA: "#A4A4FF",
+  ALPHA: "#7BFFFF",
+  BETA: "#FF72FF",
+  GAMMA: "#E6E689",
 };
 
 // 实例
@@ -55,6 +59,8 @@ class ChannelBar {
   autoscaleMin: number = -1;
   yMax: number | undefined;
   yMin: number | undefined;
+  points: any[] = [];
+
   constructor(_channelIndex, _x, _y, _w, _h, _name, _lineColor) {
     this.x = _x;
     this.y = _y;
@@ -73,33 +79,14 @@ class ChannelBar {
     this.plot.setXLim(0, numSeconds);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setLineColor(this.lineColor);
-    this.plot.setLineWidth(1.5);
+    this.plot.setLineWidth(1);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
     this.plot.getXAxis().setLineColor("#6E7079");
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#6E7079");
     this.plot.getYAxis().setFontColor("#6E7079");
     this.plot.getYAxis().setAxisLabelText(this.name);
-    // this.plot.getYAxis().setRotate(false);
-    customCtx.lineWidth = 0.8;
-
-    // customCtx.scale(1, -1);
-    // setTimeout(() => {
-    let points: any = [];
-    for (let index = 0; index < numSeconds * 250; index++) {
-      let value = -100 + Math.random() * 200;
-      if (value > this.autoscaleMax) {
-        this.autoscaleMax = value;
-      }
-      if (value < this.autoscaleMin) {
-        this.autoscaleMin = value;
-      }
-
-      points[index] = new window.GPoint((index * 4) / 1000, value);
-    }
-    this.setYLim();
-    this.plot.setPoints(points);
-    // }, 40);
+    customCtx.lineWidth = 0.6;
   }
 
   updateSeries(series) {
@@ -111,7 +98,6 @@ class ChannelBar {
       if (series[i].value[1] < this.autoscaleMin) {
         this.autoscaleMin = series[i].value[1];
       }
-
       points[i] = new window.GPoint(
         series[i].value[0] / 1000,
         series[i].value[1]
@@ -151,21 +137,18 @@ class ChannelBar {
   }
 
   draw() {
-    // customCtx.strokeStyle = this.lineColor
     this.plot.beginDraw();
     this.plot.drawXAxis();
     this.plot.drawYAxis();
     // this.plot.drawBox();
     // this.plot.drawLines();
     // 自定义画线
-
     let plotPoints = this.plot.mainLayer.plotPoints;
     if (plotPoints.length > 0) {
-      customCtx.strokeStyle = this.lineColor
+      customCtx.strokeStyle = this.lineColor;
       customCtx.rect(0, -this.h, this.w, this.h);
       customCtx.clip();
       customCtx.beginPath();
-    ;
       customCtx.moveTo(plotPoints[0].getX(), plotPoints[1].getY());
       for (var i = 0; i < plotPoints.length; i++) {
         customCtx.lineTo(plotPoints[i].getX(), plotPoints[i].getY());
@@ -179,9 +162,9 @@ class ChannelBar {
 
 // 获取高度
 const getWH = () => {
-  if (TimeSeries.value) {
-    canvasWidth = TimeSeries.value.clientWidth;
-    canvasHeight = TimeSeries.value.clientHeight;
+  if (BarnsTime.value) {
+    canvasWidth = BarnsTime.value.clientWidth;
+    canvasHeight = BarnsTime.value.clientHeight;
   }
 };
 
@@ -238,7 +221,7 @@ const updatelayout = () => {
 
 // 窗口改变
 const resizeing = () => {
-  // updatelayout();
+  //   updatelayout();
 };
 
 // 创建p5
@@ -246,16 +229,15 @@ const defaultPlotSketch = (p) => {
   p.setup = function () {
     canvasP5 = p;
     customCanvas = document
-      .getElementById("TimeSeries")
+      .getElementById("BarnsTime")
       ?.querySelector("canvas");
     customCtx = customCanvas.getContext("2d");
     updatelayout();
-    // canvasP5.noLoop();
   };
   p.draw = function () {
     let fps = p.frameRate();
     p.background(255);
-    p.text("FPS: " + fps.toFixed(2), 60, 10);
+    p.text("FPS: " + fps.toFixed(2), 10, 10);
     for (var i = 0; i < channel.length; i++) {
       channelBars[i].draw();
     }
@@ -264,7 +246,7 @@ const defaultPlotSketch = (p) => {
 
 onMounted(() => {
   sketch && sketch.remove();
-  sketch = new window.p5((p) => defaultPlotSketch(p), "TimeSeries");
+  sketch = new window.p5((p) => defaultPlotSketch(p), "BarnsTime");
   window.addEventListener("resize", resizeing);
 });
 

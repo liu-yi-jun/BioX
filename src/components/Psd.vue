@@ -71,6 +71,7 @@ class ChannelBar {
     this.plot.getYAxis().setFontColor("#6E7079");
     this.plot.getYAxis().getAxisLabel().setText("Amplitude (uV)");
     this.plot.getXAxis().setAxisLabelText("Frequency (Hz)");
+    this.plot.drawGridLines(window.GPlot.BOTH);
     // 第二条线
     this.plot.addLayer("Fp2", []);
     this.plot.getLayer("Fp2").setLineColor(colors.Fp2);
@@ -134,7 +135,7 @@ class ChannelBar {
     this.plot.beginDraw();
     this.plot.drawXAxis();
     this.plot.drawYAxis();
-
+    this.plot.drawGridLines(window.GPlot.BOTH);
     // this.plot.drawBox();
     this.plot.drawLines();
     this.plot.endDraw();

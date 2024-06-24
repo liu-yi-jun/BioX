@@ -79,6 +79,7 @@ class ChannelBar {
     this.plot.getXAxis().setAxisLabelText("EEG Power Bands");
     this.plot.startHistograms(window.GPlot.VERTICAL);
     this.plot.getHistogram().setDrawLabels(true);
+    this.plot.drawGridLines(window.GPlot.BOTH);
     this.plot
       .getHistogram()
       .setLineColors([
@@ -140,6 +141,7 @@ class ChannelBar {
     this.plot.beginDraw();
     this.plot.drawYAxis();
     this.plot.drawXAxis();
+    this.plot.drawGridLines(window.GPlot.BOTH);
     this.plot.drawHistograms();
     this.plot.endDraw();
   }

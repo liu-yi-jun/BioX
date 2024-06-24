@@ -180,7 +180,7 @@
                   v-if="bandsType === 'Time Series'"
                   v-model:value="barnsTimeStep"
                   style="width: 100px"
-                  @change="updateRenderBarnsTime('xAxis')"
+                  @change="undateBarnsTime('xAxis')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -203,11 +203,16 @@
             v-if="bandsType === 'Related Power'"
             style="width: 100%; height: 100%"
           ></div>
-          <div
+          <BarnsTime
+            v-if="bandsType === 'Time Series'"
+            style="width: 100%; height: 100%"
+            ref="barnsTimeRef"
+          ></BarnsTime>
+          <!-- <div
             id="barnsTime"
             v-if="bandsType === 'Time Series'"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
         </div>
       </div>
     </div>
@@ -228,6 +233,7 @@ import {
 } from "vue";
 import type { SelectProps } from "ant-design-vue";
 
+import BarnsTime from "../../components/BarnsTime.vue";
 import TimeSeries from "../../components/TimeSeries.vue";
 import AbsolutePower from "../../components/AbsolutePower.vue";
 import Psd from "../../components/Psd.vue";
@@ -239,17 +245,17 @@ let yAxis: echarts.EChartOption.YAxis[] = [];
 let series: echarts.EChartOption.Series[] = [];
 let pkgSourceData: any = [];
 let pkgDataList: any = [];
-let pkgMaxTime = 30;
+let pkgMaxTime = 20;
 const EEGTimeGap = 4; // 采样间隔
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
-const seriesStep = ref(20);
-const seriesMaxStep = 30;
+const seriesStep = ref(5);
+const seriesMaxStep = 20;
 let isRenderTimer: any = null;
 const spectrumShowTime = ref(5);
-const relatedStep = ref(30);
-const barnsTimeStep = ref(30);
-const barnsTimeMaxStep = 30;
+const relatedStep = ref(20);
+const barnsTimeStep = ref(5);
+const barnsTimeMaxStep = 20;
 const minTimeGap = 250; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
 const timeGap = Math.round(1000 / minTimeGap);
 const isRender = ref(false);
@@ -265,6 +271,7 @@ const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
 const timeSeriesRef = ref<any>(null);
 const absolutePowerRef = ref<any>(null);
+const barnsTimeRef = ref<any>(null);
 const psdRef = ref<any>(null);
 import * as echarts from "echarts";
 import { CustomDatabase } from "../../utils/db";
@@ -462,8 +469,15 @@ const bluetoothNotice = (data) => {
   isRender.value = true;
   isRenderTimer && clearTimeout(isRenderTimer);
   undateTimeSerie("series");
-  undateAbsolutePower("series");
-  undatePsd("series");
+  if (bandsType.value === "Absolute Power") {
+    undateAbsolutePower("series");
+  }
+  if (spectrumType.value === "PSD") {
+    undatePsd("series");
+  }
+  if (bandsType.value === "Time Series") {
+    undateBarnsTime("series");
+  }
   isRenderTimer = setTimeout(() => {
     isRender.value = false;
   }, 4 * 1000);
@@ -530,7 +544,7 @@ const renderData = () => {
     updateRenderRelated();
   }
   if (bandsType.value === "Time Series") {
-    updateRenderBarnsTime();
+    // updateRenderBarnsTime();
   }
 };
 
@@ -1393,8 +1407,9 @@ const handleChangeBandsType = () => {
       updateRenderRelated();
     }
     if (bandsType.value === "Time Series") {
-      initBarnsTime();
-      updateRenderBarnsTime();
+      // initBarnsTime();
+      // updateRenderBarnsTime();
+      undateBarnsTime("series");
     }
   });
 };
@@ -1993,6 +2008,101 @@ const undateAbsolutePower = (type) => {
   }
 };
 
+const undateBarnsTime = (type) => {
+  switch (type) {
+    // case "channel":
+    //   channel.value.sort((a, b) => {
+    //     return (
+    //       chanOptionsData.findIndex((i) => i.value == a) -
+    //       chanOptionsData.findIndex((i) => i.value == b)
+    //     );
+    //   });
+    //   barnsTimeRef.value.setOption({
+    //     channel: channel.value,
+    //   });
+    //   break;
+    case "series":
+      barnsTimeRef.value.setOption({
+        series: [
+          {
+            name: "EEG",
+            data: conversionPkgtoSeriesData(bandsChannel.value, barnsTimeStep.value),
+          },
+          {
+            name: "DELTA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              0,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "THETA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              1,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "ALPHA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              2,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "BETA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              3,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "GAMMA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              4,
+              barnsTimeStep.value
+            ),
+          },
+        ],
+      });
+      break;
+    case "xAxis":
+      barnsTimeRef.value.setOption({
+        xAxis: [
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+        ],
+      });
+      break;
+  }
+};
+
 const undatePsd = (type) => {
   switch (type) {
     case "channel":
@@ -2011,8 +2121,8 @@ const undatePsd = (type) => {
       psdRef.value.setOption({
         series: psdChannel.value.map((item) => ({
           name: item,
-          data:  conversionPkgtoPsd(item),
-        })) 
+          data: conversionPkgtoPsd(item),
+        })),
       });
       break;
   }
