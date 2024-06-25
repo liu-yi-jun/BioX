@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, toRaw, onMounted, watch } from "vue";
+import { ref, reactive, toRaw, onMounted, watch ,getCurrentInstance} from "vue";
 import { CustomDatabase } from "../utils/db";
 import { message } from "ant-design-vue";
 import { Form } from "ant-design-vue";
@@ -96,6 +96,7 @@ import {
 import { formatTimestamp, tipFormatter } from "../utils/common";
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
+const app = getCurrentInstance();
 const indexStore = useIndexStore();
 const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
 const useForm = Form.useForm;
@@ -252,7 +253,6 @@ const handleStartRecordModal = (e: MouseEvent) => {
   if (status.value === 0 && modelStatus.value === 0) {
     validate()
       .then(() => {
-        console.log(toRaw(formData));
         message.success("开始记录");
         startRecord();
         recoredCreateTime.value = new Date().getTime();
@@ -263,6 +263,8 @@ const handleStartRecordModal = (e: MouseEvent) => {
         console.log("error", err);
       });
   } else if (status.value === 0 && modelStatus.value === 1) {
+    app?.proxy?.loading.show("保存中...");
+  
     saveRecord((sourceData) => {
       db.insert("record", {
         instanceID: generateUniqueId(),
@@ -273,11 +275,13 @@ const handleStartRecordModal = (e: MouseEvent) => {
         recoredTotalTime: recoredTotalTime.value,
       })
         .then((res) => {
+          app?.proxy?.loading.hide();
           message.success("保存成功");
           openStartRecordModal.value = false;
           clearData();
         })
         .catch((err) => {
+          app?.proxy?.loading.hide();
           message.error("保存失败,请重试!");
           console.log("error", err);
         });

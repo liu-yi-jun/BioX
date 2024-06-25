@@ -62,7 +62,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, reactive, onMounted, nextTick } from "vue";
+import { ref, reactive, onMounted, nextTick,getCurrentInstance } from "vue";
 import type { Ref, UnwrapRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { RedoOutlined } from "@ant-design/icons-vue";
@@ -74,6 +74,7 @@ import { CustomDatabase } from "../../utils/db";
 import { Modal } from "ant-design-vue";
 import { storeToRefs } from "pinia";
 import { useIndexStore } from "../../store/index";
+const app = getCurrentInstance();
 const router = useRouter();
 const indexStore = useIndexStore();
 const { play, recordId } = storeToRefs(indexStore);
@@ -150,7 +151,7 @@ const exportCsv = async (record: DataItem) => {
   let eegChannel = 1
   let irChannel = 1
   let eegDataNum = 1
-
+  app?.proxy?.loading.show("导出中...");
   // 第一行的值
   const metaDataKeys = ref(["ID", "NAME", "DESCRIPTION", "RECORDCREATETIME", "RECORDTOTALTIME", "DEVICE TYPE", "DEVICE SERIAL", "DEVICE FIRMWARE", "EEG CHANNELS", "EEG SAMPLING RATE", "IR CHANNELS", "IR WAVELENGTHS", "IR SAMPLING RATE"])
   csvContent = csvContent + metaDataKeys.value.join(",") + "\n"
@@ -309,6 +310,8 @@ const exportCsv = async (record: DataItem) => {
   a.download = record.name + '.csv'; // 设置下载的文件名
   document.body.appendChild(a);
   a.click();
+
+  app?.proxy?.loading.hide();
 
   // 清理并释放URL对象
   document.body.removeChild(a);

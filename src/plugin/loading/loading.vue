@@ -45,6 +45,6 @@ defineExpose({
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.3);
   color: white;
-  z-index: 999;
+  z-index: 1000000;
 }
 </style>

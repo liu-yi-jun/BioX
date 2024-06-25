@@ -26,7 +26,8 @@
 import record from "../components/record.vue";
 import OfMenu from "./menu.vue";
 import OfHeader from "./header.vue";
-import { ref, reactive, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, reactive, onMounted, onBeforeUnmount, watch,getCurrentInstance } from "vue";
+const app = getCurrentInstance();
 const status = ref<number>(0);
 const isRecord = ref<boolean>(true);
 let sourceData: any[] = [];
@@ -62,6 +63,8 @@ onBeforeUnmount(() => {
 const bluetoothNotice = (data) => {
   if (isStartRecord) {
     console.log("蓝牙数据录制中", data);
+    delete data.pkg
+    delete data.hexString
     sourceData.push(data);
   }
 };
@@ -72,6 +75,7 @@ const startRecord = () => {
 };
 // 保存录制
 const saveRecord = (cb) => {
+
   cb(sourceData);
 };
 const endRecord = () => {
