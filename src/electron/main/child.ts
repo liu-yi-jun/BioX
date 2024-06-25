@@ -55,7 +55,10 @@ const PKG = Struct({
     ArrayType(ref.types.float, max_eeg_group_num),
     max_channel
   ), //最高支持16个EEG通道的256个连续数据
-  near_infrared: ArrayType(ArrayType(ref.types.float, max__wave_channel), max__ir_channel), // 8个通道的近红外数据，依次为S1，PD1；S1，PD2；S1，PD3；S1，PD4；S2，PD1；S2，PD2；S2，PD3；S2，PD4；；每个通道内数据依次为λ1 λ31 λ2 λ32
+  near_infrared: ArrayType(
+    ArrayType(ref.types.float, max__wave_channel),
+    max__ir_channel
+  ), // 8个通道的近红外数据，依次为S1，PD1；S1，PD2；S1，PD3；S1，PD4；S2，PD1；S2，PD2；S2，PD3；S2，PD4；；每个通道内数据依次为λ1 λ31 λ2 λ32
   // brain_elec_channel1: ArrayType(ref.types.float, 10), //EEG通道1的10个数据
   // brain_elec_channel2: ArrayType(ref.types.float, 10), //EEG通道2的10个数据
   // near_infrared_channel_1_wavelength_1: ArrayType(ref.types.float, 4), // IR第1通道第1个波长
@@ -206,27 +209,7 @@ const arrayToHexString = (array: any) => {
   return hexString;
 };
 
-// 去除多余的0
-const removZero = (pkg: any) => {
-  let brain_elec_channel: any = [];
-  let near_infrared: any = [];
-  for (let i = 0; i < pkg.eeg_channel; i++) {
-    brain_elec_channel[i] = [];
-    for (let j = 0; j < pkg.eeg_data_num; j++) {
-      brain_elec_channel[i][j] = pkg.brain_elec_channel[i][j];
-    }
-  }
 
-  for (let i = 0; i < max__wave_channel; i++) {
-    near_infrared[i] = [];
-    for (let j = 0; j < pkg.near_infrared_data_num; j++) {
-      near_infrared[i][j] = pkg.near_infrared[i][j];
-    }
-  }
-
-  pkg.brain_elec_channel = brain_elec_channel;
-  pkg.near_infrared = near_infrared;
-};
 
 // 时间戳计算
 const adjustTimestamps = (timestamp: number): number => {
@@ -335,9 +318,7 @@ process.on("message", async function ({ type, data }) {
 
       // 原始数据转16位
       let hexString = arrayToHexString(pkg.pkg);
-
-      removZero(pkg);
-
+      
       // 假设丢包
       // if (pkg.pkgnum && pkg.pkgnum % 77 === 0) {
       //   console.log("假设丢包", pkg.pkgnum);

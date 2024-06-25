@@ -5,6 +5,7 @@ let child: typeof child_process;
 import log from "electron-log/main";
 log.transports.file.level = "silly";
 log.transports.console.level = "silly";
+const max__wave_channel = 4;
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
 let bluetoothPinCallback: any;
@@ -31,6 +32,27 @@ async function handleFileOpen() {
     return filePaths[0];
   }
 }
+
+// 去除多余的0
+const removZero = ({ pkg }: any) => {
+  let brain_elec_channel: any = [];
+  let near_infrared: any = [];
+  for (let i = 0; i < pkg.eeg_channel; i++) {
+    brain_elec_channel[i] = [];
+    for (let j = 0; j < pkg.eeg_data_num; j++) {
+      brain_elec_channel[i][j] = pkg.brain_elec_channel[i][j];
+    }
+  }
+
+  for (let i = 0; i < pkg.ir_channel; i++) {
+    near_infrared[i] = [];
+    for (let j = 0; j < max__wave_channel; j++) {
+      near_infrared[i][j] = pkg.near_infrared[i][j];
+    }
+  }
+  pkg.brain_elec_channel = brain_elec_channel;
+  pkg.near_infrared = near_infrared;
+};
 
 function createWindow() {
   // Create the browser window.
@@ -135,11 +157,11 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   });
 
-  
-
   // 修改配置项
   ipcMain.on("change-config", (event, data) => {
-    child && child.connected && child.send({ type: "change-config" , data: data});
+    child &&
+      child.connected &&
+      child.send({ type: "change-config", data: data });
     config = Object.assign(config, JSON.parse(data));
   });
 
@@ -196,6 +218,7 @@ function createWindow() {
     });
     child.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-decode") {
+        removZero(data);
         event.sender.send("end-data-decode", data);
       }
     });
