@@ -1950,7 +1950,7 @@ const parseChannel = (channel: string) => {
   return 0;
 };
 const changeConfig = () => {
-  ipcRenderer.send("change-config",configData);
+  ipcRenderer.send("change-config",JSON.stringify(configData.value));
 }
 </script>
 <style scoped></style>

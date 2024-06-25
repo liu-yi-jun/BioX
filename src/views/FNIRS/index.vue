@@ -951,8 +951,8 @@ const channelLineClick = (value: number | Array<number>) => {
   handleChange();
 };
 
-const changeConfig = () => {
-  ipcRenderer.send("change-config",SON.stringify(configData.value));
+const changeConfig = () => {  
+  ipcRenderer.send("change-config",JSON.stringify(configData.value));
 }
 </script>
 <style scoped></style>
