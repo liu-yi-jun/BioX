@@ -12,6 +12,12 @@
         </div>
         <div class="filter-right">
           <a-form size="small" :model="seriesForm" layout="inline">
+            <a-form-item label="preproc">
+              <a-switch
+                @change="changeConfig"
+                v-model:checked="configData.isBaseline"
+              />
+            </a-form-item>
             <a-form-item label="min">
               <a-input
                 type="number"
@@ -274,7 +280,9 @@ import {
   onBeforeUnmount,
 } from "vue";
 // import { CustomDatabase } from "../../utils/db";
+const ipcRenderer = require("electron").ipcRenderer;
 import * as echarts from "echarts";
+
 const radioValue = ref<number>(1);
 const checkboxValue1 = ref(["1"]);
 const checkboxValue2 = ref(["1"]);
@@ -319,7 +327,7 @@ let pkgDataList: any = [];
 let pkgSourceData: any = [];
 let pkgMaxTime = 30;
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect } =
+const { play, recordId, playIndex, isDragSlider, isConnect, configData } =
   storeToRefs(indexStore);
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
@@ -942,5 +950,9 @@ const channelLineClick = (value: number | Array<number>) => {
 
   handleChange();
 };
+
+const changeConfig = () => {
+  ipcRenderer.send("change-config",SON.stringify(configData.value));
+}
 </script>
 <style scoped></style>

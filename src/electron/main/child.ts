@@ -7,8 +7,8 @@ let __static = process.argv[2];
 let _product_path = process.argv[3];
 // 加载配置项
 // 是否开启滤波
-const isFilter = JSON.parse(process.argv[4]).isFilter;
-console.log("isFilter", isFilter);
+let isFilter = JSON.parse(process.argv[4]).isFilter;
+let isBaseline = JSON.parse(process.argv[4]).isBaseline;
 
 // 定义指针类型
 // 定义用于映射DLL内结构体的结构
@@ -133,8 +133,10 @@ const signalProcess = ffi.Library(signal_process_path, {
   //初始化ir滤波器
   init_irbp_filter: ["void", [Double, Int, Double, Double]], //sample_rate:采样率，total_channel:总通道数；fl:下截至频率；fh：上截止频率
   run_irbp_filter: ["void", [Int, Int, DoubleArray, DoubleArray]], //filter_type:字符型变量，“Butterworth”，“ChebyshevI”，“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
-  //基线归零
+  //基线归零（od里面的）
   clear_baseline: ["void", []],
+  // 原始数据计算基线
+  calc_baseline: ["void", [Int, Double, Int, Int, DoubleArray, DoubleArray]],
   //计算光密度
   calc_od: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]], //channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
 });
@@ -269,7 +271,6 @@ function calculatePacketLoss(pkg: any) {
     LDInfoEl.isLosspkg = false;
     LDInfoEl.lossNum = 0;
   }
-
 }
 
 // 接收消息
@@ -366,6 +367,10 @@ process.on("message", async function ({ type, data }) {
 
   if (type === "bluetooth-scan") {
     console.log("bluetooth-scan");
+  }
+  if (type === "change-config") {
+    isFilter = JSON.parse(data).isFilter;
+    isBaseline = JSON.parse(data).isBaseline;
   }
 });
 
@@ -473,10 +478,25 @@ function processSend(
     ) {
       let ir_od = new DoubleArray(4);
       let ir_filter = new DoubleArray(4);
+      let ir_date_remove = new DoubleArray(4);
       // 将float数组转换为double数组,float数组直接传不行
       let ir_input = new DoubleArray(
         arrayToJs(pkg.near_infrared[current_channel])
       );
+
+      signalProcess.calc_baseline(
+        current_channel,
+        ir_sample_rate,
+        baseline_time,
+        ir_step,
+        ir_input,
+        ir_date_remove
+      );
+
+      if (isBaseline) {
+        pkg.near_infrared[current_channel] = arrayToJs(ir_date_remove);
+      }
+
       let state = signalProcess.calc_od(
         current_channel,
         ir_sample_rate,
@@ -487,12 +507,13 @@ function processSend(
       ); //state 返回为ture时可以读取OD数据
       // console.log('state',state);
 
-      if (isFilter) {
-        signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
-        ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_filter));
-      } else {
-        ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
-      }
+      // if (isFilter) {
+      // od滤波
+      signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
+      ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_filter));
+      // } else {
+      //   ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
+      // }
 
       ir_od = null;
       ir_filter = null;

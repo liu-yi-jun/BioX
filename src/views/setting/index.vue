@@ -2,10 +2,6 @@
   <div style="padding: 10px">
     <a-space wrap>
       <a-button type="primary" @click="openDevTools">DevTools</a-button>
-     <span>
-      <span>开启滤波：</span>
-      <a-switch @change="changeConfig" v-model:checked="configData.isFilter" />
-     </span>
     </a-space>
   </div>
 </template>

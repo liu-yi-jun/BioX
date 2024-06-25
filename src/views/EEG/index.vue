@@ -12,6 +12,9 @@
         </div>
         <div class="filter-right">
           <a-form size="small" :model="seriesForm" layout="inline">
+            <a-form-item label="preproc">
+              <a-switch @change="changeConfig" v-model:checked="configData.isFilter" />
+            </a-form-item>
             <a-form-item label="min">
               <a-input
                 type="number"
@@ -216,6 +219,7 @@ import {
   watch,
 } from "vue";
 import type { SelectProps } from "ant-design-vue";
+const ipcRenderer = require("electron").ipcRenderer;
 
 import { HighchartsKey } from "../../types";
 import { CustomBluetooth } from "../../utils/bluetooth";
@@ -255,7 +259,7 @@ import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect } =
+const { play, recordId, playIndex, isDragSlider, isConnect,configData } =
   storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
@@ -1945,5 +1949,8 @@ const parseChannel = (channel: string) => {
   }
   return 0;
 };
+const changeConfig = () => {
+  ipcRenderer.send("change-config",configData);
+}
 </script>
 <style scoped></style>

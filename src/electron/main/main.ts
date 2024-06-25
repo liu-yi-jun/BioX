@@ -135,10 +135,12 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   });
 
+  
+
   // 修改配置项
   ipcMain.on("change-config", (event, data) => {
+    child && child.connected && child.send({ type: "change-config" , data: data});
     config = Object.assign(config, JSON.parse(data));
-    console.log("change-config", config);
   });
 
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.

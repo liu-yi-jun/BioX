@@ -16,6 +16,7 @@ export const useIndexStore = defineStore({
     // 配置数据
     configData: {
       isFilter:false,
+      isBaseline:false
     },
   }),
   actions: {
