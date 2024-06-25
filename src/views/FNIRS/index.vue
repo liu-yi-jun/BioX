@@ -61,13 +61,13 @@
                 <div class="S1 round"></div>
                 <div
                   class="S1-D5 line-box"
-                  @click="channelLineClick(1)"
-                  :class="{ active: channels.includes(1) }"
+                  @click="channelLineClick(7)"
+                  :class="{ active: channels.includes(7) }"
                 >
                   <span class="line"></span>
                 </div>
-                <div class="D5 round" @click="channelLineClick(1)">
-                  <span class="D5-text text">D5</span>
+                <div class="D5 round" @click="channelLineClick(7)">
+                  <span class="D5-text text">D7</span>
                 </div>
               </div>
               <div
@@ -76,41 +76,41 @@
               >
                 <div
                   class="S1 round"
-                  @click="channelLineClick([1, 2, 3, 4])"
+                  @click="channelLineClick([5, 6, 7, 8])"
                 ></div>
-                <span class="S1-text text">S1</span>
+                <span class="S1-text text">S2</span>
                 <div
                   class="S1-D7 line-box"
-                  @click="channelLineClick(3)"
-                  :class="{ active: channels.includes(3) }"
+                  @click="channelLineClick(6)"
+                  :class="{ active: channels.includes(6) }"
                 >
                   <span class="line"></span>
                 </div>
-                <div class="D7 round" @click="channelLineClick(3)">
-                  <span class="D7-text text">D7</span>
+                <div class="D7 round" @click="channelLineClick(6)">
+                  <span class="D7-text text">D6</span>
                 </div>
               </div>
-              <div class="D8 round" @click="channelLineClick(4)">
-                <span class="D8-text text">D8</span>
+              <div class="D8 round" @click="channelLineClick(5)">
+                <span class="D8-text text">D5</span>
               </div>
-              <div class="D6 round" @click="channelLineClick(2)">
-                <span class="D6-text text">D6</span>
+              <div class="D6 round" @click="channelLineClick(8)">
+                <span class="D6-text text">D8</span>
               </div>
               <div
                 class="S1-D8 line-box"
-                :class="{ active: channels.includes(4) }"
+                :class="{ active: channels.includes(5) }"
               >
                 <svg
                   class="S1-D8-SVG"
                   width="100%"
-                  @click="channelLineClick(4)"
+                  @click="channelLineClick(5)"
                   height="25"
                   viewBox="0 0 220 25"
                   preserveAspectRatio="none"
                 >
                   <path
                     d="M0,25 Q110,-20, 220,25"
-                    :stroke="channels.includes(4) ? '#00D008' : '#848484'"
+                    :stroke="channels.includes(5) ? '#00D008' : '#848484'"
                     fill="transparent"
                     stroke-width="3"
                   />
@@ -121,14 +121,14 @@
                 <svg
                   class="S1-D6-SVG"
                   width="100%"
-                  @click="channelLineClick(2)"
+                  @click="channelLineClick(8)"
                   height="16"
                   viewBox="0 0 220 16"
                   preserveAspectRatio="none"
                 >
                   <path
                     d="M0,0 Q110,16, 220,0"
-                    :stroke="channels.includes(2) ? '#00D008' : '#848484'"
+                    :stroke="channels.includes(8) ? '#00D008' : '#848484'"
                     fill="transparent"
                     stroke-width="3"
                   />
@@ -140,12 +140,12 @@
                 class="S1-D5 round-line"
                 :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
               >
-                <div class="D5 round" @click="channelLineClick(5)">
-                  <span class="D5-text text">D1</span>
+                <div class="D5 round" @click="channelLineClick(2)">
+                  <span class="D5-text text">D2</span>
                 </div>
                 <div
-                  @click="channelLineClick(5)"
-                  :class="{ active: channels.includes(5) }"
+                  @click="channelLineClick(2)"
+                  :class="{ active: channels.includes(2) }"
                   class="S1-D5 line-box"
                 >
                   <span class="line"></span>
@@ -156,41 +156,41 @@
                 class="S1-D7 round-line"
                 :style="`width: calc((${selectionHeight / 2}px + 50%) / 2);`"
               >
-                <div class="D7 round" @click="channelLineClick(7)">
+                <div class="D7 round" @click="channelLineClick(3)">
                   <span class="D7-text text">D3</span>
                 </div>
                 <div
                   class="S1-D7 line-box"
-                  @click="channelLineClick(7)"
-                  :class="{ active: channels.includes(7) }"
+                  @click="channelLineClick(3)"
+                  :class="{ active: channels.includes(3) }"
                 >
                   <span class="line"></span>
                 </div>
-                <div class="S1 round" @click="channelLineClick([5, 6, 7, 8])">
-                  <span class="S1-text text">S2</span>
+                <div class="S1 round" @click="channelLineClick([1, 2, 3, 4])">
+                  <span class="S1-text text">S1</span>
                 </div>
               </div>
-              <div class="D8 round" @click="channelLineClick(8)">
-                <span class="D8-text text">D4</span>
+              <div class="D8 round" @click="channelLineClick(1)">
+                <span class="D8-text text">D1</span>
               </div>
-              <div class="D6 round" @click="channelLineClick(6)">
-                <span class="D6-text text">D2</span>
+              <div class="D6 round" @click="channelLineClick(4)">
+                <span class="D6-text text">D4</span>
               </div>
               <div
                 class="S1-D8 line-box"
-                :class="{ active: channels.includes(8) }"
+                :class="{ active: channels.includes(1) }"
               >
                 <svg
                   class="S1-D8-SVG"
                   width="100%"
-                  @click="channelLineClick(8)"
+                  @click="channelLineClick(1)"
                   height="25"
                   viewBox="0 0 220 25"
                   preserveAspectRatio="none"
                 >
                   <path
                     d="M0,25 Q110,-20, 220,25"
-                    :stroke="channels.includes(8) ? '#00D008' : '#848484'"
+                    :stroke="channels.includes(1) ? '#00D008' : '#848484'"
                     fill="transparent"
                     stroke-width="3"
                   />
@@ -201,14 +201,14 @@
                 <svg
                   class="S1-D6-SVG"
                   width="100%"
-                  @click="channelLineClick(6)"
+                  @click="channelLineClick(4)"
                   height="16"
                   viewBox="0 0 220 16"
                   preserveAspectRatio="none"
                 >
                   <path
                     d="M0,0 Q110,16, 220,0"
-                    :stroke="channels.includes(6) ? '#00D008' : '#848484'"
+                    :stroke="channels.includes(4) ? '#00D008' : '#848484'"
                     fill="transparent"
                     stroke-width="3"
                   />
@@ -335,82 +335,82 @@ interface showSeriesDataType {
 }
 let showSeriesData: showSeriesDataType[] = [];
 const seriesRDNames = [
-  "S1D5.λ1",
-  "S1D5.λ2",
-  "S1D5.λ3",
-  "S1D6.λ1",
-  "S1D6.λ2",
-  "S1D6.λ3",
-  "S1D7.λ1",
-  "S1D7.λ2",
-  "S1D7.λ3",
-  "S1D8.λ1",
-  "S1D8.λ2",
-  "S1D8.λ3",
-  "S2D1.λ1",
-  "S2D1.λ2",
-  "S2D1.λ3",
-  "S2D2.λ1",
-  "S2D2.λ2",
-  "S2D2.λ3",
-  "S2D3.λ1",
-  "S2D3.λ2",
-  "S2D3.λ3",
-  "S2D4.λ1",
-  "S2D4.λ2",
-  "S2D4.λ3",
+  "S1D1.λ1",
+  "S1D1.λ2",
+  "S1D1.λ3",
+  "S1D2.λ1",
+  "S1D2.λ2",
+  "S1D2.λ3",
+  "S1D3.λ1",
+  "S1D3.λ2",
+  "S1D3.λ3",
+  "S1D4.λ1",
+  "S1D4.λ2",
+  "S1D4.λ3",
+  "S2D5.λ1",
+  "S2D5.λ2",
+  "S2D5.λ3",
+  "S2D6.λ1",
+  "S2D6.λ2",
+  "S2D6.λ3",
+  "S2D7.λ1",
+  "S2D7.λ2",
+  "S2D7.λ3",
+  "S2D8.λ1",
+  "S2D8.λ2",
+  "S2D8.λ3",
 ];
 const seriesODNames = [
-  "S1D5.λ1",
-  "S1D5.λ2",
-  "S1D5.λ3",
-  "S1D6.λ1",
-  "S1D6.λ2",
-  "S1D6.λ3",
-  "S1D7.λ1",
-  "S1D7.λ2",
-  "S1D7.λ3",
-  "S1D8.λ1",
-  "S1D8.λ2",
-  "S1D8.λ3",
-  "S2D1.λ1",
-  "S2D1.λ2",
-  "S2D1.λ3",
-  "S2D2.λ1",
-  "S2D2.λ2",
-  "S2D2.λ3",
-  "S2D3.λ1",
-  "S2D3.λ2",
-  "S2D3.λ3",
-  "S2D4.λ1",
-  "S2D4.λ2",
-  "S2D4.λ3",
+  "S1D1.λ1",
+  "S1D1.λ2",
+  "S1D1.λ3",
+  "S1D2.λ1",
+  "S1D2.λ2",
+  "S1D2.λ3",
+  "S1D3.λ1",
+  "S1D3.λ2",
+  "S1D3.λ3",
+  "S1D4.λ1",
+  "S1D4.λ2",
+  "S1D4.λ3",
+  "S2D5.λ1",
+  "S2D5.λ2",
+  "S2D5.λ3",
+  "S2D6.λ1",
+  "S2D6.λ2",
+  "S2D6.λ3",
+  "S2D7.λ1",
+  "S2D7.λ2",
+  "S2D7.λ3",
+  "S2D8.λ1",
+  "S2D8.λ2",
+  "S2D8.λ3",
 ];
 const seriesConcNames = [
-  "S1D5.HbO",
-  "S1D5.HbR",
-  "S1D5.HbT",
-  "S1D6.HbO",
-  "S1D6.HbR",
-  "S1D6.HbT",
-  "S1D7.HbO",
-  "S1D7.HbR",
-  "S1D7.HbT",
-  "S1D8.HbO",
-  "S1D8.HbR",
-  "S1D8.HbT",
-  "S2D1.HbO",
-  "S2D1.HbR",
-  "S2D1.HbT",
-  "S2D2.HbO",
-  "S2D2.HbR",
-  "S2D2.HbT",
-  "S2D3.HbO",
-  "S2D3.HbR",
-  "S2D3.HbT",
-  "S2D4.HbO",
-  "S2D4.HbR",
-  "S2D4.HbT",
+  "S1D1.HbO",
+  "S1D1.HbR",
+  "S1D1.HbT",
+  "S1D2.HbO",
+  "S1D2.HbR",
+  "S1D2.HbT",
+  "S1D3.HbO",
+  "S1D3.HbR",
+  "S1D3.HbT",
+  "S1D4.HbO",
+  "S1D4.HbR",
+  "S1D4.HbT",
+  "S2D5.HbO",
+  "S2D5.HbR",
+  "S2D5.HbT",
+  "S2D6.HbO",
+  "S2D6.HbR",
+  "S2D6.HbT",
+  "S2D7.HbO",
+  "S2D7.HbR",
+  "S2D7.HbT",
+  "S2D8.HbO",
+  "S2D8.HbR",
+  "S2D8.HbT",
 ];
 const seriesColors = [
   "rgba(137,137,140,1)",
@@ -801,20 +801,20 @@ const generateSeries = () => {
     };
 
     tempObj.RD = conversionPkgtoTimeSeries(
-      'near_infrared',
+      "near_infrared",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
 
     tempObj.OD = conversionPkgtoTimeSeries(
-      'ir_od_date',
+      "ir_od_date",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
     tempObj.Conc = conversionPkgtoTimeSeries(
-      'near_infrared',
+      "near_infrared",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
