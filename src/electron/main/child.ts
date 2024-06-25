@@ -179,6 +179,7 @@ const ir_od_date: any = [];
 let lossDataTemplate = {
   baseAdjustedTimestamps: 0, //基础某秒时间戳
   priorPkgnum: 0, //上一个包的包号
+  priorTimeMark: 0, //上一个包的时间戳
   packetLossRate: 0, //数据包丢失率
   packetLossNum: 0, //数据包丢失总数
   isLosspkg: false, //是否丢包
@@ -268,7 +269,7 @@ function calculatePacketLoss(pkg: any) {
     LDInfoEl.isLosspkg = false;
     LDInfoEl.lossNum = 0;
   }
-  LDInfoEl.priorPkgnum = pkg.pkgnum;
+
 }
 
 // 接收消息
@@ -342,7 +343,11 @@ process.on("message", async function ({ type, data }) {
           // 复制包
           const newPkg = JSON.parse(JSON.stringify(pkg));
           newPkg.pkgnum = pkg.pkgnum - LDInfoEl.orderGap * i;
-          newPkg.time_mark = pkg.time_mark - timeGap * i;
+          newPkg.time_mark =
+            pkg.time_mark -
+            ((pkg.time_mark - LDInfoEl.priorTimeMark) /
+              (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
+              i;
           newPkg.color = "red";
           processSend(newPkg, LDInfoEl, hexString);
           test_i++;
@@ -350,6 +355,8 @@ process.on("message", async function ({ type, data }) {
       }
       LDInfoEl.isLosspkg = false;
       processSend(pkg, LDInfoEl, hexString);
+      LDInfoEl.priorPkgnum = pkg.pkgnum;
+      LDInfoEl.priorTimeMark = pkg.time_mark;
       test_i++;
 
       // 释放内存
