@@ -84,7 +84,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, toRaw, onMounted, watch ,getCurrentInstance} from "vue";
+import {
+  ref,
+  reactive,
+  toRaw,
+  onMounted,
+  watch,
+  getCurrentInstance,
+  onBeforeUnmount,
+} from "vue";
 import { CustomDatabase } from "../utils/db";
 import { message } from "ant-design-vue";
 import { Form } from "ant-design-vue";
@@ -98,7 +106,8 @@ import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const app = getCurrentInstance();
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider } = storeToRefs(indexStore);
+const { play, recordId, playIndex, isDragSlider, isConnect } =
+  storeToRefs(indexStore);
 const useForm = Form.useForm;
 const disabled = ref<boolean>(true);
 // 0:开始 1:进行中
@@ -122,28 +131,22 @@ const modelStatus = ref<number>(0);
 const name = ref<string>("");
 const instanceID = ref<string>("");
 
+const ipcRenderer = require("electron").ipcRenderer;
+
+// const recordSaveTime = 10 * 1000;
+
+let recordLastID = 0;
+// let timerRecord: any = null;
+
 let timer;
 let db;
-const emit = defineEmits([
-  "onRecord",
-  "onStatus",
-  "startRecord",
-  "endRecord",
-  "saveRecord",
-  "cancelRecord",
-]);
-const startRecord = () => {
-  emit("startRecord");
-};
-const endRecord = () => {
-  emit("endRecord");
-};
-const saveRecord = (cb) => {
-  emit("saveRecord", cb);
-};
-const cancelRecord = () => {
-  emit("cancelRecord");
-};
+const emit = defineEmits(["onRecord", "onStatus"]);
+
+watch(isConnect, (newValue) => {
+  if (!newValue && isRecord.value) {
+    changeStatus();
+  }
+});
 
 watch(recordId, (newValue, oldValue) => {
   if (newValue) {
@@ -227,9 +230,10 @@ const changeStatus = () => {
 const openModal = () => {
   recoredEndTime.value = new Date().getTime();
   modelStatus.value = 1;
+  // 停止存储
+  ipcRenderer.send("stop-store");
   recoredTotalTime.value = recoredEndTime.value - recoredCreateTime.value;
   openStartRecordModal.value = true;
-  endRecord();
 };
 
 const showStartRecordModal = () => {
@@ -249,13 +253,24 @@ const generateUniqueId = () => {
   return uniqueId;
 };
 
-const handleStartRecordModal = (e: MouseEvent) => {
+const handleStartRecordModal = (e?: MouseEvent) => {
   if (status.value === 0 && modelStatus.value === 0) {
     validate()
       .then(() => {
         message.success("开始记录");
-        startRecord();
+        // startRecord();
         recoredCreateTime.value = new Date().getTime();
+        db.insert("record", {
+          instanceID: generateUniqueId(),
+          ...toRaw(formData),
+          recoredCreateTime: recoredCreateTime.value,
+        }).then((res) => {
+          // 创建存储进程
+          ipcRenderer.send("create-store");
+          // 开始存储
+          recordLastID = res;
+          ipcRenderer.send("start-store", { recordLastID: res });
+        });
         openStartRecordModal.value = false;
         changeStatus();
       })
@@ -264,34 +279,39 @@ const handleStartRecordModal = (e: MouseEvent) => {
       });
   } else if (status.value === 0 && modelStatus.value === 1) {
     app?.proxy?.loading.show("保存中...");
-  
-    saveRecord((sourceData) => {
-      db.insert("record", {
-        instanceID: generateUniqueId(),
-        sourceData: JSON.stringify(sourceData),
+    db.update(
+      "record",
+      {
         ...toRaw(formData),
-        recoredCreateTime: recoredCreateTime.value,
         recoredEndTime: recoredEndTime.value,
         recoredTotalTime: recoredTotalTime.value,
+      },
+      {
+        id: recordLastID,
+      }
+    )
+      .then((res) => {
+        app?.proxy?.loading.hide();
+        message.success("保存成功");
+
+        openStartRecordModal.value = false;
+        clearData();
       })
-        .then((res) => {
-          app?.proxy?.loading.hide();
-          message.success("保存成功");
-          openStartRecordModal.value = false;
-          clearData();
-        })
-        .catch((err) => {
-          app?.proxy?.loading.hide();
-          message.error("保存失败,请重试!");
-          console.log("error", err);
-        });
-    });
+      .catch((err) => {
+        app?.proxy?.loading.hide();
+        message.error("保存失败,请重试!");
+        console.log("error", err);
+      });
+    // saveRecord((sourceData) => {
+    //   // timerRecord && clearInterval(timerRecord);
+    //   // saveRecordSource(sourceData);
+
+    // });
   }
 };
 
 const handleEndRecordModal = () => {
   openStartRecordModal.value = false;
-  cancelRecord();
   clearData();
 };
 const clearData = () => {
@@ -323,5 +343,13 @@ const playClose = () => {
   indexStore.play = false;
   clearData();
 };
+
+onBeforeUnmount(() => {
+  //  关闭存储进程
+  ipcRenderer.send("close-store");
+  ipcRenderer.send("stop-store");
+  ipcRenderer.send("close-store");
+  // timerRecord && clearInterval(timerRecord);
+});
 </script>
 <style scoped></style>

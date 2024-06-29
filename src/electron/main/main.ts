@@ -2,6 +2,8 @@ import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
 let child: typeof child_process;
+let storeChild: typeof child_process;
+let isStartStore = false;
 import log from "electron-log/main";
 log.transports.file.level = "silly";
 log.transports.console.level = "silly";
@@ -55,6 +57,8 @@ const removZero = ({ pkg }: any) => {
 };
 
 function createWindow() {
+ 
+ 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     frame: false,
@@ -165,6 +169,25 @@ function createWindow() {
     config = Object.assign(config, JSON.parse(data));
   });
 
+  // 开始存储
+  ipcMain.on("start-store", (event, data) => {
+    log.error("start-store", data);
+    isStartStore = true;
+    storeChild && storeChild.send({ type: "start-store", data: data });
+  });
+
+  // 停止存储
+  ipcMain.on("stop-store", (event, data) => {
+    isStartStore = false;
+    storeChild && storeChild.send({ type: "stop-store", data: data });
+  });
+
+  // 关闭储进程
+  ipcMain.on("close-store", (event) => {
+    storeChild && storeChild.connected && storeChild.kill();
+    storeChild = null;
+  });
+
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
   //   console.log("bluetooth-pairing-response");
@@ -179,6 +202,46 @@ function createWindow() {
   //     mainWindow.webContents.send("bluetooth-pairing-request", details);
   //   }
   // );
+
+  // 创建存储进程
+  ipcMain.on("create-store", (event, data) => {
+    log.error("create-store");
+    storeChild && storeChild.connected && storeChild.kill();
+
+    storeChild = child_process.fork(
+      join(__dirname, "./store.js"),
+      [__static, _product_path],
+      {
+        // 关闭子进程打印，开启ipc
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
+      },
+      function (err: any) {
+        log.error(err);
+        console.log(err);
+      }
+    );
+    storeChild.stderr.on("data", (data: any) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    storeChild.stdout.on("data", (data: any) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    storeChild.on("error", (err: any) => {
+      log.error("子进程启动或执行过程中发生错误:", err);
+      console.error("子进程启动或执行过程中发生错误:", err);
+    });
+
+    storeChild.on("exit", (code: number, signal: string) => {
+      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+    });
+    storeChild.on(
+      "message",
+      ({ type, data }: { type: string; data: any }) => {}
+    );
+  });
 
   // 创建子进程
   ipcMain.on("create-child", (event, data) => {
@@ -219,6 +282,9 @@ function createWindow() {
     child.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-decode") {
         removZero(data);
+        isStartStore &&
+          storeChild &&
+          storeChild.send({ type: "end-data-decode", data: data.pkg });
         event.sender.send("end-data-decode", data);
       }
     });

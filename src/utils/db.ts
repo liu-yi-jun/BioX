@@ -1,7 +1,7 @@
 // 如果有node环境才能使用require，node环境在electron中main.ts中配置
 const sqlite3 = require("sqlite3");
 // import log  from 'electron-log';
-export function CustomDatabase(url = "data.db") {
+export function CustomDatabase(this: any, url = "data.db") {
   // const sqlite3 = sq3.verbose();
   this.db = new sqlite3.Database(url);
 }
@@ -21,8 +21,13 @@ CustomDatabase.prototype.init = function (isMain = true) {
           describe VARCHAR(255) NOT NULL,
           recoredCreateTime INTEGER NOT NULL default(0),
           recoredTotalTime INTEGER NOT NULL default(0),
-          recoredEndTime INTEGER NOT NULL default(0),
-          sourceData TEXT
+          recoredEndTime INTEGER NOT NULL default(0)
+          )`);
+        // 源数据表
+        await this.run(`CREATE TABLE if not exists source(
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          recordId INTEGER NOT NULL,
+          data BLOB
           )`);
         // 蓝牙设备表
         await this.run(`CREATE TABLE if not exists device(
@@ -48,10 +53,10 @@ CustomDatabase.prototype.init = function (isMain = true) {
   });
 };
 
-CustomDatabase.prototype.get = function (sql) {
+CustomDatabase.prototype.get = function (sql: string) {
   let that = this;
   return new Promise((resolve, reject) => {
-    that.db.get(sql, (err, res) => {
+    that.db.get(sql, (err: any, res: any) => {
       if (err) {
         // log.error(err);
         reject(err);
@@ -61,25 +66,25 @@ CustomDatabase.prototype.get = function (sql) {
     });
   });
 };
-CustomDatabase.prototype.run = function (sql) {
+CustomDatabase.prototype.run = function (sql: string) {
   let that = this;
   return new Promise((resolve, reject) => {
     // console.log('sql', sql);
 
-    that.db.run(sql, (err) => {
+    that.db.run(sql, function (this: any, err: any, res: any) {
       if (err) {
         // log.error(err);
         reject(err);
       } else {
-        resolve(true);
+        resolve(this.lastID);
       }
     });
   });
 };
-CustomDatabase.prototype.all = function (sql) {
+CustomDatabase.prototype.all = function (sql: string) {
   let that = this;
   return new Promise((resolve, reject) => {
-    that.db.all(sql, (err, res) => {
+    that.db.all(sql, (err: any, res: any) => {
       if (err) {
         // log.error(err);
         reject(err);
@@ -89,7 +94,11 @@ CustomDatabase.prototype.all = function (sql) {
     });
   });
 };
-CustomDatabase.prototype.update = function (table, modifys, conditions) {
+CustomDatabase.prototype.update = function (
+  table: string,
+  modifys: any,
+  conditions: any
+) {
   let that = this;
   return new Promise((resolve, reject) => {
     let modifyKey: string[] = [];
@@ -105,11 +114,14 @@ CustomDatabase.prototype.update = function (table, modifys, conditions) {
     )} WHERE ${conditionsKey.join(" and ")}`;
     that
       .run(sql)
-      .then((res) => resolve(res))
-      .catch((err) => reject(err));
+      .then((res: any) => resolve(res))
+      .catch((err: any) => reject(err));
   });
 };
-CustomDatabase.prototype.insertOrUpdate = function (table, params) {
+CustomDatabase.prototype.insertOrUpdate = function (
+  table: string,
+  params: any
+) {
   let that = this;
   return new Promise((resolve, reject) => {
     let keys: string[] = [],
@@ -123,11 +135,14 @@ CustomDatabase.prototype.insertOrUpdate = function (table, params) {
     )})`;
     that
       .run(sql)
-      .then((res) => resolve(res))
-      .catch((err) => reject(err));
+      .then((res: any) => resolve(res))
+      .catch((err: any) => reject(err));
   });
 };
-CustomDatabase.prototype.insertOrIgnore = function (table, params) {
+CustomDatabase.prototype.insertOrIgnore = function (
+  table: string,
+  params: any
+) {
   let that = this;
   return new Promise((resolve, reject) => {
     let keys: string[] = [],
@@ -141,12 +156,12 @@ CustomDatabase.prototype.insertOrIgnore = function (table, params) {
     )}) VALUES(${values.join(",")})`;
     that
       .run(sql)
-      .then((res) => resolve(res))
-      .catch((err) => reject(err));
+      .then((res: any) => resolve(res))
+      .catch((err: any) => reject(err));
   });
 };
 
-CustomDatabase.prototype.insert = function (table, params) {
+CustomDatabase.prototype.insert = function (table: string, params: any) {
   let that = this;
   return new Promise((resolve, reject) => {
     let keys: string[] = [],
@@ -160,11 +175,11 @@ CustomDatabase.prototype.insert = function (table, params) {
     )})`;
     that
       .run(sql)
-      .then((res) => resolve(res))
-      .catch((err) => reject(err));
+      .then((res: any) => resolve(res))
+      .catch((err: any) => reject(err));
   });
 };
-CustomDatabase.prototype.delete = function (table, conditions) {
+CustomDatabase.prototype.delete = function (table: string, conditions: any) {
   let that = this;
   let conditionsKey: string[] = [];
   return new Promise(async (resolve, reject) => {
@@ -174,6 +189,7 @@ CustomDatabase.prototype.delete = function (table, conditions) {
       }
       let sql = `DELETE FROM ${table} WHERE ${conditionsKey.join(" and ")} `;
       let res = await that.run(sql);
+      that.run("VACUUM");
       resolve(res);
     } catch (err) {
       reject(err);

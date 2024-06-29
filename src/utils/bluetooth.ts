@@ -18,7 +18,7 @@ const handleEndDataDecode = (event, data) => {
       ...data.pkg,
       ps_s: data.ps_s,
       psd_s: data.psd_s,
-      hexString: data.hexString,
+      // hexString: data.hexString,
       psd_relative_s: data.psd_relative_s,
       psd_relative_percent_s: data.psd_relative_percent_s,
       time_e_s: data.time_e_s,

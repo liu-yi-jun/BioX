@@ -142,6 +142,7 @@ const deleteRow = (record: DataItem) => {
           (item) => item.id !== record.id
         );
       });
+      db.delete("source", { recordId: record.id })
     },
   });
 };
@@ -164,13 +165,20 @@ const exportCsv = async (record: DataItem) => {
   // DEVICE FIRMWARE
   csvContent += "" + ","
   // 获取记录的数据
-  const res = await db.get(`select sourceData from record where id = ${record.id}`);
-  const sourceData = JSON.parse(res.sourceData);
-  console.log(sourceData);
+  // const res = await db.get(`select sourceData from record where id = ${record.id}`);
+  const res = await db.all(`select * from source where recordId = ${record.id}`);
+  console.log(res);
+  
+  const sourceData = res.map(item => {
+    return JSON.parse(item.data)
+  }).flat()
+  console.log(sourceData.length);
+  
   
   // 检查sourceData是否是数组以及是否有数据
   if (!Array.isArray(sourceData) || sourceData.length === 0) {
     alert("记录的数据异常！");
+    app?.proxy?.loading.hide();
     return;
   }
   let firstPKGData = sourceData[0]
@@ -238,7 +246,7 @@ const exportCsv = async (record: DataItem) => {
       valueArrayArrayForKey = (entries.find(([key]) => key === keyToFind) as [string, number[][]] | undefined)?.[1];
       if (Array.isArray(valueArrayArrayForKey)) {
         // 处理二维数组
-        console.log('Found array:', valueArrayArrayForKey);
+        // console.log('Found array:', valueArrayArrayForKey);
         for (let col = 0; col < eegDataNum; col++) {
           //增加eeg counter
           csvContent += "" + eegCounter + ","

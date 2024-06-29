@@ -14,10 +14,6 @@
     <record
       @on-record="onRecord"
       @on-status="onStatus"
-      @start-record="startRecord"
-      @end-record="endRecord"
-      @save-record="saveRecord"
-      @cancel-record="cancelRecord"
     ></record>
   </div>
 </template>
@@ -50,43 +46,7 @@ const onStatus = (value) => {
   status.value = value;
 };
 
-let isStartRecord = false;
 
-onMounted(() => {
-  bluetooth.addNotice(bluetoothNotice);
-  initConfig();
-});
-onBeforeUnmount(() => {
-  bluetooth.removeNotice(bluetoothNotice);
-});
-// 蓝牙数据通知
-const bluetoothNotice = (data) => {
-  if (isStartRecord) {
-    console.log("蓝牙数据录制中", data);
-    delete data.pkg
-    delete data.hexString
-    sourceData.push(data);
-  }
-};
-const startRecord = () => {
-  isStartRecord = true;
-  sourceData = [];
-  // 开启录制
-};
-// 保存录制
-const saveRecord = (cb) => {
-
-  cb(sourceData);
-};
-const endRecord = () => {
-  // 结束录制
-  isStartRecord = false;
-};
-const cancelRecord = () => {
-  // 取消录制
-  endRecord();
-  sourceData = [];
-};
 
 // 更新配置
 watch(

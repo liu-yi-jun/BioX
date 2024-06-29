@@ -78,7 +78,7 @@ const PKG = Struct({
   error_state: ref.types.int32, //错误状态
   // EEG_DATA: ref.types.bool, //EEG数据标志位
   // ELSE_DATA: ref.types.bool, //其他数据标志位
-  pkg: ArrayType(ref.types.uint8, 300),
+  // pkg: ArrayType(ref.types.uint8, 300),
 });
 
 // 加载DLL
@@ -317,7 +317,7 @@ process.on("message", async function ({ type, data }) {
       // }
 
       // 原始数据转16位
-      let hexString = arrayToHexString(pkg.pkg);
+      // let hexString = arrayToHexString(pkg.pkg);
       
       // 假设丢包
       // if (pkg.pkgnum && pkg.pkgnum % 77 === 0) {
@@ -356,12 +356,12 @@ process.on("message", async function ({ type, data }) {
               (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
               i;
           newPkg.color = "red";
-          processSend(newPkg, LDInfoEl, hexString);
+          processSend(newPkg, LDInfoEl);
           test_i++;
         }
       }
       LDInfoEl.isLosspkg = false;
-      processSend(pkg, LDInfoEl, hexString);
+      processSend(pkg, LDInfoEl);
       LDInfoEl.priorPkgnum = pkg.pkgnum;
       LDInfoEl.priorTimeMark = pkg.time_mark;
       test_i++;
@@ -384,7 +384,6 @@ process.on("message", async function ({ type, data }) {
 function processSend(
   pkg: any,
   LDInfoEl: typeof lossDataTemplate,
-  hexString: any
 ) {
   // 有EEG数据标志位
   if (pkg.pkg_type === 1) {
@@ -531,7 +530,6 @@ function processSend(
   process.send!({
     type: "end-data-decode",
     data: {
-      hexString: hexString,
       pkg,
       // ps_s,
       psd_s,

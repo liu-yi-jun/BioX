@@ -13,7 +13,10 @@
         <div class="filter-right">
           <a-form size="small" :model="seriesForm" layout="inline">
             <a-form-item label="preproc">
-              <a-switch @change="changeConfig" v-model:checked="configData.isFilter" />
+              <a-switch
+                @change="changeConfig"
+                v-model:checked="configData.isFilter"
+              />
             </a-form-item>
             <a-form-item label="min">
               <a-input
@@ -259,7 +262,7 @@ import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect,configData } =
+const { play, recordId, playIndex, isDragSlider, isConnect, configData } =
   storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
@@ -524,9 +527,13 @@ const initialize = () => {
     bluetooth.addNotice(bluetoothNotice);
   } else {
     bluetooth.removeNotice(bluetoothNotice);
-    db.get(`select sourceData from record where id = ${recordId.value}`).then(
+    db.all(`select * from source where recordId = ${recordId.value}`).then(
       (res) => {
-        pkgSourceData = JSON.parse(res.sourceData);
+        pkgSourceData = res
+          .map((item) => {
+            return JSON.parse(item.data);
+          })
+          .flat();
       }
     );
   }
@@ -764,7 +771,7 @@ const initRelated = () => {
   relatedChart && relatedChart.clear();
   relatedChart.setOption({
     animation: false,
-    color: ["#E4CDFF","#A19CFF", "#7A83FF", "#4C68FF","#0721E6"],
+    color: ["#E4CDFF", "#A19CFF", "#7A83FF", "#4C68FF", "#0721E6"],
 
     legend: {
       // 0，1，2，3，4
@@ -817,7 +824,7 @@ const initRelated = () => {
       },
     ],
     series: [
-    {
+      {
         name: "δ wave",
         type: "line",
         stack: "Total",
@@ -836,7 +843,7 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-  
+
       {
         name: "θ wave",
         type: "line",
@@ -852,7 +859,7 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-    
+
       {
         name: "α wave",
         type: "line",
@@ -899,7 +906,6 @@ const initRelated = () => {
         areaStyle: {},
         data: [],
       },
-
     ],
   });
 };
@@ -1639,7 +1645,7 @@ const updateRenderRelated = (type?: string) => {
     relatedChart.setOption(
       {
         series: [
-        {
+          {
             name: "δ wave",
             stack: "Total",
             data: conversionPkgtoBarnsTimeOrRelated(
@@ -1659,8 +1665,7 @@ const updateRenderRelated = (type?: string) => {
               relatedStep.value
             ),
           },
-         
-         
+
           {
             name: "α wave",
             stack: "Total",
@@ -1950,7 +1955,7 @@ const parseChannel = (channel: string) => {
   return 0;
 };
 const changeConfig = () => {
-  ipcRenderer.send("change-config",JSON.stringify(configData.value));
-}
+  ipcRenderer.send("change-config", JSON.stringify(configData.value));
+};
 </script>
 <style scoped></style>

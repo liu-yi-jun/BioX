@@ -22,3 +22,4 @@
 当Buffer中存储的是int32类型数据时，直接使用bufferl[0]可以正确地获取数据，这是因为Buffer对象中的索引访问是按字节来进行的，而int32是4个字节长，因此每个int32的值会占据连续的4个字节，这样直接通过bufferl[0]可以获取到正确的int32数据。
 但是当Buffer中存储的是double类型数据时，double通常是8个字节长，而Buffer对象中的索引访问仍然是按字节进行的。因此，直接使用bufferl[0]去获取double数据可能会出现问题，因为double的每个值需要8个字节，而不是单个字节。
 如果您需要正确地提取double类型数据，您可以使用readDoubleLE或readDoubleBE方法来从Buffer中读取double类型数据。这样可以确保您正确地获取到double数据。
+18、主进程console不显示，有可能有错误的地方，比如main里面加了其他文件不能解析出来

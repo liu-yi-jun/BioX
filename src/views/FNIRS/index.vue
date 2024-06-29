@@ -590,9 +590,13 @@ const initialize = () => {
     bluetooth.addNotice(bluetoothNotice);
   } else {
     bluetooth.removeNotice(bluetoothNotice);
-    db.get(`select sourceData from record where id = ${recordId.value}`).then(
+    db.all(`select  * from source where recordId = ${recordId.value}`).then(
       (res) => {
-        pkgSourceData = JSON.parse(res.sourceData);
+        pkgSourceData = res
+          .map((item) => {
+            return JSON.parse(item.data);
+          })
+          .flat();
       }
     );
   }
@@ -951,8 +955,8 @@ const channelLineClick = (value: number | Array<number>) => {
   handleChange();
 };
 
-const changeConfig = () => {  
-  ipcRenderer.send("change-config",JSON.stringify(configData.value));
-}
+const changeConfig = () => {
+  ipcRenderer.send("change-config", JSON.stringify(configData.value));
+};
 </script>
 <style scoped></style>
