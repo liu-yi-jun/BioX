@@ -56,7 +56,7 @@
       </div>
 
       <div class="time-series">
-        <TimeSeries ref="timeSeriesRef"></TimeSeries>
+        <TimeSeries :numSeconds="seriesStep" ref="timeSeriesRef"></TimeSeries>
         <!-- <div style="width: 100%; height: 100%" id="series"></div> -->
       </div>
     </div>
@@ -81,7 +81,12 @@
                   v-model:value="spectrumShowTime"
                   style="width: 100px"
                   v-if="spectrumType === 'Heatmap'"
-                  @change="undateRenderPsdMap"
+                  @change="
+                    () => {
+                      undateHeatmap('xAxis');
+                      undateHeatmap('series');
+                    }
+                  "
                   aria-placeholder="Show Time"
                   :options="spectrumShowTimeOptions"
                   size="small"
@@ -103,12 +108,17 @@
                   placeholder="Channels"
                   :options="psdChannelOptions"
                   size="small"
-                  @change="undatePsd('channel')"
+                  @change="
+                    () => {
+                      undatePsd('channel');
+                      undatePsd('series');
+                    }
+                  "
                 ></a-select>
                 <a-select
                   v-if="spectrumType === 'Heatmap'"
                   v-model:value="heatmapChannel"
-                  @change="undateRenderPsdMap"
+                  @change="undateHeatmap('series')"
                   style="width: 100px"
                   aria-placeholder="Show Time"
                   :options="heatmapChannelOptions"
@@ -127,11 +137,17 @@
             ref="psdRef"
             style="width: 100%; height: 100%"
           ></Psd>
-          <div
+          <Heatmap
+            :numSeconds="spectrumShowTime"
+            v-if="spectrumType === 'Heatmap'"
+            ref="heatmapRef"
+            style="width: 100%; height: 100%"
+          ></Heatmap>
+          <!-- <div
             v-if="spectrumType === 'Heatmap'"
             id="heatmap"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
         </div>
       </div>
       <div class="eig-card">
@@ -171,7 +187,7 @@
                   v-if="bandsType === 'Related Power'"
                   v-model:value="relatedStep"
                   style="width: 100px"
-                  @change="updateRenderRelated('xAxis')"
+                  @change="undateRelatedPower('xAxis')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -198,12 +214,19 @@
             v-if="bandsType === 'Absolute Power'"
             style="width: 100%; height: 100%"
           ></div> -->
-          <div
+          <RelatedPower
+            :numSeconds="relatedStep"
+            ref="relatedPowerRef"
+            v-if="bandsType === 'Related Power'"
+            style="width: 100%; height: 100%"
+          ></RelatedPower>
+          <!-- <div
             id="related"
             v-if="bandsType === 'Related Power'"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
           <BarnsTime
+            :numSeconds="barnsTimeStep"
             v-if="bandsType === 'Time Series'"
             style="width: 100%; height: 100%"
             ref="barnsTimeRef"
@@ -235,7 +258,9 @@ import type { SelectProps } from "ant-design-vue";
 
 import BarnsTime from "../../components/BarnsTime.vue";
 import TimeSeries from "../../components/TimeSeries.vue";
+import RelatedPower from "../../components/RelatedPower.vue";
 import AbsolutePower from "../../components/AbsolutePower.vue";
+import Heatmap from "../../components/Heatmap.vue";
 import Psd from "../../components/Psd.vue";
 import { HighchartsKey } from "../../types";
 import { CustomBluetooth } from "../../utils/bluetooth";
@@ -249,14 +274,15 @@ let pkgMaxTime = 20;
 const EEGTimeGap = 4; // 采样间隔
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
-const seriesStep = ref(5);
+let psdMapData: number[][] = [];
+const seriesStep = ref(10);
 const seriesMaxStep = 20;
 let isRenderTimer: any = null;
-const spectrumShowTime = ref(5);
-const relatedStep = ref(20);
-const barnsTimeStep = ref(5);
+const spectrumShowTime = ref(1);
+const relatedStep = ref(10);
+const barnsTimeStep = ref(10);
 const barnsTimeMaxStep = 20;
-const minTimeGap = 250; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
+const minTimeGap = 40; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
 const timeGap = Math.round(1000 / minTimeGap);
 const isRender = ref(false);
 const channel = ref(["Fp1", "Fp2"]);
@@ -271,7 +297,9 @@ const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
 const timeSeriesRef = ref<any>(null);
 const absolutePowerRef = ref<any>(null);
+const relatedPowerRef = ref<any>(null);
 const barnsTimeRef = ref<any>(null);
+const heatmapRef = ref<any>(null);
 const psdRef = ref<any>(null);
 import * as echarts from "echarts";
 import { CustomDatabase } from "../../utils/db";
@@ -284,6 +312,7 @@ const { play, recordId, playIndex, isDragSlider, isConnect } =
 const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
+const MaxFrequency = 257;
 
 const seriesForm = reactive({
   min: "",
@@ -450,6 +479,7 @@ watch(isConnect, (newValue) => {
 
 onMounted(function () {
   initialize();
+  initPsdMapData(spectrumShowTime.value);
   // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
   // const bluetooth = new CustomBluetooth();
   // bluetooth.addNotice((data) => {});
@@ -468,16 +498,7 @@ const bluetoothNotice = (data) => {
   handlePkgList(data);
   isRender.value = true;
   isRenderTimer && clearTimeout(isRenderTimer);
-  undateTimeSerie("series");
-  if (bandsType.value === "Absolute Power") {
-    undateAbsolutePower("series");
-  }
-  if (spectrumType.value === "PSD") {
-    undatePsd("series");
-  }
-  if (bandsType.value === "Time Series") {
-    undateBarnsTime("series");
-  }
+
   isRenderTimer = setTimeout(() => {
     isRender.value = false;
   }, 4 * 1000);
@@ -534,17 +555,33 @@ const renderData = () => {
     // undateRenderPsd();
   }
   if (spectrumType.value === "Heatmap") {
-    undateRenderPsdMap();
+    // undateRenderPsdMap();
   }
   if (bandsType.value === "Absolute Power") {
     // undateRenderAbsoule();
     // undateAbsolutePower("series");
   }
   if (bandsType.value === "Related Power") {
-    updateRenderRelated();
+    // updateRenderRelated();
   }
   if (bandsType.value === "Time Series") {
     // updateRenderBarnsTime();
+  }
+  undateTimeSerie("series");
+  if (spectrumType.value === "PSD") {
+    undatePsd("series");
+  }
+  if (spectrumType.value === "Heatmap") {
+    undateHeatmap("series");
+  }
+  if (bandsType.value === "Absolute Power") {
+    undateAbsolutePower("series");
+  }
+  if (bandsType.value === "Related Power") {
+    undateRelatedPower("series");
+  }
+  if (bandsType.value === "Time Series") {
+    undateBarnsTime("series");
   }
 };
 
@@ -1386,11 +1423,13 @@ const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
       // initPSD();
+      undatePsd("series");
       // undateRenderPsd();
     }
     if (spectrumType.value === "Heatmap") {
-      initHeatmap();
-      undateRenderPsdMap();
+      // initHeatmap();
+      undateHeatmap("series");
+      // undateRenderPsdMap();
     }
   });
 };
@@ -1403,8 +1442,9 @@ const handleChangeBandsType = () => {
       undateAbsolutePower("series");
     }
     if (bandsType.value === "Related Power") {
-      initRelated();
-      updateRenderRelated();
+      // initRelated();
+      // updateRenderRelated();
+      undateRelatedPower("series");
     }
     if (bandsType.value === "Time Series") {
       // initBarnsTime();
@@ -1833,26 +1873,6 @@ const updateRenderBarnsTime = (type?: string) => {
 };
 
 // 现在只取EEG最后一个数据进行渲染,太卡了
-const conversionPkgtoPsdMap = (typeChannel, step) => {
-  if (pkgDataList.length < 1) return 0;
-  let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
-  let minTime = maxTimer - step * 1000;
-  let sliceData = pkgDataList.filter(
-    (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
-  );
-  let psdMapData: number[][] = [];
-  let baseTime = 0;
-  sliceData.forEach((item, sliceIndex) => {
-    if (sliceIndex !== 0) {
-      baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
-    }
-    item.psd_s[parseChannel(typeChannel)].forEach((value, y) => {
-      psdMapData.push([baseTime / calculateMinTimeGap(), y, value]);
-    });
-  });
-  return psdMapData;
-};
-
 // const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   if (pkgDataList.length < 1) return 0;
 //   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
@@ -1862,23 +1882,52 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   );
 //   let psdMapData: number[][] = [];
 //   let baseTime = 0;
-
-//   for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
-//     const item = sliceData[sliceIndex];
+//   sliceData.forEach((item, sliceIndex) => {
 //     if (sliceIndex !== 0) {
 //       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
 //     }
-//     let dataList = item.psd_s_multiple;
-//     for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
-//       dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
-//         psdMapData.push([(baseTime + dataIndex * EEGTimeGap) / calculateMinTimeGap(), y, value]);
-//       });
-//     }
-//   }
-//   console.log(psdMapData);
 
+//     item.psd_s[parseChannel(typeChannel)].forEach((value, y) => {
+//       psdMapData.push([baseTime, y, value]);
+//     });
+//   });
 //   return psdMapData;
 // };
+
+const conversionPkgtoPsdMap = (typeChannel, step) => {
+  if (pkgDataList.length < 1) return 0;
+  let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
+  let minTime = maxTimer - step * 1000;
+  let sliceData = pkgDataList.filter(
+    (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
+  );
+
+  let baseTime = 0;
+
+  for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
+    const item = sliceData[sliceIndex];
+    if (sliceIndex !== 0) {
+      baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
+    }
+    let dataList = item.psd_s_multiple;
+    for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
+      dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
+        let x = Math.round(baseTime / EEGTimeGap) + dataIndex;
+        psdMapData[x * MaxFrequency + y] = [baseTime + dataIndex * EEGTimeGap, y, value];
+      });
+    }
+  }
+
+  return psdMapData;
+};
+const initPsdMapData = (step) => {
+  psdMapData = [];
+  for (let i = 0; i < (1000 / EEGTimeGap) * step; i++) {
+    for (let j = 0; j < MaxFrequency; j++) {
+      psdMapData.push([i, j, 0]);
+    }
+  }
+};
 
 const conversionPkgtoPsd = (typeChannel) => {
   if (pkgDataList.length < 1) return 0;
@@ -2008,6 +2057,103 @@ const undateAbsolutePower = (type) => {
   }
 };
 
+const undateHeatmap = (type) => {
+  switch (type) {
+    case "series":
+      heatmapRef.value.setOption({
+        series: {
+          data: conversionPkgtoPsdMap(
+            heatmapChannel.value,
+            spectrumShowTime.value
+          ),
+        },
+      });
+      break;
+    case "xAxis":
+      initPsdMapData(spectrumShowTime.value);
+      heatmapRef.value.setOption({
+        xAxis: {
+          max: spectrumShowTime.value,
+        },
+      });
+      break;
+  }
+};
+
+const undateRelatedPower = (type) => {
+  switch (type) {
+    // case "channel":
+    //   channel.value.sort((a, b) => {
+    //     return (
+    //       chanOptionsData.findIndex((i) => i.value == a) -
+    //       chanOptionsData.findIndex((i) => i.value == b)
+    //     );
+    //   });
+    //   barnsTimeRef.value.setOption({
+    //     channel: channel.value,
+    //   });
+    //   break;
+    case "series":
+      relatedPowerRef.value.setOption({
+        series: [
+          {
+            name: "γ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              4,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "β wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              3,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "α wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              2,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "θ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              1,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "δ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              0,
+              relatedStep.value
+            ),
+          },
+        ],
+      });
+      break;
+    case "xAxis":
+      relatedPowerRef.value.setOption({
+        xAxis: {
+          max: relatedStep.value,
+        },
+      });
+      break;
+  }
+};
+
 const undateBarnsTime = (type) => {
   switch (type) {
     // case "channel":
@@ -2026,7 +2172,10 @@ const undateBarnsTime = (type) => {
         series: [
           {
             name: "EEG",
-            data: conversionPkgtoSeriesData(bandsChannel.value, barnsTimeStep.value),
+            data: conversionPkgtoSeriesData(
+              bandsChannel.value,
+              barnsTimeStep.value
+            ),
           },
           {
             name: "DELTA",

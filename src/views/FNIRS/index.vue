@@ -45,7 +45,8 @@
       </div>
 
       <div class="time-series">
-        <div style="width: 100%; height: 100%" id="series"></div>
+        <FnirsTime :numSeconds="seriesStep" ref="fnirsTimeRef"></FnirsTime>
+        <!-- <div style="width: 100%; height: 100%" id="series"></div> -->
       </div>
     </div>
     <div class="card-bottom">
@@ -274,16 +275,18 @@ import {
   onBeforeUnmount,
 } from "vue";
 // import { CustomDatabase } from "../../utils/db";
+import FnirsTime from "../../components/FnirsTime.vue";
 import * as echarts from "echarts";
 const radioValue = ref<number>(1);
 const checkboxValue1 = ref(["1"]);
 const checkboxValue2 = ref(["1"]);
 const selectionHeight = ref(0);
 const selectionWidth = ref(0);
-const seriesStep = ref(30);
+const seriesStep = ref(10);
 const seriesMaxStep = 30;
+const fnirsTimeRef = ref<any>(null);
 const isRender = ref(false);
-const minTimeGap = 250;
+const minTimeGap = 40;
 const packetLossRate = ref(0);
 const packetLossNum = ref(0);
 const showTimeOptionsData = [
@@ -300,8 +303,8 @@ const showTimeOptionsData = [
     label: "10 sec",
   },
   {
-    value: 30,
-    label: "30 sec",
+    value: 20,
+    label: "20 sec",
   },
 ];
 const seriesForm = reactive({
@@ -317,6 +320,7 @@ import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
 let pkgDataList: any = [];
 let pkgSourceData: any = [];
+
 let pkgMaxTime = 30;
 const indexStore = useIndexStore();
 const { play, recordId, playIndex, isDragSlider, isConnect } =
@@ -536,8 +540,9 @@ const realTimerRenderData = () => {
 
 // 渲染
 const renderData = () => {
-  generateSeries();
-  initSeries();
+  undateTimeSerie("series");
+  // generateSeries();
+  // initSeries();
 };
 
 // 数据包处理
@@ -591,16 +596,21 @@ const initialize = () => {
 
   initData();
   nextTick(() => {
-    myChart = echarts.init(document.getElementById("series"));
-    initSeries();
+    undateTimeSerie("channel");
+    // myChart = echarts.init(document.getElementById("series"));
+    // initSeries();
   });
 };
 
 // 配置改变
 const handleChange = () => {
-  myChart.clear();
+  // myChart.clear();
   generateShowSeriesData();
-  initSeries();
+  // initSeries();
+  undateTimeSerie("channel");
+  undateTimeSerie("xAxis");
+  undateTimeSerie("yAxis");
+  undateTimeSerie("series");
 };
 
 const changeAlpha = (colorString: string, newAlpha: string) => {
@@ -685,10 +695,10 @@ const generateShowSeriesData = () => {
   });
   console.log("showSeriesData", showSeriesData);
 
-  generateXAxisArr();
-  generateYAxisArr();
-  generateGrid();
-  generateSeries();
+  // generateXAxisArr();
+  // generateYAxisArr();
+  // generateGrid();
+  // generateSeries();
 };
 
 // 生成X轴
@@ -801,20 +811,20 @@ const generateSeries = () => {
     };
 
     tempObj.RD = conversionPkgtoTimeSeries(
-      'near_infrared',
+      "near_infrared",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
 
     tempObj.OD = conversionPkgtoTimeSeries(
-      'ir_od_date',
+      "ir_od_date",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
     );
     tempObj.Conc = conversionPkgtoTimeSeries(
-      'near_infrared',
+      "near_infrared",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
@@ -876,6 +886,62 @@ const mapRadioToField = (index) => {
   }
 };
 
+const undateTimeSerie = (type) => {
+  switch (type) {
+    case "channel":
+      fnirsTimeRef.value.setOption({
+        channel: showSeriesData,
+      });
+      break;
+    case "series":
+      fnirsTimeRef.value.setOption({
+        series: showSeriesData.map((item, index) => {
+          let tempObj: any = {
+            RD: [],
+            OD: [],
+            Conc: [],
+          };
+          tempObj.RD = conversionPkgtoTimeSeries(
+            "near_infrared",
+            mapChanToField(item.chanIndex),
+            mapRadioToField(item.radioIndex),
+            seriesStep.value
+          );
+
+          tempObj.OD = conversionPkgtoTimeSeries(
+            "ir_od_date",
+            mapChanToField(item.chanIndex),
+            mapRadioToField(item.radioIndex),
+            seriesStep.value
+          );
+          tempObj.Conc = conversionPkgtoTimeSeries(
+            "near_infrared",
+            mapChanToField(item.chanIndex),
+            mapRadioToField(item.radioIndex),
+            seriesStep.value
+          );
+          return tempObj[item.type];
+        }),
+      });
+      break;
+    case "xAxis":
+      fnirsTimeRef.value.setOption({
+        xAxis: showSeriesData.map((item, index) => ({
+          max: seriesStep.value,
+        })),
+      });
+      break;
+    case "yAxis":
+      fnirsTimeRef.value.setOption({
+        yAxis: showSeriesData.map((item) => ({
+          max: seriesForm.max === "" ? undefined : seriesForm.max,
+          min: seriesForm.min === "" ? undefined : seriesForm.min,
+        })),
+      });
+      break;
+  }
+};
+
 const conversionPkgtoTimeSeries = (field, channel, index, step) => {
   if (pkgDataList.length < 1) return [];
   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
@@ -912,6 +978,7 @@ const initSeries = () => {
 
 // 切换渠道
 const channelLineClick = (value: number | Array<number>) => {
+  debugger;
   if (Array.isArray(value)) {
     let flag = value.every((item) => {
       return channels.value.includes(item);

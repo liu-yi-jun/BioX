@@ -43,8 +43,8 @@ class ChannelBar {
   h: number;
   plot: any;
 
-  autoscaleMax: number = 1;
-  autoscaleMin: number = 0;
+  autoscaleMax: number = 100;
+  autoscaleMin: number = -100;
   yMax: number | undefined;
   yMin: number | undefined;
 
@@ -63,19 +63,19 @@ class ChannelBar {
     this.plot.setXLim(0, maxFreq);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setLineColor(colors.Fp1);
-    this.plot.setLineWidth(2);
+    this.plot.setLineWidth(2.3);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
-    this.plot.getXAxis().setLineColor("#6E7079");
+    this.plot.getXAxis().setLineColor("#DDDDDD");
     this.plot.getYAxis().setLineColor("#6E7079");
-    this.plot.getXAxis().setFontColor("#6E7079");
-    this.plot.getYAxis().setFontColor("#6E7079");
-    this.plot.getYAxis().getAxisLabel().setText("Amplitude (uV)");
+    this.plot.getXAxis().setFontColor("#787878");
+    this.plot.getYAxis().setFontColor("#787878");
+    this.plot.getYAxis().getAxisLabel().setText("dBμV^2");
     this.plot.getXAxis().setAxisLabelText("Frequency (Hz)");
     this.plot.drawGridLines(window.GPlot.BOTH);
     // 第二条线
     this.plot.addLayer("Fp2", []);
     this.plot.getLayer("Fp2").setLineColor(colors.Fp2);
-    this.plot.getLayer("Fp2").setLineWidth(2);
+    this.plot.getLayer("Fp2").setLineWidth(2.3);
   }
 
   updateSeries(name, series) {
@@ -190,12 +190,13 @@ const updatelayout = () => {
 
 // 窗口改变
 const resizeing = () => {
-  updatelayout();
+  // updatelayout();
 };
 
 // 创建p5
 const defaultPlotSketch = (p) => {
   p.setup = function () {
+    p.frameRate(5);
     canvasP5 = p;
     updatelayout();
   };
@@ -215,6 +216,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   sketch.remove();
   sketch = null;
+  channelBars = [];
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

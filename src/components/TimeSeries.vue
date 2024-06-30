@@ -17,13 +17,19 @@ import {
   watch,
 } from "vue";
 const TimeSeries = ref<HTMLElement | null>(null);
-let numSeconds = 5;
+const props = defineProps({
+  numSeconds: String,
+});
+
+let numSeconds = props.numSeconds;
 let maxSeconds = 20;
 const sampleRate = 250;
 let canvasP5: any;
 // 自定义绘制
 let customCanvas: any;
 let customCtx: any;
+let offscreenCanvas: any;
+let offscreenCtx: any;
 let channel = ["Fp1", "Fp2"];
 let channelBars: ChannelBar[] = [];
 let sketch: any = null;
@@ -31,8 +37,8 @@ let timer: any = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
 const leftPadding = 60;
-const rightPadding = 10;
-const topPadding = 10;
+const rightPadding = 20;
+const topPadding = 18;
 const middlePadding = 30;
 const bottomPadding = 30;
 const colors = {
@@ -73,37 +79,25 @@ class ChannelBar {
     this.plot.setXLim(0, numSeconds);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setLineColor(this.lineColor);
-    this.plot.setLineWidth(1.5);
+    // this.plot.setLineWidth(0.8);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
-    this.plot.getXAxis().setLineColor("#6E7079");
+    this.plot.getXAxis().setLineColor("#DDDDDD");
     this.plot.getYAxis().setLineColor("#6E7079");
-    this.plot.getXAxis().setFontColor("#6E7079");
-    this.plot.getYAxis().setFontColor("#6E7079");
+    this.plot.getXAxis().setFontColor("#787878");
+    this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().setAxisLabelText(this.name);
     // this.plot.getYAxis().setRotate(false);
-    customCtx.lineWidth = 0.8;
-
-    // customCtx.scale(1, -1);
-    // setTimeout(() => {
-    let points: any = [];
-    for (let index = 0; index < numSeconds * 250; index++) {
-      let value = -100 + Math.random() * 200;
-      if (value > this.autoscaleMax) {
-        this.autoscaleMax = value;
-      }
-      if (value < this.autoscaleMin) {
-        this.autoscaleMin = value;
-      }
-
-      points[index] = new window.GPoint((index * 4) / 1000, value);
-    }
-    this.setYLim();
-    this.plot.setPoints(points);
-    // }, 40);
+    offscreenCtx.lineWidth = 1;
   }
 
   updateSeries(series) {
     let points: any = [];
+    if (this.yMin === undefined) {
+      this.autoscaleMin = 0;
+    }
+    if (this.yMax === undefined) {
+      this.autoscaleMax = 0;
+    }
     for (var i = 0; i < series.length; i++) {
       if (series[i].value[1] > this.autoscaleMax) {
         this.autoscaleMax = series[i].value[1];
@@ -116,6 +110,12 @@ class ChannelBar {
         series[i].value[0] / 1000,
         series[i].value[1]
       );
+    }
+    if (this.yMin === undefined && this.autoscaleMin > 0) {
+      this.autoscaleMin = 0;
+    }
+    if (this.yMax === undefined && this.autoscaleMax < 0) {
+      this.autoscaleMax = 0;
     }
     this.setYLim();
     this.plot.setPoints(points);
@@ -150,29 +150,38 @@ class ChannelBar {
     );
   }
 
+  customLines() {
+    let plot = this.plot;
+
+    let plotPoints = plot.mainLayer.plotPoints;
+    if (plotPoints.length > 0) {
+      offscreenCtx.save();
+      offscreenCtx.strokeStyle = this.lineColor;
+      offscreenCtx.translate(
+        plot.pos[0] + plot.mar[1],
+        plot.pos[1] + plot.mar[2] + plot.dim[1]
+      );
+      offscreenCtx.beginPath();
+      offscreenCtx.rect(0, -this.h, this.w, this.h);
+      offscreenCtx.clip();
+      offscreenCtx.beginPath();
+      offscreenCtx.moveTo(plotPoints[0].x, plotPoints[1].y);
+      for (var i = 0; i < plotPoints.length; i++) {
+        offscreenCtx.lineTo(plotPoints[i].x, plotPoints[i].y);
+      }
+      offscreenCtx.stroke();
+      offscreenCtx.restore();
+    }
+  }
+
   draw() {
-    // customCtx.strokeStyle = this.lineColor
     this.plot.beginDraw();
     this.plot.drawXAxis();
     this.plot.drawYAxis();
     // this.plot.drawBox();
     // this.plot.drawLines();
     // 自定义画线
-
-    let plotPoints = this.plot.mainLayer.plotPoints;
-    if (plotPoints.length > 0) {
-      customCtx.strokeStyle = this.lineColor
-      customCtx.rect(0, -this.h, this.w, this.h);
-      customCtx.clip();
-      customCtx.beginPath();
-    ;
-      customCtx.moveTo(plotPoints[0].getX(), plotPoints[1].getY());
-      for (var i = 0; i < plotPoints.length; i++) {
-        customCtx.lineTo(plotPoints[i].getX(), plotPoints[i].getY());
-      }
-      customCtx.stroke();
-    }
-
+    this.customLines();
     this.plot.endDraw();
   }
 }
@@ -218,6 +227,8 @@ const setOption = (option) => {
 const updatelayout = () => {
   getWH();
   canvasP5.createCanvas(canvasWidth, canvasHeight);
+  offscreenCanvas.width = canvasWidth;
+  offscreenCanvas.height = canvasHeight;
   let h =
     (canvasHeight -
       (topPadding + (channel.length - 1) * middlePadding + bottomPadding)) /
@@ -245,20 +256,25 @@ const resizeing = () => {
 const defaultPlotSketch = (p) => {
   p.setup = function () {
     canvasP5 = p;
+    // p.frameRate(15);
     customCanvas = document
       .getElementById("TimeSeries")
       ?.querySelector("canvas");
     customCtx = customCanvas.getContext("2d");
+    offscreenCanvas = document.createElement("canvas");
+    offscreenCtx = offscreenCanvas.getContext("2d");
     updatelayout();
     // canvasP5.noLoop();
   };
   p.draw = function () {
-    let fps = p.frameRate();
     p.background(255);
-    p.text("FPS: " + fps.toFixed(2), 60, 10);
+    offscreenCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    let fps = p.frameRate();
+    p.text("FPS: " + fps.toFixed(2), canvasWidth - 85, 10);
     for (var i = 0; i < channel.length; i++) {
       channelBars[i].draw();
     }
+    customCtx.drawImage(offscreenCanvas, 0, 0, canvasWidth, canvasHeight);
   };
 };
 
@@ -271,6 +287,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   sketch.remove();
   sketch = null;
+  channelBars = [];
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });
