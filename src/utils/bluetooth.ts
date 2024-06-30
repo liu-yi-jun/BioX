@@ -1,6 +1,7 @@
 export function CustomBluetooth() {}
 const ipcRenderer = require("electron").ipcRenderer;
 let noticeList: Function[] = [];
+let disNoticeList: object = {};
 let atNoticeList: Function[] = [];
 import { CustomDatabase } from "../utils/db";
 const db = new CustomDatabase();
@@ -10,7 +11,6 @@ let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
 };
-let textIndex = 1;
 // 蓝牙通知函数
 const handleEndDataDecode = (event, data) => {
   for (let i = 0; i < noticeList.length; i++) {
@@ -31,7 +31,6 @@ const handleEndDataDecode = (event, data) => {
       ir_od_date: data.ir_od_date,
     });
   }
-  textIndex++;
 };
 
 // at通知函数
@@ -98,14 +97,14 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     }, 1500);
 
     // if (!server || !device.gatt) {
-      device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [serverUUID], //将服务UUID添加到这里
-        // filters: [{ services: ['00000000-cc7a-482a-984a-7f2ed5b3e58f'] }],
-        // filters: [{ name: 'Biox_Demo' },],
-      });
-      // 连接到设备
-      server = await device.gatt.connect();
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [serverUUID], //将服务UUID添加到这里
+      // filters: [{ services: ['00000000-cc7a-482a-984a-7f2ed5b3e58f'] }],
+      // filters: [{ name: 'Biox_Demo' },],
+    });
+    // 连接到设备
+    server = await device.gatt.connect();
     // } else {
     //   if (!device.gatt.connected) {
     //     server = await device.gatt.connect();
@@ -166,6 +165,7 @@ CustomBluetooth.prototype.removeNotice = function (cb: Function) {
   noticeList = noticeList.filter((item) => item !== cb);
 };
 
+
 CustomBluetooth.prototype.close = function (cb: Function) {
   if (server) {
     clearBluetooth();
@@ -179,11 +179,14 @@ function clearBluetooth() {
   server.disconnect();
   server = null;
   device = null;
-  if(characteristic1) {
+  if (characteristic1) {
     characteristic1.removeEventListener("characteristicvaluechanged", atNotice);
   }
-  if(characteristic2) {
-    characteristic2.removeEventListener("characteristicvaluechanged", handleNotifications);
+  if (characteristic2) {
+    characteristic2.removeEventListener(
+      "characteristicvaluechanged",
+      handleNotifications
+    );
   }
   characteristic1 = null;
   characteristic2 = null;

@@ -8,6 +8,8 @@ export interface IElectronAPI {
 declare global {
   interface Window {
     electronAPI: IElectronAPI;
-
+    p5: any;
+    GPoint: any
+    GPlot: any  
   }
-}       
+}        

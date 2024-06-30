@@ -22,7 +22,7 @@
               <a-input
                 type="number"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('yAxis')"
+                @change="undateTimeSerie('yAxis')"
                 v-model:value="seriesForm.min"
                 placeholder="auto"
               />
@@ -31,7 +31,7 @@
               <a-input
                 type="number"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('yAxis')"
+                @change="undateTimeSerie('yAxis')"
                 v-model:value="seriesForm.max"
                 placeholder="auto"
               />
@@ -40,7 +40,7 @@
               <a-select
                 v-model:value="seriesStep"
                 style="width: 100px"
-                @change="updateRenderRealSeriesData('channel')"
+                @change="undateTimeSerie('xAxis')"
                 aria-placeholder="Show Time"
                 :options="showTimeOptions"
                 size="small"
@@ -54,7 +54,7 @@
                 placeholder="Channels"
                 :options="channelOptions"
                 size="small"
-                @change="generateSeries"
+                @change="undateTimeSerie('channel')"
               ></a-select>
             </a-form-item>
           </a-form>
@@ -62,7 +62,8 @@
       </div>
 
       <div class="time-series">
-        <div style="width: 100%; height: 100%" id="series"></div>
+        <TimeSeries :numSeconds="seriesStep" ref="timeSeriesRef"></TimeSeries>
+        <!-- <div style="width: 100%; height: 100%" id="series"></div> -->
       </div>
     </div>
     <div class="card-bottom">
@@ -86,7 +87,12 @@
                   v-model:value="spectrumShowTime"
                   style="width: 100px"
                   v-if="spectrumType === 'Heatmap'"
-                  @change="undateRenderPsdMap"
+                  @change="
+                    () => {
+                      undateHeatmap('xAxis');
+                      undateHeatmap('series');
+                    }
+                  "
                   aria-placeholder="Show Time"
                   :options="spectrumShowTimeOptions"
                   size="small"
@@ -97,7 +103,7 @@
                   v-if="spectrumType === 'PSD'"
                   aria-placeholder="Show Time"
                   :options="maxFreqOptions"
-                  @change="handleChangePsdChannel"
+                  @change="undatePsd('xAxis')"
                   size="small"
                 ></a-select>
                 <a-select
@@ -108,12 +114,17 @@
                   placeholder="Channels"
                   :options="psdChannelOptions"
                   size="small"
-                  @change="handleChangePsdChannel"
+                  @change="
+                    () => {
+                      undatePsd('channel');
+                      undatePsd('series');
+                    }
+                  "
                 ></a-select>
                 <a-select
                   v-if="spectrumType === 'Heatmap'"
                   v-model:value="heatmapChannel"
-                  @change="undateRenderPsdMap"
+                  @change="undateHeatmap('series')"
                   style="width: 100px"
                   aria-placeholder="Show Time"
                   :options="heatmapChannelOptions"
@@ -122,16 +133,27 @@
               </a-space>
             </div>
           </div>
-          <div
+          <!-- <div
             v-if="spectrumType === 'PSD'"
             id="psd"
             style="width: 100%; height: 100%"
-          ></div>
-          <div
+          ></div> -->
+          <Psd
+            v-if="spectrumType === 'PSD'"
+            ref="psdRef"
+            style="width: 100%; height: 100%"
+          ></Psd>
+          <Heatmap
+            :numSeconds="spectrumShowTime"
+            v-if="spectrumType === 'Heatmap'"
+            ref="heatmapRef"
+            style="width: 100%; height: 100%"
+          ></Heatmap>
+          <!-- <div
             v-if="spectrumType === 'Heatmap'"
             id="heatmap"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
         </div>
       </div>
       <div class="eig-card">
@@ -171,7 +193,7 @@
                   v-if="bandsType === 'Related Power'"
                   v-model:value="relatedStep"
                   style="width: 100px"
-                  @change="updateRenderRelated('xAxis')"
+                  @change="undateRelatedPower('xAxis')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -180,7 +202,7 @@
                   v-if="bandsType === 'Time Series'"
                   v-model:value="barnsTimeStep"
                   style="width: 100px"
-                  @change="updateRenderBarnsTime('xAxis')"
+                  @change="undateBarnsTime('xAxis')"
                   aria-placeholder="Show Time"
                   :options="showTimeOptions"
                   size="small"
@@ -188,21 +210,38 @@
               </a-space>
             </div>
           </div>
-          <div
+          <AbsolutePower
+            ref="absolutePowerRef"
+            v-if="bandsType === 'Absolute Power'"
+            style="width: 100%; height: 100%"
+          ></AbsolutePower>
+          <!-- <div
             id="absolute"
             v-if="bandsType === 'Absolute Power'"
             style="width: 100%; height: 100%"
-          ></div>
-          <div
+          ></div> -->
+          <RelatedPower
+            :numSeconds="relatedStep"
+            ref="relatedPowerRef"
+            v-if="bandsType === 'Related Power'"
+            style="width: 100%; height: 100%"
+          ></RelatedPower>
+          <!-- <div
             id="related"
             v-if="bandsType === 'Related Power'"
             style="width: 100%; height: 100%"
-          ></div>
-          <div
+          ></div> -->
+          <BarnsTime
+            :numSeconds="barnsTimeStep"
+            v-if="bandsType === 'Time Series'"
+            style="width: 100%; height: 100%"
+            ref="barnsTimeRef"
+          ></BarnsTime>
+          <!-- <div
             id="barnsTime"
             v-if="bandsType === 'Time Series'"
             style="width: 100%; height: 100%"
-          ></div>
+          ></div> -->
         </div>
       </div>
     </div>
@@ -224,6 +263,12 @@ import {
 import type { SelectProps } from "ant-design-vue";
 const ipcRenderer = require("electron").ipcRenderer;
 
+import BarnsTime from "../../components/BarnsTime.vue";
+import TimeSeries from "../../components/TimeSeries.vue";
+import RelatedPower from "../../components/RelatedPower.vue";
+import AbsolutePower from "../../components/AbsolutePower.vue";
+import Heatmap from "../../components/Heatmap.vue";
+import Psd from "../../components/Psd.vue";
 import { HighchartsKey } from "../../types";
 import { CustomBluetooth } from "../../utils/bluetooth";
 let grid: echarts.EChartOption.Grid[] = [];
@@ -232,30 +277,37 @@ let yAxis: echarts.EChartOption.YAxis[] = [];
 let series: echarts.EChartOption.Series[] = [];
 let pkgSourceData: any = [];
 let pkgDataList: any = [];
-let pkgMaxTime = 30;
+let pkgMaxTime = 20;
 const EEGTimeGap = 4; // 采样间隔
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
-const seriesStep = ref(30);
-const seriesMaxStep = 30;
+let psdMapData: number[][] = [];
+const seriesStep = ref(10);
+const seriesMaxStep = 20;
 let isRenderTimer: any = null;
-const spectrumShowTime = ref(5);
-const relatedStep = ref(30);
-const barnsTimeStep = ref(30);
-const barnsTimeMaxStep = 30;
-const minTimeGap = 250; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
+const spectrumShowTime = ref(1);
+const relatedStep = ref(10);
+const barnsTimeStep = ref(10);
+const barnsTimeMaxStep = 20;
+const minTimeGap = 40; //渲染间隔 （最小只能设置40ms，每个包10个EEG，对这10个eeg是一起渲染的。再小没意义），并且发送数据是40ms
 const timeGap = Math.round(1000 / minTimeGap);
 const isRender = ref(false);
 const channel = ref(["Fp1", "Fp2"]);
 const psdChannel = ref(["Fp1", "Fp2"]);
 const heatmapChannel = ref("Fp1");
 const bandsChannel = ref("Fp1");
-const maxFreq = ref(256);
+const maxFreq = ref(125);
 const packetLossRate = ref(0);
 const packetLossNum = ref(0);
 const relatedChannel = ref("Typical");
 const spectrumType = ref("PSD");
 const bandsType = ref("Absolute Power");
+const timeSeriesRef = ref<any>(null);
+const absolutePowerRef = ref<any>(null);
+const relatedPowerRef = ref<any>(null);
+const barnsTimeRef = ref<any>(null);
+const heatmapRef = ref<any>(null);
+const psdRef = ref<any>(null);
 import * as echarts from "echarts";
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
@@ -267,6 +319,7 @@ const { play, recordId, playIndex, isDragSlider, isConnect, configData } =
 const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
+const MaxFrequency = 257;
 
 const seriesForm = reactive({
   min: "",
@@ -290,10 +343,10 @@ const showTimeOptionsData = [
     value: 20,
     label: "20 sec",
   },
-  {
-    value: 30,
-    label: "30 sec",
-  },
+  // {
+  //   value: 30,
+  //   label: "30 sec",
+  // },
 ];
 const chanOptionsData = [
   {
@@ -325,23 +378,23 @@ const relatedChannelOptions = ref<SelectProps["options"]>([
 //257个fft数据是对应0～125Hz的，假如要画到125Hz，就要全画，假如只画到50Hz，那就按比例取前面的点 2.056
 const maxFreqOptions = ref<SelectProps["options"]>([
   {
-    value: 51,
+    value: 25,
     label: "25Hz",
   },
   {
-    value: 102,
+    value: 50,
     label: "50Hz",
   },
   {
-    value: 154,
+    value: 75,
     label: "75Hz",
   },
   {
-    value: 205,
+    value: 100,
     label: "100Hz",
   },
   {
-    value: 256,
+    value: 125,
     label: "125Hz",
   },
 ]);
@@ -433,6 +486,7 @@ watch(isConnect, (newValue) => {
 
 onMounted(function () {
   initialize();
+  initPsdMapData(spectrumShowTime.value);
   // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
   // const bluetooth = new CustomBluetooth();
   // bluetooth.addNotice((data) => {});
@@ -451,6 +505,7 @@ const bluetoothNotice = (data) => {
   handlePkgList(data);
   isRender.value = true;
   isRenderTimer && clearTimeout(isRenderTimer);
+
   isRenderTimer = setTimeout(() => {
     isRender.value = false;
   }, 4 * 1000);
@@ -502,21 +557,38 @@ const joinPkgList = () => {
 
 // 渲染
 const renderData = () => {
-  updateRenderRealSeriesData();
+  // updateRenderRealSeriesData();
   if (spectrumType.value === "PSD") {
-    undateRenderPsd();
+    // undateRenderPsd();
   }
   if (spectrumType.value === "Heatmap") {
-    undateRenderPsdMap();
+    // undateRenderPsdMap();
   }
   if (bandsType.value === "Absolute Power") {
-    undateRenderAbsoule();
+    // undateRenderAbsoule();
+    // undateAbsolutePower("series");
   }
   if (bandsType.value === "Related Power") {
-    updateRenderRelated();
+    // updateRenderRelated();
   }
   if (bandsType.value === "Time Series") {
-    updateRenderBarnsTime();
+    // updateRenderBarnsTime();
+  }
+  undateTimeSerie("series");
+  if (spectrumType.value === "PSD") {
+    undatePsd("series");
+  }
+  if (spectrumType.value === "Heatmap") {
+    undateHeatmap("series");
+  }
+  if (bandsType.value === "Absolute Power") {
+    undateAbsolutePower("series");
+  }
+  if (bandsType.value === "Related Power") {
+    undateRelatedPower("series");
+  }
+  if (bandsType.value === "Time Series") {
+    undateBarnsTime("series");
   }
 };
 
@@ -538,9 +610,9 @@ const initialize = () => {
     );
   }
   nextTick(() => {
-    initSeries();
-    initPSD();
-    initAbsolute();
+    // initSeries();
+    // initPSD();
+    // initAbsolute();
   });
 };
 
@@ -1361,12 +1433,14 @@ const initBarnsTime = () => {
 const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
-      initPSD();
-      undateRenderPsd();
+      // initPSD();
+      undatePsd("series");
+      // undateRenderPsd();
     }
     if (spectrumType.value === "Heatmap") {
-      initHeatmap();
-      undateRenderPsdMap();
+      // initHeatmap();
+      undateHeatmap("series");
+      // undateRenderPsdMap();
     }
   });
 };
@@ -1374,16 +1448,19 @@ const handleChangeSpectrumType = () => {
 const handleChangeBandsType = () => {
   nextTick(() => {
     if (bandsType.value === "Absolute Power") {
-      initAbsolute();
-      undateRenderAbsoule();
+      // initAbsolute();
+      // undateRenderAbsoule();
+      undateAbsolutePower("series");
     }
     if (bandsType.value === "Related Power") {
-      initRelated();
-      updateRenderRelated();
+      // initRelated();
+      // updateRenderRelated();
+      undateRelatedPower("series");
     }
     if (bandsType.value === "Time Series") {
-      initBarnsTime();
-      updateRenderBarnsTime();
+      // initBarnsTime();
+      // updateRenderBarnsTime();
+      undateBarnsTime("series");
     }
   });
 };
@@ -1807,26 +1884,6 @@ const updateRenderBarnsTime = (type?: string) => {
 };
 
 // 现在只取EEG最后一个数据进行渲染,太卡了
-const conversionPkgtoPsdMap = (typeChannel, step) => {
-  if (pkgDataList.length < 1) return 0;
-  let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
-  let minTime = maxTimer - step * 1000;
-  let sliceData = pkgDataList.filter(
-    (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
-  );
-  let psdMapData: number[][] = [];
-  let baseTime = 0;
-  sliceData.forEach((item, sliceIndex) => {
-    if (sliceIndex !== 0) {
-      baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
-    }
-    item.psd_s[parseChannel(typeChannel)].forEach((value, y) => {
-      psdMapData.push([baseTime / calculateMinTimeGap(), y, value]);
-    });
-  });
-  return psdMapData;
-};
-
 // const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   if (pkgDataList.length < 1) return 0;
 //   let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
@@ -1836,23 +1893,52 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
 //   );
 //   let psdMapData: number[][] = [];
 //   let baseTime = 0;
-
-//   for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
-//     const item = sliceData[sliceIndex];
+//   sliceData.forEach((item, sliceIndex) => {
 //     if (sliceIndex !== 0) {
 //       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
 //     }
-//     let dataList = item.psd_s_multiple;
-//     for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
-//       dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
-//         psdMapData.push([(baseTime + dataIndex * EEGTimeGap) / calculateMinTimeGap(), y, value]);
-//       });
-//     }
-//   }
-//   console.log(psdMapData);
 
+//     item.psd_s[parseChannel(typeChannel)].forEach((value, y) => {
+//       psdMapData.push([baseTime, y, value]);
+//     });
+//   });
 //   return psdMapData;
 // };
+
+const conversionPkgtoPsdMap = (typeChannel, step) => {
+  if (pkgDataList.length < 1) return 0;
+  let maxTimer = pkgDataList[pkgDataList.length - 1].time_mark;
+  let minTime = maxTimer - step * 1000;
+  let sliceData = pkgDataList.filter(
+    (item) => item.time_mark >= minTime && item.time_mark <= maxTimer
+  );
+
+  let baseTime = 0;
+
+  for (let sliceIndex = 0; sliceIndex < sliceData.length; sliceIndex++) {
+    const item = sliceData[sliceIndex];
+    if (sliceIndex !== 0) {
+      baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
+    }
+    let dataList = item.psd_s_multiple;
+    for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
+      dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
+        let x = Math.round(baseTime / EEGTimeGap) + dataIndex;
+        psdMapData[x * MaxFrequency + y] = [baseTime + dataIndex * EEGTimeGap, y, value];
+      });
+    }
+  }
+
+  return psdMapData;
+};
+const initPsdMapData = (step) => {
+  psdMapData = [];
+  for (let i = 0; i < (1000 / EEGTimeGap) * step; i++) {
+    for (let j = 0; j < MaxFrequency; j++) {
+      psdMapData.push([i, j, 0]);
+    }
+  }
+};
 
 const conversionPkgtoPsd = (typeChannel) => {
   if (pkgDataList.length < 1) return 0;
@@ -1928,6 +2014,280 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
   return tempSliceData;
 };
 
+const undateTimeSerie = (type) => {
+  switch (type) {
+    case "channel":
+      channel.value.sort((a, b) => {
+        return (
+          chanOptionsData.findIndex((i) => i.value == a) -
+          chanOptionsData.findIndex((i) => i.value == b)
+        );
+      });
+      timeSeriesRef.value.setOption({
+        channel: channel.value,
+      });
+      break;
+    case "series":
+      timeSeriesRef.value.setOption({
+        series: channel.value.map((item) => ({
+          name: item,
+          data: conversionPkgtoSeriesData(item, seriesStep.value),
+        })),
+      });
+      break;
+    case "xAxis":
+      timeSeriesRef.value.setOption({
+        xAxis: channel.value.map((item, index) => ({
+          max: seriesStep.value,
+        })),
+      });
+      break;
+    case "yAxis":
+      timeSeriesRef.value.setOption({
+        yAxis: channel.value.map((item) => ({
+          max: seriesForm.max === "" ? undefined : seriesForm.max,
+          min: seriesForm.min === "" ? undefined : seriesForm.min,
+        })),
+      });
+      break;
+  }
+};
+const undateAbsolutePower = (type) => {
+  switch (type) {
+    case "series":
+      absolutePowerRef.value.setOption({
+        series: [
+          conversionPkgtoAbsolute(bandsChannel.value, 0),
+          conversionPkgtoAbsolute(bandsChannel.value, 1),
+          conversionPkgtoAbsolute(bandsChannel.value, 2),
+          conversionPkgtoAbsolute(bandsChannel.value, 3),
+          conversionPkgtoAbsolute(bandsChannel.value, 4),
+        ],
+      });
+      break;
+  }
+};
+
+const undateHeatmap = (type) => {
+  switch (type) {
+    case "series":
+      heatmapRef.value.setOption({
+        series: {
+          data: conversionPkgtoPsdMap(
+            heatmapChannel.value,
+            spectrumShowTime.value
+          ),
+        },
+      });
+      break;
+    case "xAxis":
+      initPsdMapData(spectrumShowTime.value);
+      heatmapRef.value.setOption({
+        xAxis: {
+          max: spectrumShowTime.value,
+        },
+      });
+      break;
+  }
+};
+
+const undateRelatedPower = (type) => {
+  switch (type) {
+    // case "channel":
+    //   channel.value.sort((a, b) => {
+    //     return (
+    //       chanOptionsData.findIndex((i) => i.value == a) -
+    //       chanOptionsData.findIndex((i) => i.value == b)
+    //     );
+    //   });
+    //   barnsTimeRef.value.setOption({
+    //     channel: channel.value,
+    //   });
+    //   break;
+    case "series":
+      relatedPowerRef.value.setOption({
+        series: [
+          {
+            name: "γ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              4,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "β wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              3,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "α wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              2,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "θ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              1,
+              relatedStep.value
+            ),
+          },
+          {
+            name: "δ wave",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "psd_relative_percent_s",
+              bandsChannel.value,
+              0,
+              relatedStep.value
+            ),
+          },
+        ],
+      });
+      break;
+    case "xAxis":
+      relatedPowerRef.value.setOption({
+        xAxis: {
+          max: relatedStep.value,
+        },
+      });
+      break;
+  }
+};
+
+const undateBarnsTime = (type) => {
+  switch (type) {
+    // case "channel":
+    //   channel.value.sort((a, b) => {
+    //     return (
+    //       chanOptionsData.findIndex((i) => i.value == a) -
+    //       chanOptionsData.findIndex((i) => i.value == b)
+    //     );
+    //   });
+    //   barnsTimeRef.value.setOption({
+    //     channel: channel.value,
+    //   });
+    //   break;
+    case "series":
+      barnsTimeRef.value.setOption({
+        series: [
+          {
+            name: "EEG",
+            data: conversionPkgtoSeriesData(
+              bandsChannel.value,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "DELTA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              0,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "THETA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              1,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "ALPHA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              2,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "BETA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              3,
+              barnsTimeStep.value
+            ),
+          },
+          {
+            name: "GAMMA",
+            data: conversionPkgtoBarnsTimeOrRelated(
+              "time_e_s",
+              bandsChannel.value,
+              4,
+              barnsTimeStep.value
+            ),
+          },
+        ],
+      });
+      break;
+    case "xAxis":
+      barnsTimeRef.value.setOption({
+        xAxis: [
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+          {
+            max: barnsTimeStep.value,
+          },
+        ],
+      });
+      break;
+  }
+};
+
+const undatePsd = (type) => {
+  switch (type) {
+    case "channel":
+      psdRef.value.setOption({
+        channel: psdChannel.value,
+      });
+      break;
+    case "xAxis":
+      psdRef.value.setOption({
+        xAxis: {
+          max: maxFreq.value,
+        },
+      });
+      break;
+    case "series":
+      psdRef.value.setOption({
+        series: psdChannel.value.map((item) => ({
+          name: item,
+          data: conversionPkgtoPsd(item),
+        })),
+      });
+      break;
+  }
+};
+
 // 计算时间间隔
 const calculateMinTimeGap = () => {
   if (pkgDataList.length >= 2) {
@@ -1941,8 +2301,8 @@ const calculateMinTimeGap = () => {
 };
 
 const handleChangePsdChannel = () => {
-  initPSD();
-  undateRenderPsd();
+  // initPSD();
+  // undateRenderPsd();
 };
 
 const parseChannel = (channel: string) => {
