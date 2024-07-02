@@ -106,11 +106,15 @@ class ChannelBar {
   }
 
   updateSeries(series) {
+   if(series[0] == undefined){ 
+    return
+   }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
-      points[i] = new window.GPoint(i + 0.5, series[i], labelNmae[i]);
+      points[i] = new window.GPoint(i + 0.5, series[i] || 0.1, labelNmae[i]);
     }
-    this.plot.setPoints(points);
+
+      this.plot.setPoints(points);
   }
 
   updateYAxis(min?, max?) {

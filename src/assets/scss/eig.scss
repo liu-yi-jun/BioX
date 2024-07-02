@@ -107,7 +107,7 @@ li {
 .eig-filter {
   &.eig-select-wrap {
     background-color: inherit;
-    padding: 10px 10px 5px;
+    padding: 6px 10px 5px;
   }
   background-color: #f4f4f4;
   padding: 10px;
@@ -192,6 +192,8 @@ li {
     font-weight: bold;
   }
 }
+
+
 .time-series,
 .spectrum,
 .eeg-bands {
@@ -242,12 +244,13 @@ li {
   flex-direction: column;
   .view-setting-box {
     margin: 20px 20px;
+    display: flex;
     // flex: 1;
     .view-setting {
       display: flex;
       align-items: center;
       .view-setting-radio {
-        padding-top: 20px;
+        padding-top: 10px;
         padding-bottom: 20px;
         margin-right: 20px;
       }
@@ -523,7 +526,7 @@ $roundRadius: 18px;
 
 .record-box {
   display: flex;
-  padding: 15px 40px;
+  padding: 10px 40px;
   // margin: 0 -20px -20px;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.12);
   position: relative;
@@ -628,6 +631,29 @@ $roundRadius: 18px;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid #d9d9d9;
+}
+
+.wavelength-color-box {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  .wavelength-color {
+    display: flex;
+    height: 24px;
+    cursor: pointer;
+    line-height: 24px;
+    align-items: center;
+    &>span:first-child {
+      width: 10px;
+      height: 10px;
+      display: block;
+      margin-right: 4px;
+      border-radius: 2px;
+    }
+    &>span:last-child {
+      margin-right: 8px;
+    }
+  }
 }
 
 

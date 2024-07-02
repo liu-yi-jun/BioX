@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
 let child: typeof child_process;
 let storeChild: typeof child_process;
+let replayChild: typeof child_process;
 let isStartStore = false;
 import log from "electron-log/main";
 log.transports.file.level = "silly";
@@ -57,8 +58,6 @@ const removZero = ({ pkg }: any) => {
 };
 
 function createWindow() {
- 
- 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     frame: false,
@@ -188,6 +187,18 @@ function createWindow() {
     storeChild = null;
   });
 
+  //  开始回放数据，数据加工
+  ipcMain.on("start-data-replay", (event, data) => {
+    replayChild &&
+      replayChild.connected &&
+      replayChild.send({ type: "start-data-replay", data });
+  });
+
+  // 关闭回放进程
+  ipcMain.on("close-replay", (event) => {
+    replayChild && replayChild.connected && replayChild.kill();
+  });
+
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
   //   console.log("bluetooth-pairing-response");
@@ -203,6 +214,46 @@ function createWindow() {
   //   }
   // );
 
+  // 创建回放进程
+  ipcMain.on("create-replay", (event, data) => {
+    log.error("create-replay");
+    replayChild && replayChild.connected && replayChild.kill();
+    replayChild = child_process.fork(
+      join(__dirname, "./replay.js"),
+      [__static, _product_path, JSON.stringify(config)],
+      {
+        // 关闭子进程打印，开启ipc
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
+      },
+      function (err: any) {
+        log.error(err);
+        console.log(err);
+      }
+    );
+    // 初始化
+    replayChild.connected && replayChild.send({ type: "filter-init" });
+
+    replayChild.stderr.on("data", (data: any) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    replayChild.stdout.on("data", (data: any) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    replayChild.on("error", (err: any) => {
+      log.error("子进程启动或执行过程中发生错误:", err);
+      console.error("子进程启动或执行过程中发生错误:", err);
+    });
+
+    replayChild.on("exit", (code: number, signal: string) => {
+      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+    });
+    replayChild.on("message", ({ type, data }: { type: string; data: any }) => {
+      event.sender.send("end-data-replay", data);
+    });
+  });
   // 创建存储进程
   ipcMain.on("create-store", (event, data) => {
     log.error("create-store");

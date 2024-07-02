@@ -10,8 +10,44 @@
             <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
           </p>
         </div>
-        <div class="filter-right">
+        <div class="filter-right" style="margin-top: -5px;">
           <a-form size="small" :model="seriesForm" layout="inline">
+            <div class="wavelength-color-box">
+              <div @click="changeWavelength(1)" class="wavelength-color">
+                <span
+                  :style="{
+                    background: checkboxValue1.includes('1')
+                      ? '#ff0101'
+                      : '#D9DADF',
+                  }"
+                ></span>
+                <span>735nm</span>
+              </div>
+              <div
+                v-if="wavelengthsValue === 2"
+                @click="changeWavelength(2)"
+                class="wavelength-color"
+              >
+                <span
+                  :style="{
+                    background: checkboxValue1.includes('2')
+                      ? '#ffba01'
+                      : '#D9DADF',
+                  }"
+                ></span>
+                <span>805nm</span>
+              </div>
+              <div @click="changeWavelength(3)" class="wavelength-color">
+                <span
+                  :style="{
+                    background: checkboxValue1.includes('3')
+                      ? '#0073ff'
+                      : '#D9DADF',
+                  }"
+                ></span>
+                <span>850nm</span>
+              </div>
+            </div>
             <a-form-item label="preproc">
               <a-switch
                 @change="changeConfig"
@@ -228,18 +264,24 @@
       <div class="eig-card view-setting-card">
         <p class="card-title">View Setting</p>
         <div class="eig-card view-setting-box">
-          <p class="card-title">Plot Type</p>
-          <div class="view-setting">
-            <div class="view-setting-radio">
-              <a-radio-group @change="handleChange" v-model:value="radioValue">
-                <a-radio :style="radioStyle" :value="1">Raw Data</a-radio>
-                <a-radio :style="radioStyle" :value="2"
-                  >Optical Density</a-radio
+          <div>
+            <p class="card-title">Plot Type</p>
+            <div class="view-setting">
+              <div class="view-setting-radio">
+                <a-radio-group
+                  @change="handleChange"
+                  v-model:value="radioValue"
                 >
-                <a-radio :style="radioStyle" :value="3">Concentration</a-radio>
-              </a-radio-group>
-            </div>
-            <div>
+                  <a-radio :style="radioStyle" :value="1">Raw Data</a-radio>
+                  <a-radio :style="radioStyle" :value="2"
+                    >Optical Density</a-radio
+                  >
+                  <a-radio :style="radioStyle" :value="3"
+                    >Concentration</a-radio
+                  >
+                </a-radio-group>
+              </div>
+              <!-- <div>
               <a-checkbox-group
                 class="view-setting-checkbox-group"
                 v-if="radioValue !== 3"
@@ -261,7 +303,19 @@
                 <a-checkbox value="1">HbO</a-checkbox>
                 <a-checkbox value="2">HbR</a-checkbox>
                 <a-checkbox value="3">HbT</a-checkbox>
-              </a-checkbox-group>
+              </a-checkbox-group> 
+            </div> -->
+            </div>
+          </div>
+          <div>
+            <p class="card-title">Wavelengths</p>
+            <div class="view-setting">
+              <div class="view-setting-radio">
+                <a-radio-group v-model:value="wavelengthsValue">
+                  <a-radio :style="radioStyle" :value="1">Two</a-radio>
+                  <a-radio :style="radioStyle" :value="2">Three</a-radio>
+                </a-radio-group>
+              </div>
             </div>
           </div>
         </div>
@@ -286,8 +340,9 @@ import FnirsTime from "../../components/FnirsTime.vue";
 import * as echarts from "echarts";
 
 const radioValue = ref<number>(1);
-const checkboxValue1 = ref(["1"]);
-const checkboxValue2 = ref(["1"]);
+const wavelengthsValue = ref<number>(1);
+const checkboxValue1 = ref(["1", "3"]);
+const checkboxValue2 = ref(["1", "3"]);
 const selectionHeight = ref(0);
 const selectionWidth = ref(0);
 const seriesStep = ref(10);
@@ -331,8 +386,15 @@ let pkgSourceData: any = [];
 
 let pkgMaxTime = 30;
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect, configData } =
-  storeToRefs(indexStore);
+const {
+  play,
+  recordId,
+  playIndex,
+  isDragSlider,
+  isConnect,
+  configData,
+  bluetoothATConfig,
+} = storeToRefs(indexStore);
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
 let myChart: echarts.EChartsType;
@@ -346,6 +408,7 @@ interface showSeriesDataType {
   color: string;
 }
 let showSeriesData: showSeriesDataType[] = [];
+
 const seriesRDNames = [
   "S1D1.λ1",
   "S1D1.λ2",
@@ -450,6 +513,20 @@ const radioStyle = reactive({
   lineHeight: "30px",
 });
 
+watch(wavelengthsValue, (newValue) => {
+  if (newValue == 1) {
+    checkboxValue1.value = ["1", "3"];
+    checkboxValue2.value = ["1", "3"];
+    indexStore.bluetoothATConfig.IRMODE.value = 0;
+  }
+  if (newValue == 2) {
+    checkboxValue1.value = ["1", "2", "3"];
+    checkboxValue2.value = ["1", "2", "3"];
+    indexStore.bluetoothATConfig.IRMODE.value = 1;
+  }
+  handleChange();
+});
+
 watch(
   play,
   (newValue) => {
@@ -457,16 +534,19 @@ watch(
       timerPlay = setInterval(() => {
         if (pkgSourceData.length) {
           if (
-            playIndex.value * minTimeGap >=
+            playIndex.value * 40 >=
             pkgSourceData[pkgSourceData.length - 1].time_mark
           ) {
             timerPlay && clearInterval(timerPlay);
             return;
           }
-          pkgDataList = joinPkgList();
-          renderData();
+          let dataList = joinPkgList(true);
+          dataList.forEach((item) => {
+            ipcRenderer.send("start-data-replay", item);
+          });
+          // renderData();
         }
-      }, 250);
+      }, 40);
     } else {
       timerPlay && clearInterval(timerPlay);
     }
@@ -488,6 +568,11 @@ watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
   if (newValue) {
     indexStore.isDragSlider = false;
+    pkgDataList = [];
+    let dataList = joinPkgList();
+    dataList.forEach((item) => {
+      ipcRenderer.send("start-data-replay", item);
+    });
     // handleOldData();
   }
 });
@@ -513,6 +598,8 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
+  ipcRenderer.removeListener("end-data-replay", rePlayNotice);
+  ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
@@ -525,6 +612,15 @@ const getSelectionHeight = () => {
   selectionHeight.value =
     document.getElementById("selection")?.clientHeight || 0;
   selectionWidth.value = document.getElementById("selection")?.clientWidth || 0;
+};
+
+// 回放数据
+const rePlayNotice = (event, data) => {
+  handlePkgList({
+    ...data,
+    ...data.pkg,
+  });
+  renderData();
 };
 
 // 蓝牙数据通知
@@ -571,7 +667,7 @@ const handlePkgList = (data) => {
 };
 
 // 判断是否加入数据包队列
-const joinPkgList = () => {
+const joinPkgList = (isGap: boolean = false) => {
   let tempPkgDataList: any = [];
   if (!pkgSourceData.length) {
     return [];
@@ -579,11 +675,20 @@ const joinPkgList = () => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      item.time_mark - pkgSourceData[0].time_mark <=
-        playIndex.value * minTimeGap &&
+      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * 40 &&
       item.pkg_type === 2
     ) {
-      tempPkgDataList.push(item);
+      if (
+        isGap &&
+        item.time_mark - pkgSourceData[0].time_mark >=
+          (playIndex.value - 1) * 40
+      ) {
+        tempPkgDataList.push(item);
+      }
+
+      if (!isGap) {
+        tempPkgDataList.push(item);
+      }
     }
   }
   return tempPkgDataList;
@@ -592,8 +697,12 @@ const joinPkgList = () => {
 const initialize = () => {
   pkgSourceData = [];
   if (!recordId.value) {
+    ipcRenderer.removeListener("end-data-replay", rePlayNotice);
+    ipcRenderer.send("close-replay");
     bluetooth.addNotice(bluetoothNotice);
   } else {
+    ipcRenderer.send("create-replay");
+    ipcRenderer.on("end-data-replay", rePlayNotice);
     bluetooth.removeNotice(bluetoothNotice);
     db.all(`select  * from source where recordId = ${recordId.value}`).then(
       (res) => {
@@ -898,54 +1007,78 @@ const mapRadioToField = (index) => {
   }
 };
 
+// 分租
+function groupByChanIndex(objects) {
+  let groupedArray = objects.reduce((acc, obj) => {
+    let index = obj.chanIndex;
+    if (!acc[index]) {
+      acc[index] = [];
+    }
+    acc[index].push(obj);
+    return acc;
+  }, {});
+  return Object.values(groupedArray).map((item: any) => {
+    return {
+      name: item[0].name.slice(0, 4),
+      radioRows: item,
+    };
+  });
+}
+
 const undateTimeSerie = (type) => {
+  let groupSeriesData = groupByChanIndex(showSeriesData);
   switch (type) {
     case "channel":
       fnirsTimeRef.value.setOption({
-        channel: showSeriesData,
+        channel: groupSeriesData,
       });
       break;
     case "series":
       fnirsTimeRef.value.setOption({
-        series: showSeriesData.map((item, index) => {
-          let tempObj: any = {
-            RD: [],
-            OD: [],
-            Conc: [],
-          };
-          tempObj.RD = conversionPkgtoTimeSeries(
-            "near_infrared",
-            mapChanToField(item.chanIndex),
-            mapRadioToField(item.radioIndex),
-            seriesStep.value
-          );
+        series: groupSeriesData.map((groupItem, index) => {
+          return {
+            name: groupItem.name,
+            radioRows: groupItem.radioRows.map((item) => {
+              let tempObj: any = {
+                RD: [],
+                OD: [],
+                Conc: [],
+              };
+              tempObj.RD = conversionPkgtoTimeSeries(
+                "near_infrared",
+                mapChanToField(item.chanIndex),
+                mapRadioToField(item.radioIndex),
+                seriesStep.value
+              );
 
-          tempObj.OD = conversionPkgtoTimeSeries(
-            "ir_od_date",
-            mapChanToField(item.chanIndex),
-            mapRadioToField(item.radioIndex),
-            seriesStep.value
-          );
-          tempObj.Conc = conversionPkgtoTimeSeries(
-            "near_infrared",
-            mapChanToField(item.chanIndex),
-            mapRadioToField(item.radioIndex),
-            seriesStep.value
-          );
-          return tempObj[item.type];
+              tempObj.OD = conversionPkgtoTimeSeries(
+                "ir_od_date",
+                mapChanToField(item.chanIndex),
+                mapRadioToField(item.radioIndex),
+                seriesStep.value
+              );
+              tempObj.Conc = conversionPkgtoTimeSeries(
+                "near_infrared",
+                mapChanToField(item.chanIndex),
+                mapRadioToField(item.radioIndex),
+                seriesStep.value
+              );
+              return tempObj[item.type];
+            }),
+          };
         }),
       });
       break;
     case "xAxis":
       fnirsTimeRef.value.setOption({
-        xAxis: showSeriesData.map((item, index) => ({
+        xAxis: groupSeriesData.map((item, index) => ({
           max: seriesStep.value,
         })),
       });
       break;
     case "yAxis":
       fnirsTimeRef.value.setOption({
-        yAxis: showSeriesData.map((item) => ({
+        yAxis: groupSeriesData.map((item) => ({
           max: seriesForm.max === "" ? undefined : seriesForm.max,
           min: seriesForm.min === "" ? undefined : seriesForm.min,
         })),
@@ -990,7 +1123,6 @@ const initSeries = () => {
 
 // 切换渠道
 const channelLineClick = (value: number | Array<number>) => {
-  debugger;
   if (Array.isArray(value)) {
     let flag = value.every((item) => {
       return channels.value.includes(item);
@@ -1024,6 +1156,23 @@ const channelLineClick = (value: number | Array<number>) => {
 
 const changeConfig = () => {
   ipcRenderer.send("change-config", JSON.stringify(configData.value));
+};
+
+const changeWavelength = (value) => {
+  if (checkboxValue1.value.findIndex((item) => parseInt(item) === value) > -1) {
+    checkboxValue1.value = checkboxValue1.value.filter(
+      (item) => parseInt(item) !== value
+    );
+    checkboxValue2.value = checkboxValue2.value.filter(
+      (item) => parseInt(item) !== value
+    );
+  } else {
+    checkboxValue1.value.push(value + "");
+    checkboxValue2.value.push(value + "");
+  }
+  checkboxValue1.value.sort((a, b) => parseInt(a) - parseInt(b));
+  checkboxValue2.value.sort((a, b) => parseInt(a) - parseInt(b));
+  handleChange()
 };
 </script>
 <style scoped></style>

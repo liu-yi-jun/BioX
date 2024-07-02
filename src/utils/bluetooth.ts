@@ -27,7 +27,7 @@ const handleEndDataDecode = (event, data) => {
       psd_relative_s_multiple: data.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
       time_e_s_multiple: data.time_e_s_multiple,
-      loss_data_info_el: data.LDInfoEl,
+      loss_data_info_el: data.loss_data_info_el,
       ir_od_date: data.ir_od_date,
     });
   }
@@ -165,7 +165,6 @@ CustomBluetooth.prototype.removeNotice = function (cb: Function) {
   noticeList = noticeList.filter((item) => item !== cb);
 };
 
-
 CustomBluetooth.prototype.close = function (cb: Function) {
   if (server) {
     clearBluetooth();
@@ -213,6 +212,8 @@ CustomBluetooth.prototype.sendAT = function (atCommand) {
   if (!atCommand) {
     return message.error("请输入AT指令!");
   }
+  console.log("sendAT", atCommand);
+  
   // 将AT指令转换为Uint8Array
   // 发送写请求
   const commandBuffer = new TextEncoder().encode(atCommand + "\r");

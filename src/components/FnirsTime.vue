@@ -31,9 +31,14 @@ let canvasWidth = 0;
 let canvasHeight = 0;
 const leftPadding = 100;
 const rightPadding = 20;
-const topPadding = 18;
-let middlePadding = 10;
-const bottomPadding = 30;
+const topPadding = 10;
+let middlePadding = 3;
+const bottomPadding = 24;
+const colors = {
+  1: "#ff0101",
+  2: "#ffba01",
+  3: "#0073ff",
+};
 
 // 实例
 class ChannelBar {
@@ -42,7 +47,7 @@ class ChannelBar {
   w: number;
   h: number;
   name: string;
-  lineColor: string;
+  lineSeries: any;
   channelIndex: number;
   plot: any;
 
@@ -50,13 +55,13 @@ class ChannelBar {
   autoscaleMin: number = -1;
   yMax: number | undefined;
   yMin: number | undefined;
-  constructor(_channelIndex, _x, _y, _w, _h, _name, _lineColor) {
+  constructor(_channelIndex, _x, _y, _w, _h, _name, _lineSeries) {
     this.x = _x;
     this.y = _y;
     this.w = _w;
     this.h = _h;
     this.name = _name;
-    this.lineColor = _lineColor;
+    this.lineSeries = _lineSeries;
     this.channelIndex = _channelIndex;
     this.setup();
   }
@@ -67,7 +72,12 @@ class ChannelBar {
     this.plot.setDim(this.w, this.h);
     this.plot.setXLim(0, numSeconds);
     this.plot.setMar(0, 0, 0, 0);
-    this.plot.setLineColor(this.lineColor);
+    for (var i = 0; i < this.lineSeries.length; i++) {
+      this.plot.addLayer(this.lineSeries[i].name, []);
+      this.lineSeries[i].layer = this.plot.getLayer(this.lineSeries[i].name);
+      this.lineSeries[i].layer.setLineColor(this.lineSeries[i].color);
+    }
+
     // this.plot.setLineWidth(0.8);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
     this.plot.getXAxis().setLineColor("#DDDDDD");
@@ -77,32 +87,38 @@ class ChannelBar {
 
     this.plot.getYAxis().lab.setRotate(false);
     this.plot.getYAxis().setAxisLabelText(this.name);
+    this.plot.getYAxis().setShowLastTick(false)
+    this.plot.getYAxis().setFontSize(9)
     // this.plot.getYAxis().setRotate(false);
     // this.plot.getYAxis().setDrawTickLabels(false)
     offscreenCtx.lineWidth = 1;
   }
 
   updateSeries(series) {
-    let points: any = [];
     if (this.yMin === undefined) {
       this.autoscaleMin = 0;
     }
     if (this.yMax === undefined) {
       this.autoscaleMax = 0;
     }
-    for (var i = 0; i < series.length; i++) {
-      if (series[i].value[1] > this.autoscaleMax) {
-        this.autoscaleMax = series[i].value[1];
-      }
-      if (series[i].value[1] < this.autoscaleMin) {
-        this.autoscaleMin = series[i].value[1];
-      }
 
-      points[i] = new window.GPoint(
-        series[i].value[0] / 1000,
-        series[i].value[1]
-      );
+    for (var i = 0; i < series.radioRows.length; i++) {
+      let points: any = [];
+      for (let j = 0; j < series.radioRows[i].length; j++) {
+        if (series.radioRows[i][j].value[1] > this.autoscaleMax) {
+          this.autoscaleMax = series.radioRows[i][j].value[1];
+        }
+        if (series.radioRows[i][j].value[1] < this.autoscaleMin) {
+          this.autoscaleMin = series.radioRows[i][j].value[1];
+        }
+        points[j] = new window.GPoint(
+          series.radioRows[i][j].value[0] / 1000,
+          series.radioRows[i][j].value[1]
+        );
+      }
+      this.lineSeries[i].layer.setPoints(points);
     }
+
     if (this.yMin === undefined && this.autoscaleMin > 0) {
       this.autoscaleMin = 0;
     }
@@ -110,7 +126,6 @@ class ChannelBar {
       this.autoscaleMax = 0;
     }
     this.setYLim();
-    this.plot.setPoints(points);
   }
 
   updateXAxis(second) {
@@ -144,25 +159,26 @@ class ChannelBar {
 
   customLines() {
     let plot = this.plot;
-
-    let plotPoints = plot.mainLayer.plotPoints;
-    if (plotPoints.length > 0) {
-      offscreenCtx.save();
-      offscreenCtx.strokeStyle = this.lineColor;
-      offscreenCtx.translate(
-        plot.pos[0] + plot.mar[1],
-        plot.pos[1] + plot.mar[2] + plot.dim[1]
-      );
-      offscreenCtx.beginPath();
-      offscreenCtx.rect(0, -this.h, this.w, this.h);
-      offscreenCtx.clip();
-      offscreenCtx.beginPath();
-      offscreenCtx.moveTo(plotPoints[0].x, plotPoints[1].y);
-      for (var i = 0; i < plotPoints.length; i++) {
-        offscreenCtx.lineTo(plotPoints[i].x, plotPoints[i].y);
+    for (let i = 0; i < this.lineSeries.length; i++) {
+      let plotPoints = this.lineSeries[i].layer.plotPoints;
+      if (plotPoints.length > 0) {
+        offscreenCtx.save();
+        offscreenCtx.strokeStyle = colors[this.lineSeries[i].radioIndex];
+        offscreenCtx.translate(
+          plot.pos[0] + plot.mar[1],
+          plot.pos[1] + plot.mar[2] + plot.dim[1]
+        );
+        offscreenCtx.beginPath();
+        offscreenCtx.rect(0, -this.h, this.w, this.h);
+        offscreenCtx.clip();
+        offscreenCtx.beginPath();
+        offscreenCtx.moveTo(plotPoints[0].x, plotPoints[0].y);
+        for (var j = 0; j < plotPoints.length; j++) {
+          offscreenCtx.lineTo(plotPoints[j].x, plotPoints[j].y);
+        }
+        offscreenCtx.stroke();
+        offscreenCtx.restore();
       }
-      offscreenCtx.stroke();
-      offscreenCtx.restore();
     }
   }
 
@@ -194,8 +210,9 @@ const getWH = () => {
 const setOption = (option) => {
   if (option.channel) {
     channel = option.channel;
-    if (channel.length > 8) {
-      middlePadding = 0;
+    if (channel.length >= 8) {
+      middlePadding = 3;
+      
     } else {
       middlePadding = 10;
     }
@@ -206,16 +223,14 @@ const setOption = (option) => {
       currentChannel < channel.length;
       currentChannel++
     ) {
-      if (channel.length > 8) {
-        channelBars[currentChannel] &&
-          channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(false);
-        channelBars[currentChannel] &&
-          channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(false);
+      if (channel.length >= 8) {
+          channelBars[currentChannel].plot.getYAxis().setShowLastTick(false);
+          // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(false);
+          // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(false);
       } else {
-        channelBars[currentChannel] &&
-          channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(true);
-        channelBars[currentChannel] &&
-          channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(true);
+        channelBars[currentChannel].plot.getYAxis().setShowLastTick(true);
+          // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(true);
+          // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(true);
       }
     }
   }
@@ -255,7 +270,6 @@ const updatelayout = () => {
     (canvasHeight -
       (topPadding + (channel.length - 1) * middlePadding + bottomPadding)) /
     channel.length;
-
   for (var i = 0; i < channel.length; i++) {
     channelBars[i] = new ChannelBar(
       i,
@@ -264,7 +278,7 @@ const updatelayout = () => {
       canvasWidth - leftPadding - rightPadding,
       h,
       channel[i].name,
-      channel[i].color
+      channel[i].radioRows
     );
   }
 };

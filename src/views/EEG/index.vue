@@ -10,7 +10,7 @@
             <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
           </p>
         </div>
-        <div class="filter-right">
+        <div class="filter-right" style="margin-top: -5px;">
           <a-form size="small" :model="seriesForm" layout="inline">
             <a-form-item label="preproc">
               <a-switch
@@ -276,6 +276,8 @@ let xAxis: echarts.EChartOption.XAxis[] = [];
 let yAxis: echarts.EChartOption.YAxis[] = [];
 let series: echarts.EChartOption.Series[] = [];
 let pkgSourceData: any = [];
+let cachePkgSourceData: any = [];
+let drawPkgSourceData: any = [];
 let pkgDataList: any = [];
 let pkgMaxTime = 20;
 const EEGTimeGap = 4; // 采样间隔
@@ -437,16 +439,19 @@ watch(
       timerPlay = setInterval(() => {
         if (pkgSourceData.length) {
           if (
-            playIndex.value * minTimeGap >=
+            playIndex.value * 40 >=
             pkgSourceData[pkgSourceData.length - 1].time_mark
           ) {
             timerPlay && clearInterval(timerPlay);
             return;
           }
-          pkgDataList = joinPkgList();
-          renderData();
+          let dataList = joinPkgList(true);
+          dataList.forEach((item) => {
+            ipcRenderer.send("start-data-replay", item);
+          });
+          // renderData();
         }
-      }, minTimeGap);
+      }, 40);
     } else {
       timerPlay && clearInterval(timerPlay);
     }
@@ -460,7 +465,11 @@ watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
   if (newValue) {
     indexStore.isDragSlider = false;
-    // handleOldData();
+    pkgDataList = [];
+    let dataList = joinPkgList();
+    dataList.forEach((item) => {
+      ipcRenderer.send("start-data-replay", item);
+    });
   }
 });
 
@@ -493,12 +502,25 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
+  ipcRenderer.removeListener("end-data-replay", rePlayNotice);
+  ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
   timer && clearInterval(timer);
   timerPlay && clearInterval(timerPlay);
   realTimer && clearInterval(realTimer);
   isRenderTimer && clearTimeout(isRenderTimer);
 });
+
+// 回放数据
+const rePlayNotice = (event, data) => {  
+  handlePkgList({
+    ...data,
+    ...data.pkg,
+  });
+  console.log('测试');
+  
+  renderData();
+};
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
@@ -519,6 +541,11 @@ const realTimerRenderData = () => {
   }, minTimeGap);
 };
 
+// 缓存原始数据，这部分的数据将用于加工
+// const handleCacheSoureData = (data) => {
+  
+// }
+
 // 数据包处理
 const handlePkgList = (data) => {
   if (
@@ -537,7 +564,7 @@ const handlePkgList = (data) => {
 };
 
 // 判断是否加入数据包队列
-const joinPkgList = () => {
+const joinPkgList = (isGap: boolean = false) => {
   let tempPkgDataList: any = [];
   if (!pkgSourceData.length) {
     return [];
@@ -545,11 +572,20 @@ const joinPkgList = () => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      item.time_mark - pkgSourceData[0].time_mark <=
-        playIndex.value * minTimeGap &&
+      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * 40 &&
       item.pkg_type === 1
     ) {
-      tempPkgDataList.push(item);
+      if (
+        isGap &&
+        item.time_mark - pkgSourceData[0].time_mark >=
+          (playIndex.value - 1) * 40
+      ) {
+        tempPkgDataList.push(item);
+      }
+
+      if (!isGap) {
+        tempPkgDataList.push(item);
+      }
     }
   }
   return tempPkgDataList;
@@ -596,8 +632,12 @@ const initialize = () => {
   pkgSourceData = [];
 
   if (!recordId.value) {
+    ipcRenderer.removeListener("end-data-replay", rePlayNotice);
+    ipcRenderer.send("close-replay");
     bluetooth.addNotice(bluetoothNotice);
   } else {
+    ipcRenderer.send("create-replay");
+    ipcRenderer.on("end-data-replay", rePlayNotice);
     bluetooth.removeNotice(bluetoothNotice);
     db.all(`select * from source where recordId = ${recordId.value}`).then(
       (res) => {
@@ -1924,7 +1964,11 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
     for (let dataIndex = 0; dataIndex < dataList.length; dataIndex++) {
       dataList[dataIndex][parseChannel(typeChannel)].forEach((value, y) => {
         let x = Math.round(baseTime / EEGTimeGap) + dataIndex;
-        psdMapData[x * MaxFrequency + y] = [baseTime + dataIndex * EEGTimeGap, y, value];
+        psdMapData[x * MaxFrequency + y] = [
+          baseTime + dataIndex * EEGTimeGap,
+          y,
+          value,
+        ];
       });
     }
   }
@@ -1946,7 +1990,7 @@ const conversionPkgtoPsd = (typeChannel) => {
 };
 
 const conversionPkgtoAbsolute = (typeChannel, index) => {
-  if (pkgDataList.length < 1) return [];
+  if (pkgDataList.length < 1) return undefined;
   return pkgDataList[pkgDataList.length - 1].psd_relative_s[
     parseChannel(typeChannel)
   ][index];
@@ -2023,32 +2067,36 @@ const undateTimeSerie = (type) => {
           chanOptionsData.findIndex((i) => i.value == b)
         );
       });
-      timeSeriesRef.value.setOption({
-        channel: channel.value,
-      });
+      timeSeriesRef.value &&
+        timeSeriesRef.value.setOption({
+          channel: channel.value,
+        });
       break;
     case "series":
-      timeSeriesRef.value.setOption({
-        series: channel.value.map((item) => ({
-          name: item,
-          data: conversionPkgtoSeriesData(item, seriesStep.value),
-        })),
-      });
+      timeSeriesRef.value &&
+        timeSeriesRef.value.setOption({
+          series: channel.value.map((item) => ({
+            name: item,
+            data: conversionPkgtoSeriesData(item, seriesStep.value),
+          })),
+        });
       break;
     case "xAxis":
-      timeSeriesRef.value.setOption({
-        xAxis: channel.value.map((item, index) => ({
-          max: seriesStep.value,
-        })),
-      });
+      timeSeriesRef.value &&
+        timeSeriesRef.value.setOption({
+          xAxis: channel.value.map((item, index) => ({
+            max: seriesStep.value,
+          })),
+        });
       break;
     case "yAxis":
-      timeSeriesRef.value.setOption({
-        yAxis: channel.value.map((item) => ({
-          max: seriesForm.max === "" ? undefined : seriesForm.max,
-          min: seriesForm.min === "" ? undefined : seriesForm.min,
-        })),
-      });
+      timeSeriesRef.value &&
+        timeSeriesRef.value.setOption({
+          yAxis: channel.value.map((item) => ({
+            max: seriesForm.max === "" ? undefined : seriesForm.max,
+            min: seriesForm.min === "" ? undefined : seriesForm.min,
+          })),
+        });
       break;
   }
 };

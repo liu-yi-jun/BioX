@@ -32,7 +32,7 @@
           <a-slider
             :min="minTime"
             :max="totalTime"
-            :step="250"
+            :step="40"
             @afterChange="changeTime"
             :tipFormatter="tipFormatter"
             v-model:value="currentTime"
@@ -143,7 +143,7 @@ let db;
 const emit = defineEmits(["onRecord", "onStatus"]);
 
 watch(isConnect, (newValue) => {
-  if (!newValue && isRecord.value) {
+  if (!newValue && status.value === 1) {
     changeStatus();
   }
 });
@@ -200,7 +200,7 @@ const changeStatus = () => {
   // 进行中
   if (status.value === 1) {
     timer = setInterval(() => {
-      currentTime.value = currentTime.value + 250;
+      currentTime.value = currentTime.value + 40;
       if (currentTime.value > totalTime.value) {
         if (isRecord.value) {
           openModal();
@@ -211,7 +211,7 @@ const changeStatus = () => {
         return;
       }
       indexStore.playIndex++;
-    }, 250);
+    }, 40);
   }
 
   // 暂停
@@ -327,7 +327,7 @@ const clearData = () => {
 };
 
 const changeTime = (value) => {
-  indexStore.playIndex = parseInt(value / 250 + "");
+  indexStore.playIndex = parseInt(value / 40 + "");
   indexStore.isDragSlider = true;
 };
 

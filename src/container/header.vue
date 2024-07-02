@@ -104,7 +104,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, getCurrentInstance, watch ,nextTick} from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  getCurrentInstance,
+  watch,
+  nextTick,
+} from "vue";
 const ipcRenderer = require("electron").ipcRenderer;
 import { DeploymentUnitOutlined } from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
@@ -114,7 +121,7 @@ import { CloseCircleOutlined, BugOutlined } from "@ant-design/icons-vue";
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { isConnect } = storeToRefs(indexStore);
+const { isConnect, bluetoothATConfig } = storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
 const ATValue = ref("");
@@ -155,6 +162,26 @@ const openConnectVisible = () => {
 //   }
 // });
 
+watch(
+  bluetoothATConfig,
+  (value) => {
+
+    setAtConfig();
+  },
+  { deep: true }
+);
+
+// 设置AT配置
+const setAtConfig = () => {
+  // 发送初始化配置
+  if (isConnect.value) {
+    for (const key in bluetoothATConfig.value) {
+      const item = bluetoothATConfig.value[key];
+      bluetooth.sendAT(`AT+${key}${item.operate}${item.value}`);
+    }
+  }
+};
+
 // 蓝牙扫描和连接
 const findDevice = () => {
   bluetooth.init((value, msg) => {
@@ -173,6 +200,7 @@ const findDevice = () => {
           selectDeviceItem = null;
           isConnect.value = true;
           message.success("连接成功");
+          setAtConfig();
       }
     } else {
       app?.proxy?.loading.hide();
@@ -250,7 +278,7 @@ const atNotice = (value: string) => {
     type: 2,
     content: value,
   });
-  scrollToBottom()
+  scrollToBottom();
 };
 
 // 打开AT调试
@@ -258,7 +286,7 @@ const openAtDebug = () => {
   ATValue.value = "";
   bluetooth.addATNotice(atNotice);
   openATModal.value = true;
-  scrollToBottom()
+  scrollToBottom();
 };
 
 // 关闭AT调试
@@ -275,16 +303,18 @@ const handleStartATModal = () => {
     content: ATValue.value,
   });
   bluetooth.sendAT(ATValue.value);
-  scrollToBottom()
+  scrollToBottom();
 };
 
 const scrollToBottom = () => {
-  nextTick(()=> {
+  nextTick(() => {
     if (atContent.value) {
-    atContent.value.scrollTo({ behavior: "smooth", top: atContent.value.scrollHeight });
-  }
-  })
-
+      atContent.value.scrollTo({
+        behavior: "smooth",
+        top: atContent.value.scrollHeight,
+      });
+    }
+  });
 };
 
 onMounted(() => {

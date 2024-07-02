@@ -9,16 +9,22 @@ export const useIndexStore = defineStore({
     recordId: 0,
     // 是否连接
     isConnect: false,
-    // 播放的时刻 index * 250
+    // 播放的时刻 index * 40
     playIndex: 0,
     // 是否拖拽进度条
-    isDragSlider:false,
+    isDragSlider: false,
+    // 蓝牙配置
+    bluetoothATConfig: {
+      IRMODE:{
+        operate:'=',
+        value : 0,
+      }
+    },
     // 配置数据
     configData: {
-      isFilter:false,
-      isBaseline:false
+      isFilter: false,
+      isBaseline: false,
     },
   }),
-  actions: {
-  },
+  actions: {},
 });

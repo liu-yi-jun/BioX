@@ -165,7 +165,7 @@ class ChannelBar {
       offscreenCtx.rect(0, -this.h, this.w, this.h);
       offscreenCtx.clip();
       offscreenCtx.beginPath();
-      offscreenCtx.moveTo(plotPoints[0].x, plotPoints[1].y);
+      offscreenCtx.moveTo(plotPoints[0].x, plotPoints[0].y);
       for (var i = 0; i < plotPoints.length; i++) {
         offscreenCtx.lineTo(plotPoints[i].x, plotPoints[i].y);
       }
