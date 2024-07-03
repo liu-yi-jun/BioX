@@ -496,12 +496,14 @@ watch(isConnect, (newValue) => {
 onMounted(function () {
   initialize();
   initPsdMapData(spectrumShowTime.value);
+  ipcRenderer.on("change-config-success", changeConfigSuccess);
   // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
   // const bluetooth = new CustomBluetooth();
   // bluetooth.addNotice((data) => {});
 });
 
 onBeforeUnmount(() => {
+  ipcRenderer.removeListener("change-config-success", changeConfigSuccess);
   ipcRenderer.removeListener("end-data-replay", rePlayNotice);
   ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
@@ -2364,6 +2366,13 @@ const parseChannel = (channel: string) => {
 };
 const changeConfig = () => {
   ipcRenderer.send("change-config", JSON.stringify(configData.value));
+};
+
+const changeConfigSuccess = (status) => {
+  if(status) {
+    pkgDataList = []
+  }
+
 };
 </script>
 <style scoped></style>

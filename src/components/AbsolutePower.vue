@@ -27,7 +27,7 @@ let canvasWidth = 0;
 let canvasHeight = 0;
 const leftPadding = 60;
 const rightPadding = 10;
-const topPadding = 10;
+const topPadding = 20;
 const middlePadding = 30;
 const bottomPadding = 50;
 const labelNmae = [
@@ -76,6 +76,7 @@ class ChannelBar {
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().getAxisLabel().setText("μV^2");
     this.plot.getXAxis().setNTicks(0);
+    this.plot.getYAxis().setTickLabelOffset(4);
     this.plot.getXAxis().setAxisLabelText("EEG Power Bands");
     this.plot.startHistograms(window.GPlot.VERTICAL);
     this.plot.getHistogram().setDrawLabels(true);
@@ -100,21 +101,24 @@ class ChannelBar {
       ]);
     let points: any = [];
     for (var i = 0; i < 5; i++) {
-      points[i] = new window.GPoint(i + 0.5,0.1, labelNmae[i]);
+      points[i] = new window.GPoint(i + 0.5, 0.1, labelNmae[i]);
     }
     this.plot.setPoints(points);
   }
 
   updateSeries(series) {
-   if(series[0] == undefined){ 
-    return
-   }
+    if(!series || !series.length) {
+      return
+    }
+    if (series[0] == undefined) {
+      return;
+    }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
       points[i] = new window.GPoint(i + 0.5, series[i] || 0.1, labelNmae[i]);
     }
 
-      this.plot.setPoints(points);
+    this.plot.setPoints(points);
   }
 
   updateYAxis(min?, max?) {

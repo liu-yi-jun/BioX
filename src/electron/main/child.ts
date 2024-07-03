@@ -142,5 +142,9 @@ process.on("message", async function ({ type, data }) {
   }
   if (type === "change-config") {
     processing.setConfig(JSON.parse(data));
+    process.send!({
+      type: "change-config-success",
+      data: true,
+    });
   }
 });

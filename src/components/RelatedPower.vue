@@ -76,6 +76,7 @@ class ChannelBar {
     this.plot.getXAxis().setLineColor("#DDDDDD");
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#787878");
+     this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().getAxisLabel().setText("Each Band Power Ratio (%)");
     this.plot.drawGridLines(window.GPlot.BOTH);
@@ -85,6 +86,9 @@ class ChannelBar {
   }
 
   updateSeries(name, series, allSeries, currentChannel) {
+    if(!series || !series.length) {
+      return
+    }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
       // if (series[i] > this.autoscaleMax) {

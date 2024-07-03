@@ -591,6 +591,7 @@ watch(isConnect, (newValue) => {
 onMounted(function () {
   // var sq = new CustomDatabase()
   // console.log(sq,"sq");
+  ipcRenderer.on("change-config-success", changeConfigSuccess);
   nextTick(() => {
     getSelectionHeight();
   });
@@ -598,6 +599,7 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
+  ipcRenderer.removeListener("change-config-success", changeConfigSuccess);
   ipcRenderer.removeListener("end-data-replay", rePlayNotice);
   ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
@@ -1158,6 +1160,12 @@ const changeConfig = () => {
   ipcRenderer.send("change-config", JSON.stringify(configData.value));
 };
 
+const changeConfigSuccess = (status) => {
+  if(status) {
+    pkgDataList = []
+  }
+
+};
 const changeWavelength = (value) => {
   if (checkboxValue1.value.findIndex((item) => parseInt(item) === value) > -1) {
     checkboxValue1.value = checkboxValue1.value.filter(

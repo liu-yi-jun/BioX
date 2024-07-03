@@ -70,6 +70,7 @@ class ChannelBar {
     this.plot.getXAxis().setFontColor("#787878");
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().getAxisLabel().setText("dBμV^2");
+    this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getXAxis().setAxisLabelText("Frequency (Hz)");
     this.plot.drawGridLines(window.GPlot.BOTH);
     // 第二条线
@@ -79,6 +80,9 @@ class ChannelBar {
   }
 
   updateSeries(name, series) {
+    if(!series || !series.length) {
+      return
+    }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
       if (series[i] > this.autoscaleMax) {

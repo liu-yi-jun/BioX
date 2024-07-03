@@ -251,7 +251,9 @@ function createWindow() {
       console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     replayChild.on("message", ({ type, data }: { type: string; data: any }) => {
-      event.sender.send("end-data-replay", data);
+      if (type === "end-data-replay") {
+        event.sender.send("end-data-replay", data);
+      }
     });
   });
   // 创建存储进程
@@ -337,6 +339,9 @@ function createWindow() {
           storeChild &&
           storeChild.send({ type: "end-data-decode", data: data.pkg });
         event.sender.send("end-data-decode", data);
+      }
+      if (type === "change-config-success") {
+        event.sender.send("change-config-success", data);
       }
     });
   });

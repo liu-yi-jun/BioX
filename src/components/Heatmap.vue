@@ -93,6 +93,7 @@ class ChannelBar {
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#787878");
     this.plot.getYAxis().setFontColor("#787878");
+      this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getYAxis().getAxisLabel().setText("Frequency (Hz)");
     this.plot.drawGridLines(window.GPlot.BOTH);
     this.xScalingFactor =
@@ -121,6 +122,9 @@ class ChannelBar {
   }
 
   updateSeries(series) {
+    if(!series || !series.length) {
+      return
+    }
     for (var i = 0; i < series.length; i++) {
       if (series[i][1] > this.autoscaleMax) {
         this.autoscaleMax = series[i][1];

@@ -38,11 +38,12 @@ let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
-const leftPadding = 60;
+const leftPadding = 70;
 const rightPadding = 10;
 const topPadding = 10;
 const middlePadding = 6;
 const bottomPadding = 30;
+const minGap = 0.01;
 const colors = {
   EEG: "#737373",
   DELTA: "#D5D5D6",
@@ -63,8 +64,8 @@ class ChannelBar {
   channelIndex: number;
   plot: any;
 
-  autoscaleMax: number = 1;
-  autoscaleMin: number = -1;
+  autoscaleMax: number = minGap;
+  autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
   points: any[] = [];
@@ -91,19 +92,24 @@ class ChannelBar {
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
     this.plot.getXAxis().setLineColor("#DDDDDD");
     this.plot.getYAxis().setLineColor("#6E7079");
+    this.plot.getYAxis().getAxisLabel().setOffset(45);
     this.plot.getXAxis().setFontColor("#787878");
+    this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().setAxisLabelText(this.name);
     offscreenCtx.lineWidth = 1;
   }
 
   updateSeries(series) {
+    if(!series || !series.length) {
+      return
+    }
     let points: any = [];
     if (this.yMin === undefined) {
-      this.autoscaleMin = 0;
+      this.autoscaleMin = Number.MAX_VALUE;
     }
     if (this.yMax === undefined) {
-      this.autoscaleMax = 0;
+      this.autoscaleMax = Number.MIN_VALUE;
     }
     for (var i = 0; i < series.length; i++) {
       if (series[i].value[1] > this.autoscaleMax) {
@@ -117,12 +123,6 @@ class ChannelBar {
         series[i].value[1]
       );
     }
-    if (this.yMin === undefined && this.autoscaleMin > 0) {
-      this.autoscaleMin = 0;
-    }
-    if (this.yMax === undefined && this.autoscaleMax < 0) {
-      this.autoscaleMax = 0;
-    }
     this.setYLim();
     this.plot.setPoints(points);
   }
@@ -133,12 +133,6 @@ class ChannelBar {
   }
 
   updateYAxis(min?, max?) {
-    if (min > 0) {
-      min = 0;
-    }
-    if (max < 0) {
-      max = 0;
-    }
     this.yMin = min;
     this.yMax = max;
     this.setYLim();
@@ -150,10 +144,17 @@ class ChannelBar {
   }
 
   setYLim() {
-    this.plot.setYLim(
-      this.yMin === undefined ? this.autoscaleMin : this.yMin,
-      this.yMax === undefined ? this.autoscaleMax : this.yMax
-    );
+    let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
+    let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
+    if(min == Number.MAX_VALUE || max == Number.MIN_VALUE){
+      return
+    }
+    min = Number(min);
+    max = Number(max);
+    if (min == max) {
+      max += minGap;
+    }
+    this.plot.setYLim(min, max);
   }
 
   customLines() {

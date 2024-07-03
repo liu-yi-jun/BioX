@@ -34,6 +34,7 @@ const rightPadding = 20;
 const topPadding = 10;
 let middlePadding = 3;
 const bottomPadding = 24;
+const minGap = 0.001;
 const colors = {
   1: "#ff0101",
   2: "#ffba01",
@@ -52,7 +53,7 @@ class ChannelBar {
   plot: any;
 
   autoscaleMax: number = 1;
-  autoscaleMin: number = -1;
+  autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
   constructor(_channelIndex, _x, _y, _w, _h, _name, _lineSeries) {
@@ -87,19 +88,24 @@ class ChannelBar {
 
     this.plot.getYAxis().lab.setRotate(false);
     this.plot.getYAxis().setAxisLabelText(this.name);
-    this.plot.getYAxis().setShowLastTick(false)
-    this.plot.getYAxis().setFontSize(9)
+    this.plot.getYAxis().setShowLastTick(false);
+    this.plot.getYAxis().setFontSize(9);
+    this.plot.getYAxis().getAxisLabel().setOffset(50);
+    this.plot.getYAxis().setTickLabelOffset(2.5);
     // this.plot.getYAxis().setRotate(false);
     // this.plot.getYAxis().setDrawTickLabels(false)
     offscreenCtx.lineWidth = 1;
   }
 
   updateSeries(series) {
+    if (!series || (!series.radioRows && !series.radioRows.length)) {
+      return;
+    }
     if (this.yMin === undefined) {
-      this.autoscaleMin = 0;
+      this.autoscaleMin = Number.MAX_VALUE;
     }
     if (this.yMax === undefined) {
-      this.autoscaleMax = 0;
+      this.autoscaleMax = Number.MIN_VALUE;
     }
 
     for (var i = 0; i < series.radioRows.length; i++) {
@@ -119,12 +125,6 @@ class ChannelBar {
       this.lineSeries[i].layer.setPoints(points);
     }
 
-    if (this.yMin === undefined && this.autoscaleMin > 0) {
-      this.autoscaleMin = 0;
-    }
-    if (this.yMax === undefined && this.autoscaleMax < 0) {
-      this.autoscaleMax = 0;
-    }
     this.setYLim();
   }
 
@@ -134,12 +134,6 @@ class ChannelBar {
   }
 
   updateYAxis(min?, max?) {
-    if (min > 0) {
-      min = 0;
-    }
-    if (max < 0) {
-      max = 0;
-    }
     this.yMin = min;
     this.yMax = max;
     this.setYLim();
@@ -151,10 +145,17 @@ class ChannelBar {
   }
 
   setYLim() {
-    this.plot.setYLim(
-      this.yMin === undefined ? this.autoscaleMin : this.yMin,
-      this.yMax === undefined ? this.autoscaleMax : this.yMax
-    );
+    let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
+    let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
+    if(min == Number.MAX_VALUE || max == Number.MIN_VALUE){
+      return
+    }
+    min = Number(min);
+    max = Number(max);
+    if (min == max) {
+      max += minGap;
+    }
+    this.plot.setYLim(min, max);
   }
 
   customLines() {
@@ -212,7 +213,6 @@ const setOption = (option) => {
     channel = option.channel;
     if (channel.length >= 8) {
       middlePadding = 3;
-      
     } else {
       middlePadding = 10;
     }
@@ -224,13 +224,13 @@ const setOption = (option) => {
       currentChannel++
     ) {
       if (channel.length >= 8) {
-          channelBars[currentChannel].plot.getYAxis().setShowLastTick(false);
-          // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(false);
-          // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(false);
+        channelBars[currentChannel].plot.getYAxis().setShowLastTick(false);
+        // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(false);
+        // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(false);
       } else {
         channelBars[currentChannel].plot.getYAxis().setShowLastTick(true);
-          // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(true);
-          // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(true);
+        // channelBars[currentChannel].plot.getYAxis().setDrawTickLabels(true);
+        // channelBars[currentChannel].plot.getYAxis().setDrawPlotTicks(true);
       }
     }
   }

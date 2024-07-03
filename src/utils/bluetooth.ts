@@ -35,6 +35,8 @@ const handleEndDataDecode = (event, data) => {
 
 // at通知函数
 const atNotice = (event) => {
+  console.log('回复',event.target.value);
+  
   for (let i = 0; i < atNoticeList.length; i++) {
     console.log(event.target.value);
     let uint8Data = new Uint8Array(event.target.value.buffer);
