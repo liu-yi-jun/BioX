@@ -109,7 +109,7 @@ class ChannelBar {
       this.autoscaleMin = Number.MAX_VALUE;
     }
     if (this.yMax === undefined) {
-      this.autoscaleMax = Number.MIN_VALUE;
+      this.autoscaleMax =  -Number.MAX_VALUE;
     }
     for (var i = 0; i < series.length; i++) {
       if (series[i].value[1] > this.autoscaleMax) {

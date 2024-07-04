@@ -10,7 +10,7 @@
             <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
           </p>
         </div>
-        <div class="filter-right" style="margin-top: -5px;">
+        <div class="filter-right" style="margin-top: -5px">
           <a-form size="small" :model="seriesForm" layout="inline">
             <div class="wavelength-color-box">
               <div @click="changeWavelength(1)" class="wavelength-color">
@@ -21,10 +21,11 @@
                       : '#D9DADF',
                   }"
                 ></span>
-                <span>735nm</span>
+                <span v-if="radioValue === 3">HbO</span>
+                <span v-else>735nm</span>
               </div>
               <div
-                v-if="wavelengthsValue === 2"
+                v-if="wavelengthsValue !== 1 || radioValue === 3"
                 @click="changeWavelength(2)"
                 class="wavelength-color"
               >
@@ -35,7 +36,8 @@
                       : '#D9DADF',
                   }"
                 ></span>
-                <span>805nm</span>
+                <span v-if="radioValue === 3">HbR</span>
+                <span v-else>805nm</span>
               </div>
               <div @click="changeWavelength(3)" class="wavelength-color">
                 <span
@@ -45,13 +47,27 @@
                       : '#D9DADF',
                   }"
                 ></span>
-                <span>850nm</span>
+                <span v-if="radioValue === 3">HbT</span>
+                <span v-else>850nm</span>
               </div>
             </div>
+
             <a-form-item label="preproc">
               <a-switch
                 @change="changeConfig"
                 v-model:checked="configData.isBaseline"
+              />
+            </a-form-item>
+            <a-form-item label="age" v-if="radioValue === 3">
+              <a-input
+                type="number"
+                min="1"
+                max="200"
+                step="1"
+                style="width: 60px"
+                @change="changeConfig('age')"
+                v-model:value="configData.age"
+                placeholder="auto"
               />
             </a-form-item>
             <a-form-item label="min">
@@ -347,6 +363,9 @@ const selectionHeight = ref(0);
 const selectionWidth = ref(0);
 const seriesStep = ref(10);
 const seriesMaxStep = 30;
+const changeState = {
+  age: false,
+};
 const fnirsTimeRef = ref<any>(null);
 const isRender = ref(false);
 const minTimeGap = 40;
@@ -514,15 +533,41 @@ const radioStyle = reactive({
 });
 
 watch(wavelengthsValue, (newValue) => {
-  if (newValue == 1) {
+  if (newValue == 1 && radioValue.value != 3) {
     checkboxValue1.value = ["1", "3"];
     checkboxValue2.value = ["1", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 0;
   }
-  if (newValue == 2) {
+  if (newValue == 1 && radioValue.value == 3) {
+    checkboxValue1.value = ["1", "2", "3"];
+    checkboxValue2.value = ["1", "2", "3"];
+    indexStore.bluetoothATConfig.IRMODE.value = 0;
+  }
+  if (newValue == 2 && radioValue.value != 3) {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 1;
+  }
+  if (newValue == 2 && radioValue.value == 3) {
+    checkboxValue1.value = ["1", "2", "3"];
+    checkboxValue2.value = ["1", "2", "3"];
+    indexStore.bluetoothATConfig.IRMODE.value = 1;
+  }
+  handleChange();
+});
+
+watch(radioValue, (newValue) => {
+  if ((newValue == 1 || newValue == 2) && wavelengthsValue.value == 1) {
+    checkboxValue1.value = ["1", "3"];
+    checkboxValue2.value = ["1", "3"];
+  }
+  if ((newValue == 1 || newValue == 2) && wavelengthsValue.value == 2) {
+    checkboxValue1.value = ["1", "2", "3"];
+    checkboxValue2.value = ["1", "2", "3"];
+  }
+  if (newValue == 3) {
+    checkboxValue1.value = ["1", "2", "3"];
+    checkboxValue2.value = ["1", "2", "3"];
   }
   handleChange();
 });
@@ -664,6 +709,7 @@ const handlePkgList = (data) => {
   if (data.pkg_type === 2) {
     packetLossRate.value = data.loss_data_info_el.packetLossRate;
     packetLossNum.value = data.loss_data_info_el.packetLossNum;
+
     pkgDataList.push(data);
   }
 };
@@ -947,7 +993,7 @@ const generateSeries = () => {
       seriesStep.value
     );
     tempObj.Conc = conversionPkgtoTimeSeries(
-      "near_infrared",
+      "concentration_date",
       mapChanToField(item.chanIndex),
       mapRadioToField(item.radioIndex),
       seriesStep.value
@@ -1060,7 +1106,7 @@ const undateTimeSerie = (type) => {
                 seriesStep.value
               );
               tempObj.Conc = conversionPkgtoTimeSeries(
-                "near_infrared",
+                "concentration_date",
                 mapChanToField(item.chanIndex),
                 mapRadioToField(item.radioIndex),
                 seriesStep.value
@@ -1156,15 +1202,21 @@ const channelLineClick = (value: number | Array<number>) => {
   handleChange();
 };
 
-const changeConfig = () => {
+const changeConfig = (field?) => {
+  if (field) {
+    changeState[field] = true;
+  }
   ipcRenderer.send("change-config", JSON.stringify(configData.value));
 };
 
 const changeConfigSuccess = (status) => {
-  if(status) {
-    pkgDataList = []
+  if (changeState.age) {
+    changeState.age = false;
+    return;
   }
-
+  if (status) {
+    pkgDataList = [];
+  }
 };
 const changeWavelength = (value) => {
   if (checkboxValue1.value.findIndex((item) => parseInt(item) === value) > -1) {
@@ -1180,7 +1232,7 @@ const changeWavelength = (value) => {
   }
   checkboxValue1.value.sort((a, b) => parseInt(a) - parseInt(b));
   checkboxValue2.value.sort((a, b) => parseInt(a) - parseInt(b));
-  handleChange()
+  handleChange();
 };
 </script>
 <style scoped></style>

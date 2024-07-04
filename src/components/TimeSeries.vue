@@ -102,7 +102,7 @@ class ChannelBar {
       this.autoscaleMin = Number.MAX_VALUE;
     }
     if (this.yMax === undefined) {
-      this.autoscaleMax = Number.MIN_VALUE;
+      this.autoscaleMax = -Number.MAX_VALUE;
     }
     for (var i = 0; i < series.length; i++) {
       if (series[i].value[1] > this.autoscaleMax) {
@@ -138,6 +138,7 @@ class ChannelBar {
   }
 
   setYLim() {
+    
     let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
     let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
     if(min == Number.MAX_VALUE || max == Number.MIN_VALUE){
@@ -145,6 +146,8 @@ class ChannelBar {
     }
     min = Number(min);
     max = Number(max);
+   
+    
     if (min == max) {
       max += minGap;
     }

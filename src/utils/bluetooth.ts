@@ -29,6 +29,7 @@ const handleEndDataDecode = (event, data) => {
       time_e_s_multiple: data.time_e_s_multiple,
       loss_data_info_el: data.loss_data_info_el,
       ir_od_date: data.ir_od_date,
+      concentration_date: data.concentration_date,
     });
   }
 };

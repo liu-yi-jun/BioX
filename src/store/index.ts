@@ -15,13 +15,14 @@ export const useIndexStore = defineStore({
     isDragSlider: false,
     // 蓝牙配置
     bluetoothATConfig: {
-      IRMODE:{
-        operate:'=',
-        value : 0,
-      }
+      IRMODE: {
+        operate: "=",
+        value: 0,
+      },
     },
     // 配置数据
     configData: {
+      age: 25,
       isFilter: false,
       isBaseline: false,
     },

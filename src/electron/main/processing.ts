@@ -37,6 +37,7 @@ let lossDataTemplate = {
 function Processing(this: any, path: string, config: any) {
   this.config = config;
   this.ir_od_date = [];
+  this.concentration_date = [];
   this.lossDataInfo = {
     EEG: JSON.parse(JSON.stringify(lossDataTemplate)),
     IR: JSON.parse(JSON.stringify(lossDataTemplate)),
@@ -49,6 +50,7 @@ function Processing(this: any, path: string, config: any) {
   this.psd_s_multiple = [];
   this.psd_relative_s_multiple = [];
   this.psd_relative_percent_s_multiple = [];
+  this.baseline_ok = false;
 
   // 这部分不能乱改，dll里面控制着
   this.ps_s = [
@@ -97,14 +99,17 @@ function Processing(this: any, path: string, config: any) {
     //基线归零（od里面的）
     clear_baseline: ["void", []],
     // 原始数据计算基线
-    calc_baseline: ["void", [Int, Double, Int, Int, DoubleArray, DoubleArray]],
+    calc_baseline: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]],
     //计算光密度
     calc_od: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]], //channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
+    //age:受试者年龄，input：0D数据数组，包含4个波长数据；Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
+    calc_hb_2wave: [Bool, [Int, DoubleArray, DoubleArray]],
   });
 }
 Processing.prototype.init = function (this: any) {
   this.signalProcess.init_filter(sample_rate, channel);
   this.signalProcess.clear_baseline();
+  this.baseline_ok = false;
   this.signalProcess.init_irbp_filter(ir_sample_rate, ir_channel, fl, fh);
 };
 Processing.prototype.processData = function (this: any, pkg: any) {
@@ -127,20 +132,27 @@ Processing.prototype.processData = function (this: any, pkg: any) {
   // 计算丢包
   calculatePacketLoss.call(this, pkg);
 
-  // 打印
-  // console.log(
-  //   "pkglen,pkgnum,time_mark,pkg_type,eeg_channel,ir_channel,eeg_data_num,error_state",
-  //   pkg.pkglen,
-  //   pkg.pkgnum,
-  //   pkg.time_mark,
-  //   pkg.pkg_type,
-  //   pkg.eeg_channel,
-  //   pkg.ir_channel,
-  //   pkg.eeg_data_num,
-  //   pkg.error_state
-  // );
-
   let LDInfoEl = mapLossDataInfo.call(this, pkg.pkg_type);
+
+  // 打印
+  const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
+  if (!isDev) {
+    console.log(
+      "pkglen,pkgnum,time_mark,pkg_type,eeg_channel,ir_channel,brain_elec_channel,error_state,isLosspkg,pkg_type",
+      pkg.pkglen,
+      pkg.pkgnum,
+      pkg.time_mark,
+      pkg.pkg_type,
+      pkg.eeg_channel,
+      pkg.ir_channel,
+      pkg.brain_elec_channel[0][0],
+      pkg.brain_elec_channel[1][0],
+      pkg.error_state,
+      LDInfoEl.isLosspkg,
+      pkg.pkg_type
+    );
+  }
+
   // pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter
   if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && this.config.isFilter) {
     //丢包插值暂时只支持开启滤波的工作模式
@@ -348,12 +360,15 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       let ir_od = new DoubleArray(4);
       let ir_filter = new DoubleArray(4);
       let ir_date_remove = new DoubleArray(4);
+      let concentration = new DoubleArray(3); ///顺序为hbo,hb,hbt
       // 将float数组转换为double数组,float数组直接传不行
+
       let ir_input = new DoubleArray(
         arrayToJs(pkg.near_infrared[current_channel])
       );
 
-      this.signalProcess.calc_baseline(
+      // 基线
+      let state = this.signalProcess.calc_baseline(
         current_channel,
         ir_sample_rate,
         baseline_time,
@@ -366,25 +381,37 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         pkg.near_infrared[current_channel] = arrayToJs(ir_date_remove);
       }
 
-      let state = this.signalProcess.calc_od(
-        current_channel,
-        ir_sample_rate,
-        baseline_time,
-        ir_step,
-        ir_input,
-        ir_od
-      ); //state 返回为ture时可以读取OD数据
-      // console.log('state',state);
+      if (state) {
+        this.baseline_ok = true;
+      }
+      
 
-      // if (isFilter) {
+      if (this.baseline_ok) {
+
+        this.signalProcess.calc_od(
+          current_channel,
+          ir_sample_rate,
+          baseline_time,
+          ir_step,
+          ir_input,
+          ir_od
+        );
+
+        this.signalProcess.calc_hb_2wave(this.config.age, ir_od, concentration);
+      }
+
       // od滤波
-      this.signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
-      this.ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_filter));
-      // } else {
-      //   ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
-      // }
+      // this.signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
+
+      this.ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
+
+      // hbo,hb,hbt
+      this.concentration_date[current_channel] = JSON.parse(
+        JSON.stringify(concentration)
+      );
 
       ir_od = null;
+      concentration = null;
       ir_filter = null;
     }
     // console.log('ir_od_date',ir_od_date);
@@ -404,6 +431,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     psd_relative_percent_s_multiple: this.psd_relative_percent_s_multiple,
     time_e_s_multiple: this.time_e_s_multiple,
     ir_od_date: this.ir_od_date,
+    concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
   };
 }
