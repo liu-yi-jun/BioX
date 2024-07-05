@@ -1,7 +1,7 @@
 {
   "name": "biox",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "Your Name",
   "main": "dist/electron/main/main.js",
   "scripts": {

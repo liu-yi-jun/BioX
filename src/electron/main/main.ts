@@ -168,6 +168,14 @@ function createWindow() {
     config = Object.assign(config, JSON.parse(data));
   });
 
+  // 修改配置项带具体回复
+  ipcMain.on("change-config-field", (event, data) => {
+    child &&
+      child.connected &&
+      child.send({ type: "change-config-field", data: data });
+    config = Object.assign(config, JSON.parse(data).config);
+  });
+
   // 开始存储
   ipcMain.on("start-store", (event, data) => {
     log.error("start-store", data);
@@ -342,6 +350,9 @@ function createWindow() {
       }
       if (type === "change-config-success") {
         event.sender.send("change-config-success", data);
+      }
+      if (type === "change-config-field-success") {
+        event.sender.send("change-config-field-success", data);
       }
     });
   });

@@ -147,4 +147,14 @@ process.on("message", async function ({ type, data }) {
       data: true,
     });
   }
+  if (type === "change-config-field") {
+    processing.setConfig(JSON.parse(data).config);
+    process.send!({
+      type: "change-config-field-success",
+      data: {
+        field: JSON.parse(data).field,
+        status: true,
+      },
+    });
+  }
 });

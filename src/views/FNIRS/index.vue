@@ -65,7 +65,7 @@
                 max="200"
                 step="1"
                 style="width: 60px"
-                @change="changeConfig('age')"
+                @change="changeConfigNoReply('age')"
                 v-model:value="configData.age"
                 placeholder="auto"
               />
@@ -1202,18 +1202,21 @@ const channelLineClick = (value: number | Array<number>) => {
   handleChange();
 };
 
-const changeConfig = (field?) => {
-  if (field) {
-    changeState[field] = true;
-  }
+const changeConfigNoReply = (field) => {
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field,
+      config: configData.value,
+    })
+  );
+};
+
+const changeConfig = () => {
   ipcRenderer.send("change-config", JSON.stringify(configData.value));
 };
 
 const changeConfigSuccess = (status) => {
-  if (changeState.age) {
-    changeState.age = false;
-    return;
-  }
   if (status) {
     pkgDataList = [];
   }
