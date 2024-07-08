@@ -11,10 +11,7 @@
         <router-view></router-view>
       </div>
     </div>
-    <record
-      @on-record="onRecord"
-      @on-status="onStatus"
-    ></record>
+    <record @on-record="onRecord" @on-status="onStatus"></record>
   </div>
 </template>
 
@@ -22,7 +19,14 @@
 import record from "../components/record.vue";
 import OfMenu from "./menu.vue";
 import OfHeader from "./header.vue";
-import { ref, reactive, onMounted, onBeforeUnmount, watch,getCurrentInstance } from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  getCurrentInstance,
+} from "vue";
 const app = getCurrentInstance();
 const status = ref<number>(0);
 const isRecord = ref<boolean>(true);
@@ -46,41 +50,62 @@ const onStatus = (value) => {
   status.value = value;
 };
 
-
-
 // 更新配置
 watch(
   () => configData,
   () => {
-    db.all(`select * from config`).then((list) => {
-      if (list.length > 0) {
-        db.update(
-          "config",
-          {
-            configData: JSON.stringify(configData.value),
-          },
-          {
-            id: list[0].id,
-          }
-        );
-        ipcRenderer.send("change-config", JSON.stringify(configData.value));
-      }
-    });
+    // db.all(`select * from config`).then((list) => {
+    //   if (list.length > 0) {
+    //     db.update(
+    //       "config",
+    //       {
+    //         configData: JSON.stringify(configData.value),
+    //       },
+    //       {
+    //         id: list[0].id,
+    //       }
+    //     );
+
+    //     // ipcRenderer.send(
+    //     //   "change-config-field",
+    //     //   JSON.stringify({
+    //     //     field: "autoSave",
+    //     //     config: configData.value,
+    //     //   })
+    //     // );
+    //   }
+    // });
   },
   { deep: true }
 );
+
+onMounted(() => {
+  initConfig();
+});
 
 // 初始化配置
 const initConfig = () => {
   db.all(`select * from config`).then((list) => {
     if (list.length > 0) {
       indexStore.configData = JSON.parse(list[0].configData);
-      ipcRenderer.send("change-config", JSON.stringify(configData.value));
+      ipcRenderer.send(
+        "change-config-field",
+        JSON.stringify({
+          field: "initConfig",
+          config: configData.value,
+        })
+      );
     } else {
       db.insert("config", {
         configData: JSON.stringify(configData.value),
       }).then(() => {
-        ipcRenderer.send("change-config", JSON.stringify(configData.value));
+        ipcRenderer.send(
+          "change-config-field",
+          JSON.stringify({
+            field: "initConfig",
+            config: configData.value,
+          })
+        );
       });
     }
   });

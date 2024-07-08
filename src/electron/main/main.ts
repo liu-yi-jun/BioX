@@ -155,6 +155,11 @@ function createWindow() {
     app.quit();
   });
 
+  // 收起窗口
+  ipcMain.on("minimize-window", (event) => {
+    mainWindow.minimize();
+  });
+
   // 打开开发者工具
   ipcMain.on("open-devtools", (event) => {
     mainWindow.webContents.openDevTools();

@@ -52,12 +52,6 @@
               </div>
             </div>
 
-            <a-form-item label="preproc">
-              <a-switch
-                @change="changeConfig"
-                v-model:checked="configData.isBaseline"
-              />
-            </a-form-item>
             <a-form-item label="age" v-if="radioValue === 3">
               <a-input
                 type="number"
@@ -66,7 +60,7 @@
                 step="1"
                 style="width: 60px"
                 @change="changeConfigNoReply('age')"
-                v-model:value="configData.age"
+                v-model:value="configData.irFilter.age"
                 placeholder="auto"
               />
             </a-form-item>
@@ -412,6 +406,7 @@ const {
   isDragSlider,
   isConnect,
   configData,
+  isIrClear,
   bluetoothATConfig,
 } = storeToRefs(indexStore);
 const db = new CustomDatabase();
@@ -542,6 +537,15 @@ watch(wavelengthsValue, (newValue) => {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 0;
+    configData.value.irFilter.is2wave = true
+    configData.value.irFilter.is3wave = false
+    ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "wave",
+      config: configData.value,
+    })
+  );
   }
   if (newValue == 2 && radioValue.value != 3) {
     checkboxValue1.value = ["1", "2", "3"];
@@ -552,6 +556,15 @@ watch(wavelengthsValue, (newValue) => {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 1;
+    configData.value.irFilter.is2wave = false
+    configData.value.irFilter.is3wave = true
+    ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "wave",
+      config: configData.value,
+    })
+  );
   }
   handleChange();
 });
@@ -569,7 +582,17 @@ watch(radioValue, (newValue) => {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
   }
+  pkgDataList = [];
   handleChange();
+  configData.value.irFilter.plotType = newValue;
+
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "plotType",
+      config: configData.value,
+    })
+  );
 });
 
 watch(
@@ -609,6 +632,7 @@ watch(isRender, (newValue) => {
   }
 });
 
+
 watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
   if (newValue) {
@@ -633,10 +657,21 @@ watch(isConnect, (newValue) => {
   }
 });
 
+watch(isIrClear, (newValue) => {
+  if (newValue) {
+    pkgDataList = [];
+    indexStore.isIrClear = false;
+  }
+},{
+  deep: true,
+  immediate: true
+});
+
+
 onMounted(function () {
   // var sq = new CustomDatabase()
   // console.log(sq,"sq");
-  ipcRenderer.on("change-config-success", changeConfigSuccess);
+  ipcRenderer.on("change-config-field-success", changeConfigSuccess);
   nextTick(() => {
     getSelectionHeight();
   });
@@ -644,7 +679,10 @@ onMounted(function () {
 });
 
 onBeforeUnmount(() => {
-  ipcRenderer.removeListener("change-config-success", changeConfigSuccess);
+  ipcRenderer.removeListener(
+    "change-config-field-success",
+    changeConfigSuccess
+  );
   ipcRenderer.removeListener("end-data-replay", rePlayNotice);
   ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
@@ -1212,15 +1250,13 @@ const changeConfigNoReply = (field) => {
   );
 };
 
-const changeConfig = () => {
-  ipcRenderer.send("change-config", JSON.stringify(configData.value));
-};
-
-const changeConfigSuccess = (status) => {
-  if (status) {
-    pkgDataList = [];
+const changeConfigSuccess = (event,data) => {
+  if (data.field === "plotType") {
+      pkgDataList = [];
   }
-};
+}
+
+
 const changeWavelength = (value) => {
   if (checkboxValue1.value.findIndex((item) => parseInt(item) === value) > -1) {
     checkboxValue1.value = checkboxValue1.value.filter(

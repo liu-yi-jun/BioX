@@ -20,12 +20,33 @@ export const useIndexStore = defineStore({
         value: 0,
       },
     },
+
     // 配置数据
     configData: {
-      age: 25,
-      isFilter: false,
-      isBaseline: false,
+      eegFilter: {
+        isDCRemove: true,
+        isNotch: true,
+        isBandPass: true,
+        fl: 0.1,
+        fh: 100,
+        bpType: 1,
+        sample_rate: 250,
+      },
+      irFilter: {
+        isDCRemove: true,
+        isBandPass: true,
+        is2wave: true,
+        is3wave: false,
+        age: 25,
+        fl: 0.01,
+        fh: 5,
+        bpType: 1,
+        plotType: 1, 
+        ir_sample_rate: 12.5,
+      },
     },
+    isEegClear: false,
+    isIrClear: false,
   }),
   actions: {},
 });

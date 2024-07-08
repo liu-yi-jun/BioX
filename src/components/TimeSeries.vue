@@ -23,7 +23,7 @@ const props = defineProps({
 
 let numSeconds = props.numSeconds;
 let maxSeconds = 20;
-const sampleRate = 250;
+
 let canvasP5: any;
 // 自定义绘制
 let customCanvas: any;

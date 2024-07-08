@@ -12,16 +12,18 @@ const FloatArray = ArrayType(Float);
 // 初始化参数
 const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
 const step = 10; //fft 步长
-const sample_rate = 250;
+let sample_rate = 250;
 const channel = 2;
 const timeGap = 40; //包时间间隔，单位ms
 // 近红外部分
-const ir_sample_rate = 12.5;
+let ir_sample_rate = 12.5;
 const baseline_time = 10;
 const ir_channel = 8;
 const ir_step = 2;
 const fl = 0.01; //fl 下截至频率
 const fh = 0.5; //fh 上截止频率
+
+const L = [3.182, 2.515, 2.515, 0.795, 3.182, 2.515, 2.515, 0.795];
 
 let lossDataTemplate = {
   baseAdjustedTimestamps: 0, //基础某秒时间戳
@@ -32,10 +34,15 @@ let lossDataTemplate = {
   isLosspkg: false, //是否丢包
   lossNum: 0, // 当前丢包数
   orderGap: 1, // 包序号间隔
+  oldPkg: null, //上一个包
 };
 
 function Processing(this: any, path: string, config: any) {
-  this.config = config;
+  console.log("config", config);
+
+  this.config = JSON.parse(config);
+  sample_rate = this.config.eegFilter.sample_rate;
+  ir_sample_rate = this.config.irFilter.ir_sample_rate;
   this.ir_od_date = [];
   this.concentration_date = [];
   this.lossDataInfo = {
@@ -63,11 +70,17 @@ function Processing(this: any, path: string, config: any) {
   ]; //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
   this.psd_relative_s = [new DoubleArray(5), new DoubleArray(5)]; //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
   this.psd_relative_percent_s = [new DoubleArray(5), new DoubleArray(5)]; //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+  //流程网站https://backoqdkrcv.feishu.cn/docx/ChsEdEvc4ohGMYxdy7ccMCmTngd
   this.signalProcess = ffi.Library(path, {
-    init_filter: ["void", [Int, Int]],
-    init_bp_filter: ["void", [Int, Int]],
-    run_pre_process_filter: ["void", [Int, FloatArray, DoubleArray, Bool]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
-    run_bp_filter: [
+    // 脑电部分
+    // init_filter: ["void", [Int, Int]],
+    // init_bp_filter: ["void", [Int, Int]],
+    init_notch_filter: ["void", [Int, Int]], //初始化50Hz,100Hz Notch滤波器
+    run_notch_filter_50Hz: ["void", [Int, DoubleArray, DoubleArray]], //运行50Hz Notch滤波器,channel:EEG总通道数，input:输入数组首地址，output：输出数组首地址
+    run_notch_filter_100Hz: ["void", [Int, DoubleArray, DoubleArray]], //运行100Hz Notch滤波器
+    run_dc_remove_eeg: ["void", [Int, DoubleArray, DoubleArray]], //运行EEG去基线
+    init_eegbp_filter_eegbands: ["void", [Int, Int]], //初始化用于脑电节律显示的带通滤波器
+    run_eegbp_filter_eegbands: [
       "void",
       [
         Int,
@@ -78,39 +91,82 @@ function Processing(this: any, path: string, config: any) {
         DoubleArray,
         DoubleArray,
       ],
-    ],
-    fft_ps: [
+    ], //运行用于脑电节律显示的带通滤波器
+    init_eegbp_filter_draw: ["void", [Int, Int, Double, Double]], //初始化用于主画图时域视窗的带通滤波器 	//sample_rate:采样率，channel:总通道数；fl:下截至频率；fh：上截止频率
+    run_eegbp_filter_draw: ["void", [Int, Int, DoubleArray, DoubleArray]], //运行用于主画图时域视窗的带通滤波器 //filter_type:int型变量，1:“Butterworth”，2:“ChebyshevI”，3:“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
+    // run_pre_process_filter: ["void", [Int, FloatArray, DoubleArray, Bool]], //滤除100HZ;x[channel]是各个通道当前接收到数据的数组，d[channel]是各个通道滤波后数据的数组，为最终拿去做fft的数据，
+    // run_bp_filter: [
+    //   "void",
+    //   [
+    //     Int,
+    //     DoubleArray,
+    //     DoubleArray,
+    //     DoubleArray,
+    //     DoubleArray,
+    //     DoubleArray,
+    //     DoubleArray,
+    //   ],
+    // ],
+
+    fft_ps: [Bool, [Int, Int, Double, Int, Int, DoubleArray, DoubleArray]],
+    fft_ps_eegbands: [
       Bool,
-      [
-        Int,
-        Int,
-        Double,
-        Int,
-        Int,
-        DoubleArray,
-        DoubleArray,
-        DoubleArray,
-        DoubleArray,
-      ],
+      [Int, Int, Double, Int, Int, DoubleArray, DoubleArray],
     ],
+
+    // 近红外部分
     //初始化ir滤波器
     init_irbp_filter: ["void", [Double, Int, Double, Double]], //sample_rate:采样率，total_channel:总通道数；fl:下截至频率；fh：上截止频率
     run_irbp_filter: ["void", [Int, Int, DoubleArray, DoubleArray]], //filter_type:字符型变量，“Butterworth”，“ChebyshevI”，“ChebyshevII”，channel:当前通道，input:输入数据，为数组首地址；output:输出数据（滤波后数据），为数组首地址
-    //基线归零（od里面的）
+    //基线归零
     clear_baseline: ["void", []],
     // 原始数据计算基线
     calc_baseline: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]],
     //计算光密度
     calc_od: [Bool, [Int, Double, Int, Int, DoubleArray, DoubleArray]], //channel:当前通道数（每个通道包含λ1，λ31，λ2，λ32四个波长数据）；sample_rate，int：采样率；base_line_time：用于计算基线的时间长度，单位为秒;step:滑窗步长，单位为点数；input:输入数据，为数组首地址；output:输出数据（各通道光密度），为数组首地址
-    //age:受试者年龄，input：0D数据数组，包含4个波长数据；Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
-    calc_hb_2wave: [Bool, [Int, DoubleArray, DoubleArray]],
+    //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
+    calc_hb_2wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
+    //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
+    calc_hb_3wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
   });
 }
 Processing.prototype.init = function (this: any) {
-  this.signalProcess.init_filter(sample_rate, channel);
+  // this.signalProcess.init_filter(sample_rate, channel);
+  // 脑电初始化
+  this.signalProcess.init_notch_filter(sample_rate, channel);
+  this.signalProcess.init_eegbp_filter_eegbands(sample_rate, channel);
+  this.signalProcess.init_eegbp_filter_draw(
+    sample_rate,
+    channel,
+    this.config.eegFilter.fl,
+    this.config.eegFilter.fh
+  );
+
+  // 近红外初始化
   this.signalProcess.clear_baseline();
   this.baseline_ok = false;
-  this.signalProcess.init_irbp_filter(ir_sample_rate, ir_channel, fl, fh);
+  this.signalProcess.init_irbp_filter(
+    ir_sample_rate,
+    ir_channel,
+    this.config.irFilter.fl,
+    this.config.irFilter.fh
+  );
+};
+Processing.prototype.setInit = function (this: any) {
+  this.signalProcess.init_irbp_filter(
+    ir_sample_rate,
+    ir_channel,
+    this.config.irFilter.fl,
+    this.config.irFilter.fh
+  );
+  this.signalProcess.clear_baseline();
+  this.signalProcess.init_eegbp_filter_draw(
+    sample_rate,
+    channel,
+    this.config.eegFilter.fl,
+    this.config.eegFilter.fh
+  );
+  this.baseline_ok = false;
 };
 Processing.prototype.processData = function (this: any, pkg: any) {
   let dataList: any = [];
@@ -152,27 +208,28 @@ Processing.prototype.processData = function (this: any, pkg: any) {
       pkg.pkg_type
     );
   }
-
-  // pkg.pkg_type === 1  && LDInfoEl.isLosspkg && isFilter
-  if (pkg.pkg_type === 1 && LDInfoEl.isLosspkg && this.config.isFilter) {
+  if (LDInfoEl.isLosspkg) {
     //丢包插值暂时只支持开启滤波的工作模式
     for (let i = LDInfoEl.lossNum; i >= 1; i--) {
       // 复制包
-      const newPkg = JSON.parse(JSON.stringify(pkg));
-      newPkg.pkgnum = pkg.pkgnum - LDInfoEl.orderGap * i;
-      newPkg.time_mark =
-        pkg.time_mark -
-        ((pkg.time_mark - LDInfoEl.priorTimeMark) /
-          (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
-          i;
-      newPkg.color = "red";
-      dataList.push(processSend.call(this, newPkg, LDInfoEl));
+      if (LDInfoEl.oldPkg) {
+        const newPkg = JSON.parse(JSON.stringify(LDInfoEl.oldPkg));    
+        newPkg.pkgnum = pkg.pkgnum - LDInfoEl.orderGap * i;
+        newPkg.time_mark =
+          pkg.time_mark -
+          ((pkg.time_mark - LDInfoEl.priorTimeMark) /
+            (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
+            i;
+        dataList.push(processSend.call(this, newPkg, LDInfoEl));
+      }
     }
   }
   LDInfoEl.isLosspkg = false;
   dataList.push(processSend.call(this, pkg, LDInfoEl));
   LDInfoEl.priorPkgnum = pkg.pkgnum;
   LDInfoEl.priorTimeMark = pkg.time_mark;
+  LDInfoEl.oldPkg = JSON.parse(JSON.stringify(pkg));
+
   return dataList;
 };
 
@@ -262,52 +319,73 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
   // 有EEG数据标志位
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
-
     for (let i = 0; i < pkg.eeg_data_num; i++) {
-      let inputData: any = [];
-      let d = new DoubleArray(channel);
+      let brain_data = new DoubleArray(channel);
+      //所有流程都有去基线，先存起来
+      let remove_output = new DoubleArray(channel);
+      let notch_50_output: any = new DoubleArray(channel);
+      let notch_100_output: any = new DoubleArray(channel);
+      let bp_output: any = new DoubleArray(channel);
       let e1 = new DoubleArray(channel); //Delta频段各通道时域数据数组
       let e2 = new DoubleArray(channel); //Theta频段各通道时域数据数组
       let e3 = new DoubleArray(channel); //Alpha频段各通道时域数据数组
       let e4 = new DoubleArray(channel); //Beta频段各通道时域数据数组
       let e5 = new DoubleArray(channel); //Gamma频段各通道时域数据数组
-
-      if (this.config.isFilter) {
-        // 滤波处理
-        for (
-          let current_channel = 0;
-          current_channel < channel;
-          current_channel++
-        ) {
-          inputData[current_channel] =
-            pkg.brain_elec_channel[current_channel][i];
-        }
-        this.signalProcess.run_pre_process_filter(
-          channel,
-          new FloatArray(inputData),
-          d,
-          LDInfoEl.isLosspkg
-        );
+      for (
+        let current_channel = 0;
+        current_channel < channel;
+        current_channel++
+      ) {
+        brain_data[current_channel] =
+          pkg.brain_elec_channel[current_channel][i];
       }
+
+      // 运行去基线
+      this.signalProcess.run_dc_remove_eeg(channel, brain_data, remove_output);
 
       for (
         let current_channel = 0;
         current_channel < channel;
         current_channel++
       ) {
-        if (this.config.isFilter) {
-          // 滤波后数据赋值
-          // d[0] = Math.random() * 100;
-          pkg.brain_elec_channel[current_channel][i] = d[current_channel];
-        } else {
-          // 不滤波
-          d[current_channel] = pkg.brain_elec_channel[current_channel][i];
-        }
+        brain_data[current_channel] = remove_output[current_channel];
       }
 
-      this.signalProcess.run_bp_filter(channel, d, e1, e2, e3, e4, e5);
-
-      //计算频谱数组、频谱密度数组、频段频谱密度数组、相对频谱密度数组
+      // 开启Notch
+      if (this.config.eegFilter.isNotch) {
+        this.signalProcess.run_notch_filter_50Hz(
+          channel,
+          brain_data,
+          notch_50_output
+        );
+        brain_data = arrayToJs(notch_50_output);
+        this.signalProcess.run_notch_filter_100Hz(
+          channel,
+          brain_data,
+          notch_100_output
+        );
+        brain_data = arrayToJs(notch_100_output);
+      }
+      // 开启BP
+      if (this.config.eegFilter.isBandPass) {
+        this.signalProcess.run_eegbp_filter_draw(
+          this.config.eegFilter.bpType,
+          channel,
+          brain_data,
+          bp_output
+        );
+        brain_data = arrayToJs(bp_output);
+      }
+      // fft_ps_eegbands 用于EEG Bands视图
+      this.signalProcess.run_eegbp_filter_eegbands(
+        channel,
+        remove_output,
+        e1,
+        e2,
+        e3,
+        e4,
+        e5
+      );
       for (
         let current_channel = 0;
         current_channel < channel;
@@ -320,21 +398,44 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           e4[current_channel],
           e5[current_channel],
         ];
-
+        // 计算fft_ps 用于Spectrum视图
         this.signalProcess.fft_ps(
           current_channel,
           sample_rate,
-          d[current_channel], //(test_i + 1) % 32
+          brain_data[current_channel],
           step,
           fftWindow,
           this.ps_s[current_channel],
-          this.psd_s[current_channel],
+          this.psd_s[current_channel]
+        );
+        // fft_ps_eegbands 用于EEG Bands视图
+        this.signalProcess.fft_ps_eegbands(
+          current_channel,
+          sample_rate,
+          remove_output[current_channel],
+          step,
+          fftWindow,
           this.psd_relative_s[current_channel],
           this.psd_relative_percent_s[current_channel]
-        ); //计算功率谱：假设d1为上述存储的最终滤波后数组,当函数返回值为true,输出频域数组ps,psd,psd_relative,psd_relative_percent会更新，此时需要将ps,psd,psd_relative,psd_relative_percent画图显示
+        );
+      }
+
+      // 开启DC Remove（去基线），或者开启Notch 或者开启BP
+      if (
+        this.config.eegFilter.isDCRemove ||
+        this.config.eegFilter.isNotch ||
+        this.config.eegFilter.isBandPass
+      ) {
+        for (
+          let current_channel = 0;
+          current_channel < channel;
+          current_channel++
+        ) {
+          pkg.brain_elec_channel[current_channel][i] =
+            brain_data[current_channel];
+        }
       }
       this.time_e_s_multiple[i] = JSON.parse(JSON.stringify(this.time_e_s));
-      // ps_s_multiple[i] = ps_s;
       this.psd_s_multiple[i] = JSON.parse(JSON.stringify(this.psd_s));
       this.psd_relative_s_multiple[i] = JSON.parse(
         JSON.stringify(this.psd_relative_s)
@@ -342,7 +443,11 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       this.psd_relative_percent_s_multiple[i] = JSON.parse(
         JSON.stringify(this.psd_relative_percent_s)
       );
-      d = null;
+      brain_data = null;
+      remove_output = null;
+      notch_50_output = null;
+      notch_100_output = null;
+      bp_output = null;
       e1 = null;
       e2 = null;
       e3 = null;
@@ -357,62 +462,112 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       current_channel < pkg.ir_channel;
       current_channel++
     ) {
+      let ir_data = new DoubleArray(4);
       let ir_od = new DoubleArray(4);
-      let ir_filter = new DoubleArray(4);
+      let ir_raw_filter = new DoubleArray(4);
+      let ir_od_filter = new DoubleArray(4);
+      let ir_conc_filter = new DoubleArray(4);
       let ir_date_remove = new DoubleArray(4);
-      let concentration = new DoubleArray(3); ///顺序为hbo,hb,hbt
+      let ir_conc = new DoubleArray(3); ///顺序为hbo,hb,hbt
       // 将float数组转换为double数组,float数组直接传不行
 
-      let ir_input = new DoubleArray(
-        arrayToJs(pkg.near_infrared[current_channel])
-      );
+      ir_data = new DoubleArray(arrayToJs(pkg.near_infrared[current_channel]));
 
       // 基线
-      let state = this.signalProcess.calc_baseline(
+      this.baseline_ok = this.signalProcess.calc_baseline(
         current_channel,
         ir_sample_rate,
         baseline_time,
         ir_step,
-        ir_input,
+        ir_data,
         ir_date_remove
       );
 
-      if (this.config.isBaseline) {
-        pkg.near_infrared[current_channel] = arrayToJs(ir_date_remove);
-      }
+      // ir_data = arrayToJs(ir_date_remove)
 
-      if (state) {
-        this.baseline_ok = true;
-      }
-      
+      // if (state) {
+      //   this.baseline_ok = true;
+      // }
 
       if (this.baseline_ok) {
-
         this.signalProcess.calc_od(
           current_channel,
           ir_sample_rate,
           baseline_time,
           ir_step,
-          ir_input,
+          ir_data,
           ir_od
         );
-
-        this.signalProcess.calc_hb_2wave(this.config.age, ir_od, concentration);
+        if (this.config.irFilter.is3wave) {
+          this.signalProcess.calc_hb_3wave(
+            this.config.irFilter.age,
+            L[current_channel],
+            ir_od,
+            ir_conc
+          );
+        }
+        if (this.config.irFilter.is2wave) {
+          this.signalProcess.calc_hb_2wave(
+            this.config.irFilter.age,
+            L[current_channel],
+            ir_od,
+            ir_conc
+          );
+        }
       }
 
-      // od滤波
-      // this.signalProcess.run_irbp_filter(1, current_channel, ir_od, ir_filter);
+      // 开启Bp
+      if (this.config.irFilter.isBandPass) {
+        if (this.config.irFilter.plotType == 1) {
+          this.signalProcess.run_irbp_filter(
+            this.config.irFilter.bpType,
+            current_channel,
+            ir_date_remove,
+            ir_raw_filter
+          );
+
+          // ir_data = arrayToJs(ir_raw_filter);
+        }
+        if (this.config.irFilter.plotType == 2) {
+          this.signalProcess.run_irbp_filter(
+            this.config.irFilter.bpType,
+            current_channel,
+            ir_od,
+            ir_od_filter
+          );
+          ir_od = arrayToJs(ir_od_filter);
+        }
+        if (this.config.irFilter.plotType == 3) {
+          this.signalProcess.run_irbp_filter(
+            this.config.irFilter.bpType,
+            current_channel,
+            ir_conc,
+            ir_conc_filter
+          );
+          ir_conc = arrayToJs(ir_conc_filter);
+        }
+      }
+
+      if (this.config.irFilter.isDCRemove) {
+        pkg.near_infrared[current_channel] = arrayToJs(ir_date_remove);
+      }
+      if (this.config.irFilter.isBandPass) {
+        pkg.near_infrared[current_channel] = arrayToJs(ir_raw_filter);
+      }
 
       this.ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
 
-      // hbo,hb,hbt
       this.concentration_date[current_channel] = JSON.parse(
-        JSON.stringify(concentration)
+        JSON.stringify(ir_conc)
       );
 
+      ir_data = null;
       ir_od = null;
-      concentration = null;
-      ir_filter = null;
+      ir_raw_filter = null;
+      ir_od_filter = null;
+      ir_conc_filter = null;
+      ir_date_remove = null;
+      ir_conc = null;
     }
     // console.log('ir_od_date',ir_od_date);
     // console.log('ir_filter_date',ir_filter_date);

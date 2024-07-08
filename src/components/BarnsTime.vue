@@ -25,7 +25,6 @@ let numSeconds = props.numSeconds;
 
 const BarnsTime = ref<HTMLElement | null>(null);
 let maxSeconds = 20;
-const sampleRate = 250;
 let canvasP5: any;
 // 自定义绘制
 let customCanvas: any;

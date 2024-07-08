@@ -12,12 +12,6 @@
         </div>
         <div class="filter-right" style="margin-top: -5px;">
           <a-form size="small" :model="seriesForm" layout="inline">
-            <a-form-item label="preproc">
-              <a-switch
-                @change="changeConfig"
-                v-model:checked="configData.isFilter"
-              />
-            </a-form-item>
             <a-form-item label="min">
               <a-input
                 type="number"
@@ -316,7 +310,7 @@ import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect, configData } =
+const { play, recordId, playIndex,isEegClear, isDragSlider, isConnect, configData } =
   storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
@@ -493,17 +487,25 @@ watch(isConnect, (newValue) => {
   }
 });
 
+watch(isEegClear, (newValue) => {
+  if (newValue) {
+    pkgDataList = [];
+    indexStore.isEegClear = false;
+  }
+},{
+  immediate: true,
+  deep: true
+});
+
 onMounted(function () {
   initialize();
   initPsdMapData(spectrumShowTime.value);
-  ipcRenderer.on("change-config-success", changeConfigSuccess);
   // const { proxy } = getCurrentInstance() as ComponentInternalInstance;
   // const bluetooth = new CustomBluetooth();
   // bluetooth.addNotice((data) => {});
 });
 
 onBeforeUnmount(() => {
-  ipcRenderer.removeListener("change-config-success", changeConfigSuccess);
   ipcRenderer.removeListener("end-data-replay", rePlayNotice);
   ipcRenderer.send("close-replay");
   bluetooth.removeNotice(bluetoothNotice);
@@ -2364,15 +2366,7 @@ const parseChannel = (channel: string) => {
   }
   return 0;
 };
-const changeConfig = () => {
-  ipcRenderer.send("change-config", JSON.stringify(configData.value));
-};
 
-const changeConfigSuccess = (status) => {
-  if(status) {
-    pkgDataList = []
-  }
 
-};
 </script>
 <style scoped></style>

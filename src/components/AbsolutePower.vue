@@ -18,7 +18,6 @@ import {
 } from "vue";
 const AbsolutePower = ref<HTMLElement | null>(null);
 let numMax = 5;
-const sampleRate = 250;
 let canvasP5: any;
 let channelBars: ChannelBar;
 let sketch: any = null;

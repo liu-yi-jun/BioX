@@ -61,7 +61,32 @@
       </a-dropdown>
     </div>
     <div>
-      <a-space>
+      <a-space size="middle">
+        <a-dropdown placement="bottom">
+          <a-button>
+            <template #icon>
+              <SettingOutlined />
+            </template>
+          </a-button>
+          <template #overlay>
+            <a-menu>
+              <!-- <a-menu-item> 
+                <div @click="openDevTools">
+                  DevTools
+                </div>
+              </a-menu-item> -->
+              <a-menu-item>
+                <div style="padding: 0 10px;" @click="openSettingModal">Fillters</div>
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+        <a-button @click="minimizeWindow">
+          <template #icon>
+            <MinusOutlined />
+          </template>
+        </a-button>
+
         <a-button danger type="primary" @click="closeWindow">
           <template #icon>
             <CloseCircleOutlined />
@@ -101,6 +126,118 @@
       </p>
     </div>
   </a-modal>
+  <a-modal
+    v-model:open="openSetting"
+    title="Filters"
+    :footer="null"
+    @cancel="handleEndSettingModal"
+    width="600px"
+    :maskClosable="false"
+  >
+    <a-tabs class="header-tab" v-model:activeKey="activeKey" centered>
+      <a-tab-pane key="1" tab="EEG">
+        <div class="DC-Notch">
+          <a-checkbox v-model:checked="configData.eegFilter.isDCRemove"
+            >DC Offset</a-checkbox
+          >
+          <a-checkbox v-model:checked="configData.eegFilter.isNotch"
+            >Notch</a-checkbox
+          >
+        </div>
+        <a-divider />
+        <div class="BP-wrap">
+          <a-checkbox v-model:checked="configData.eegFilter.isBandPass"
+            >BandPass</a-checkbox
+          >
+          <div class="BP-input">
+            <div>
+              <span>Start(Hz)</span>
+              <!-- 最大值为 1/2Fs(向下取整) -->
+              <a-input-number
+                size="small"
+                v-model:value="configData.eegFilter.fl"
+                :min="0"
+                :max="Math.floor(configData.eegFilter.sample_rate / 2)"
+                :step="0.1"
+              ></a-input-number>
+            </div>
+            <div>
+              <span>Stop(Hz)</span>
+              <!-- 最大值为 1/2Fs(向下取整) -->
+              <a-input-number
+                size="small"
+                v-model:value="configData.eegFilter.fh"
+                :min="0"
+                :max="Math.floor(configData.eegFilter.sample_rate / 2)"
+                :step="0.1"
+              ></a-input-number>
+            </div>
+            <div>
+              <span>Type</span>
+              <a-select
+                v-model:value="configData.eegFilter.bpType"
+                :style="{ 'min-width': '100px' }"
+                placeholder="Channels"
+                :options="eegTypeOptions"
+                size="small"
+              ></a-select>
+            </div>
+          </div>
+        </div>
+      </a-tab-pane>
+      <a-tab-pane key="2" tab="FNIRS" force-render
+        ><div class="DC-Notch">
+          <a-checkbox v-model:checked="configData.irFilter.isDCRemove"
+            >DC Offset</a-checkbox
+          >
+        </div>
+        <a-divider />
+        <div class="BP-wrap">
+          <a-checkbox v-model:checked="configData.irFilter.isBandPass"
+            >BandPass</a-checkbox
+          >
+          <div class="BP-input">
+            <div>
+              <span>Start(Hz)</span>
+              <!-- 最大值为 1/2Fs(向下取整) -->
+              <a-input-number
+                size="small"
+                v-model:value="configData.irFilter.fl"
+                :min="0"
+                :max="Math.floor(configData.irFilter.ir_sample_rate / 2)"
+                :step="0.01"
+              ></a-input-number>
+            </div>
+            <div>
+              <span>Stop(Hz)</span>
+              <!-- 最大值为 1/2Fs(向下取整) -->
+              <a-input-number
+                size="small"
+                v-model:value="configData.irFilter.fh"
+                :min="0"
+                :max="Math.floor(configData.irFilter.ir_sample_rate / 2)"
+                :step="0.01"
+              ></a-input-number>
+            </div>
+            <div>
+              <span>Type</span>
+              <a-select
+                v-model:value="configData.irFilter.bpType"
+                :style="{ 'min-width': '100px' }"
+                placeholder="Channels"
+                :options="eegTypeOptions"
+                size="small"
+              ></a-select>
+            </div>
+          </div></div
+      ></a-tab-pane>
+    </a-tabs>
+    <div class="modal-btn-footer">
+      <a-button type="primary" @click="handleSaveSetting">Save</a-button>
+      <a-button @click="handleResetSetting">Reset</a-button>
+      <a-button @click="handleCancelSetting">Cancel</a-button>
+    </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -110,18 +247,49 @@ import {
   onMounted,
   getCurrentInstance,
   watch,
+  onBeforeUnmount,
   nextTick,
 } from "vue";
+let copyConfigData: any = {};
+let ResetConfigData: any = {
+  eegFilter: {
+    isDCRemove: true,
+    isNotch: true,
+    isBandPass: true,
+    fl: 0.1,
+    fh: 100,
+    bpType: 1,
+    sample_rate: 250,
+  },
+  irFilter: {
+    isDCRemove: true,
+    isBandPass: true,
+    is2wave: true,
+    is3wave: false,
+    age: 25,
+    fl: 0.01,
+    fh: 5,
+    bpType: 1,
+    plotType: 1,
+    ir_sample_rate: 12.5,
+  },
+};
 const ipcRenderer = require("electron").ipcRenderer;
-import { DeploymentUnitOutlined } from "@ant-design/icons-vue";
+import { DeploymentUnitOutlined, MinusOutlined } from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
 import { CustomDatabase } from "../utils/db";
 import { formatTimestamp } from "../utils/common";
-import { CloseCircleOutlined, BugOutlined } from "@ant-design/icons-vue";
+import { useRoute, useRouter } from "vue-router";
+import {
+  CloseCircleOutlined,
+  BugOutlined,
+  SettingOutlined,
+} from "@ant-design/icons-vue";
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { isConnect, bluetoothATConfig } = storeToRefs(indexStore);
+const { isConnect, bluetoothATConfig, configData, isClear } =
+  storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
 const ATValue = ref("");
@@ -130,7 +298,25 @@ const bluetooth = new CustomBluetooth();
 const app = getCurrentInstance();
 const db = new CustomDatabase();
 const openATModal = ref(false);
-import { Modal } from "ant-design-vue";
+const openSetting = ref(false);
+const router = useRouter();
+const activeKey = ref("1");
+import { Modal, SelectProps } from "ant-design-vue";
+const eegTypeOptionsData = [
+  {
+    value: 1,
+    label: "Butterworth",
+  },
+  {
+    value: 2,
+    label: "ChebyshevI",
+  },
+  {
+    value: 3,
+    label: "ChebyshevII",
+  },
+];
+const eegTypeOptions = ref<SelectProps["options"]>(eegTypeOptionsData);
 let timer_uuid: any = null;
 const atContent: any = ref(null);
 
@@ -163,9 +349,21 @@ const openConnectVisible = () => {
 // });
 
 watch(
+  () => router.currentRoute.value,
+  (to, from) => {
+    if (to.name == "EEG") {
+      activeKey.value = "1";
+    }
+    if (to.name == "FNIRS") {
+      activeKey.value = "2";
+    }
+  },
+  { immediate: false, deep: true } // 这里的 deep: true 是因为我们想深度监听路由对象的变化
+);
+
+watch(
   bluetoothATConfig,
   (value) => {
-
     setAtConfig();
   },
   { deep: true }
@@ -214,6 +412,11 @@ const findDevice = () => {
 // 关闭应用
 const closeWindow = () => {
   ipcRenderer.send("close-window");
+};
+
+// 收缩窗口
+const minimizeWindow = () => {
+  ipcRenderer.send("minimize-window");
 };
 
 // 确认连接设备
@@ -268,6 +471,11 @@ const findDeviceList = () => {
 // 用户点击，开始连接蓝牙
 const clickme = () => {
   findDevice();
+};
+
+const openSettingModal = () => {
+  copyConfigData = JSON.parse(JSON.stringify(configData.value));
+  openSetting.value = true;
 };
 
 // at通知事件
@@ -373,6 +581,82 @@ onMounted(() => {
       );
     }
   });
+  ipcRenderer.on("change-config-field-success", changeConfigSuccess);
 });
+
+onBeforeUnmount(() => {
+  ipcRenderer.removeListener(
+    "change-config-field-success",
+    changeConfigSuccess
+  );
+
+  bluetooth.removeATNotice(atNotice);
+
+  timer_uuid && clearTimeout(timer_uuid);
+});
+
+const handleCancelSetting = () => {
+  handleEndSettingModal();
+  openSetting.value = false;
+};
+
+const handleEndSettingModal = () => {
+  configData.value = JSON.parse(JSON.stringify(copyConfigData));
+};
+
+const handleResetSetting = () => {
+  configData.value = JSON.parse(JSON.stringify(ResetConfigData));
+};
+
+const handleSaveSetting = () => {
+  // db.all(`select * from config`).then((list) => {
+  //   if (list.length > 0) {
+  //     db.update(
+  //       "config",
+  //       {
+  //         configData: JSON.stringify(configData.value),
+  //       },
+  //       {
+  //         id: list[0].id,
+  //       }
+  //     );
+  //   }
+  // });
+
+  if (configData.value.eegFilter.fl == null) {
+    return message.error("请输入EEG起始频率");
+  }
+  if (configData.value.eegFilter.fh == null) {
+    return message.error("请输入EEG结束频率");
+  }
+  if (configData.value.eegFilter.fl >= configData.value.eegFilter.fh) {
+    return message.error("EEG起始频率必须小于结束频率");
+  }
+  if (configData.value.irFilter.fl == null) {
+    return message.error("请输入FNIRS起始频率");
+  }
+  if (configData.value.irFilter.fh == null) {
+    return message.error("请输入FNIRS结束频率");
+  }
+  if (configData.value.irFilter.fl >= configData.value.irFilter.fh) {
+    return message.error("FNIRS起始频率必须小于结束频率");
+  }
+
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "filterConfig",
+      config: configData.value,
+    })
+  );
+  openSetting.value = false;
+};
+
+const changeConfigSuccess = (event, data) => {
+  if (data.field === "filterConfig") {
+    indexStore.isEegClear = true;
+    indexStore.isIrClear = true;
+  }
+};
 </script>
 <style scoped></style>

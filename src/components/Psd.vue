@@ -17,7 +17,6 @@ import {
 } from "vue";
 const Psd = ref<HTMLElement | null>(null);
 let maxFreq = 125;
-const sampleRate = 250;
 let canvasP5: any;
 let channel = ["Fp1", "Fp2"];
 let channelBars: ChannelBar;

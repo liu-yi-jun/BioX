@@ -48,12 +48,12 @@ const items = reactive([
     label: "数据管理",
     title: "数据管理",
   },
-  {
-    key: "/setting",
-    icon: () => h(SettingOutlined),
-    label: "设置",
-    title: "设置",
-  },
+  // {
+  //   key: "/setting",
+  //   icon: () => h(SettingOutlined),
+  //   label: "设置",
+  //   title: "设置",
+  // },
   {
     key: "/log",
     icon: () => h(FileTextOutlined),
