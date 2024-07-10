@@ -98,7 +98,6 @@
 
       <div class="time-series">
         <FnirsTime :numSeconds="seriesStep" ref="fnirsTimeRef"></FnirsTime>
-        <!-- <div style="width: 100%; height: 100%" id="series"></div> -->
       </div>
     </div>
     <div class="card-bottom">
@@ -411,7 +410,6 @@ const {
 } = storeToRefs(indexStore);
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
-let myChart: echarts.EChartsType;
 let timerPlay, timer;
 interface showSeriesDataType {
   chanIndex: number;
@@ -512,10 +510,6 @@ const seriesColors = [
   "rgba(156,200,223,1)",
 ];
 
-let xAxisArr = reactive<echarts.EChartOption.XAxis[]>([]);
-let yAxisArr = reactive<echarts.EChartOption.YAxis[]>([]);
-let seriesArr = reactive<echarts.EChartOption.Series[]>([]);
-let gridArr = reactive<echarts.EChartOption.Grid[]>([]);
 
 let seriesRDNameObj: showSeriesDataType[];
 let seriesODNameObj: showSeriesDataType[];
@@ -730,8 +724,6 @@ const realTimerRenderData = () => {
 // 渲染
 const renderData = () => {
   undateTimeSerie("series");
-  // generateSeries();
-  // initSeries();
 };
 
 // 数据包处理
@@ -804,14 +796,11 @@ const initialize = () => {
   initData();
   nextTick(() => {
     undateTimeSerie("channel");
-    // myChart = echarts.init(document.getElementById("series"));
-    // initSeries();
   });
 };
 
 // 配置改变
 const handleChange = () => {
-  // myChart.clear();
   generateShowSeriesData();
   // initSeries();
   undateTimeSerie("channel");
@@ -902,10 +891,6 @@ const generateShowSeriesData = () => {
   });
   console.log("showSeriesData", showSeriesData);
 
-  // generateXAxisArr();
-  // generateYAxisArr();
-  // generateGrid();
-  // generateSeries();
 };
 
 // 生成X轴
@@ -1191,21 +1176,7 @@ const conversionPkgtoTimeSeries = (field, channel, index, step) => {
   });
 };
 
-// 渲染图表
-const initSeries = () => {
-  myChart?.setOption(
-    {
-      animation: false,
-      xAxis: xAxisArr,
-      grid: gridArr,
-      yAxis: yAxisArr,
-      series: seriesArr,
-    },
-    {
-      lazyUpdate: true,
-    }
-  );
-};
+
 
 // 切换渠道
 const channelLineClick = (value: number | Array<number>) => {
