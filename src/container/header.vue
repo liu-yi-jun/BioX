@@ -1,7 +1,7 @@
 <template>
   <div class="header">
     <div>
-      BraInward BioX
+      BioMultiLite_1.1.8_240709_Alpha_Win
       <a-button @click="openAtDebug">
         <template #icon>
           <BugOutlined />

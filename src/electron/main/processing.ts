@@ -208,12 +208,12 @@ Processing.prototype.processData = function (this: any, pkg: any) {
       pkg.pkg_type
     );
   }
+  let copePkg = JSON.parse(JSON.stringify(pkg));
   if (LDInfoEl.isLosspkg) {
-    //丢包插值暂时只支持开启滤波的工作模式
     for (let i = LDInfoEl.lossNum; i >= 1; i--) {
       // 复制包
       if (LDInfoEl.oldPkg) {
-        const newPkg = JSON.parse(JSON.stringify(LDInfoEl.oldPkg));    
+        const newPkg = JSON.parse(JSON.stringify(LDInfoEl.oldPkg));
         newPkg.pkgnum = pkg.pkgnum - LDInfoEl.orderGap * i;
         newPkg.time_mark =
           pkg.time_mark -
@@ -228,7 +228,7 @@ Processing.prototype.processData = function (this: any, pkg: any) {
   dataList.push(processSend.call(this, pkg, LDInfoEl));
   LDInfoEl.priorPkgnum = pkg.pkgnum;
   LDInfoEl.priorTimeMark = pkg.time_mark;
-  LDInfoEl.oldPkg = JSON.parse(JSON.stringify(pkg));
+  LDInfoEl.oldPkg = JSON.parse(JSON.stringify(copePkg));
 
   return dataList;
 };
