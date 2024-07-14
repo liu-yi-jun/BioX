@@ -150,7 +150,7 @@ process.on("message", async function ({ type, data }) {
   if (type === "change-config-field") {
     processing.setConfig(JSON.parse(data).config);
     let field = JSON.parse(data).field;
-    if (field === "filterConfig" || field === "plotType") {
+    if (field === "filterConfig" || field === "plotType" || field === "wave") {
       processing.setInit();
     }
 

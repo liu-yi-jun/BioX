@@ -350,7 +350,16 @@ function createWindow() {
         removZero(data);
         isStartStore &&
           storeChild &&
-          storeChild.send({ type: "end-data-decode", data: data.pkg });
+          storeChild.send({
+            type: "end-data-decode",
+            data: {
+              ...data.pkg,
+              brain_elec_channel: data.copy_brain_elec_channel,
+              near_infrared: data.copy_near_infrared,
+            },
+          });
+        delete data.copy_brain_elec_channel;
+        delete data.copy_near_infrared;
         event.sender.send("end-data-decode", data);
       }
       if (type === "change-config-success") {

@@ -381,6 +381,10 @@ const showTimeOptionsData = [
     value: 20,
     label: "20 sec",
   },
+  {
+    value: 30,
+    label: "30 sec",
+  },
 ];
 const seriesForm = reactive({
   min: "",
@@ -396,7 +400,7 @@ import { storeToRefs } from "pinia";
 let pkgDataList: any = [];
 let pkgSourceData: any = [];
 
-let pkgMaxTime = 30;
+let pkgMaxTime = 35;
 const indexStore = useIndexStore();
 const {
   play,
@@ -510,7 +514,6 @@ const seriesColors = [
   "rgba(156,200,223,1)",
 ];
 
-
 let seriesRDNameObj: showSeriesDataType[];
 let seriesODNameObj: showSeriesDataType[];
 
@@ -522,6 +525,32 @@ const radioStyle = reactive({
 });
 
 watch(wavelengthsValue, (newValue) => {
+  if (newValue == 1) {
+    configData.value.irFilter.is2wave = true;
+    configData.value.irFilter.is3wave = false;
+    configData.value.irFilter.ir_sample_rate =
+      configData.value.irFilter.two_ir_sample_rate;
+    ipcRenderer.send(
+      "change-config-field",
+      JSON.stringify({
+        field: "wave",
+        config: configData.value,
+      })
+    );
+  }
+  if (newValue == 2) {
+    configData.value.irFilter.is2wave = false;
+    configData.value.irFilter.is3wave = true;
+    configData.value.irFilter.ir_sample_rate =
+      configData.value.irFilter.three_ir_sample_rate;
+    ipcRenderer.send(
+      "change-config-field",
+      JSON.stringify({
+        field: "wave",
+        config: configData.value,
+      })
+    );
+  }
   if (newValue == 1 && radioValue.value != 3) {
     checkboxValue1.value = ["1", "3"];
     checkboxValue2.value = ["1", "3"];
@@ -531,15 +560,6 @@ watch(wavelengthsValue, (newValue) => {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 0;
-    configData.value.irFilter.is2wave = true
-    configData.value.irFilter.is3wave = false
-    ipcRenderer.send(
-    "change-config-field",
-    JSON.stringify({
-      field: "wave",
-      config: configData.value,
-    })
-  );
   }
   if (newValue == 2 && radioValue.value != 3) {
     checkboxValue1.value = ["1", "2", "3"];
@@ -550,17 +570,8 @@ watch(wavelengthsValue, (newValue) => {
     checkboxValue1.value = ["1", "2", "3"];
     checkboxValue2.value = ["1", "2", "3"];
     indexStore.bluetoothATConfig.IRMODE.value = 1;
-    configData.value.irFilter.is2wave = false
-    configData.value.irFilter.is3wave = true
-    ipcRenderer.send(
-    "change-config-field",
-    JSON.stringify({
-      field: "wave",
-      config: configData.value,
-    })
-  );
   }
-  handleChange();
+  handleChange && handleChange();
 });
 
 watch(radioValue, (newValue) => {
@@ -577,7 +588,7 @@ watch(radioValue, (newValue) => {
     checkboxValue2.value = ["1", "2", "3"];
   }
   pkgDataList = [];
-  handleChange();
+  handleChange && handleChange();
   configData.value.irFilter.plotType = newValue;
 
   ipcRenderer.send(
@@ -626,7 +637,6 @@ watch(isRender, (newValue) => {
   }
 });
 
-
 watch(isDragSlider, (newValue) => {
   // 拖拽了进度条更改渲染数据
   if (newValue) {
@@ -651,18 +661,35 @@ watch(isConnect, (newValue) => {
   }
 });
 
-watch(isIrClear, (newValue) => {
-  if (newValue) {
-    pkgDataList = [];
-    indexStore.isIrClear = false;
+watch(
+  isIrClear,
+  (newValue) => {
+    if (newValue) {
+      pkgDataList = [];
+      indexStore.isIrClear = false;
+    }
+  },
+  {
+    deep: true,
+    immediate: true,
   }
-},{
-  deep: true,
-  immediate: true
-});
-
+);
 
 onMounted(function () {
+  indexStore.bluetoothATConfig.IRMODE.value = 0;
+  configData.value.irFilter.plotType  = 1;
+  configData.value.irFilter.age = 25;
+  configData.value.irFilter.ir_sample_rate =
+    configData.value.irFilter.two_ir_sample_rate;
+  configData.value.irFilter.is2wave = true;
+  configData.value.irFilter.is3wave = false;
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "plotType",
+      config: configData.value,
+    })
+  );
   // var sq = new CustomDatabase()
   // console.log(sq,"sq");
   ipcRenderer.on("change-config-field-success", changeConfigSuccess);
@@ -890,7 +917,6 @@ const generateShowSeriesData = () => {
     );
   });
   console.log("showSeriesData", showSeriesData);
-
 };
 
 // 生成X轴
@@ -1176,8 +1202,6 @@ const conversionPkgtoTimeSeries = (field, channel, index, step) => {
   });
 };
 
-
-
 // 切换渠道
 const channelLineClick = (value: number | Array<number>) => {
   if (Array.isArray(value)) {
@@ -1221,12 +1245,14 @@ const changeConfigNoReply = (field) => {
   );
 };
 
-const changeConfigSuccess = (event,data) => {
+const changeConfigSuccess = (event, data) => {
   if (data.field === "plotType") {
-      pkgDataList = [];
+    pkgDataList = [];
   }
-}
-
+  if (data.field === "wave") {
+    pkgDataList = [];
+  }
+};
 
 const changeWavelength = (value) => {
   if (checkboxValue1.value.findIndex((item) => parseInt(item) === value) > -1) {

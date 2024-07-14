@@ -10,7 +10,7 @@
             <span style="margin-left: 5px">pln:{{ packetLossNum }}</span>
           </p>
         </div>
-        <div class="filter-right" style="margin-top: -5px;">
+        <div class="filter-right" style="margin-top: -5px">
           <a-form size="small" :model="seriesForm" layout="inline">
             <a-form-item label="min">
               <a-input
@@ -281,8 +281,15 @@ import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
-const { play, recordId, playIndex,isEegClear, isDragSlider, isConnect, configData } =
-  storeToRefs(indexStore);
+const {
+  play,
+  recordId,
+  playIndex,
+  isEegClear,
+  isDragSlider,
+  isConnect,
+  configData,
+} = storeToRefs(indexStore);
 const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
@@ -390,8 +397,6 @@ const bandsTypeOptions = ref<SelectProps["options"]>([
   },
 ]);
 
-
-
 watch(
   play,
   (newValue) => {
@@ -427,9 +432,7 @@ watch(isDragSlider, (newValue) => {
     indexStore.isDragSlider = false;
     pkgDataList = [];
     let dataList = joinPkgList();
-    dataList.forEach((item) => {
-      ipcRenderer.send("start-data-replay", item);
-    });
+    ipcRenderer.send("start-data-replay", dataList);
   }
 });
 
@@ -453,15 +456,19 @@ watch(isConnect, (newValue) => {
   }
 });
 
-watch(isEegClear, (newValue) => {
-  if (newValue) {
-    pkgDataList = [];
-    indexStore.isEegClear = false;
+watch(
+  isEegClear,
+  (newValue) => {
+    if (newValue) {
+      pkgDataList = [];
+      indexStore.isEegClear = false;
+    }
+  },
+  {
+    immediate: true,
+    deep: true,
   }
-},{
-  immediate: true,
-  deep: true
-});
+);
 
 onMounted(function () {
   initialize();
@@ -481,14 +488,45 @@ onBeforeUnmount(() => {
   isRenderTimer && clearTimeout(isRenderTimer);
 });
 
+// 初始化
+const initialize = () => {
+  pkgSourceData = [];
+
+  if (!recordId.value) {
+    // 正常模式
+    ipcRenderer.removeListener("end-data-replay", rePlayNotice);
+    ipcRenderer.send("close-replay");
+    bluetooth.addNotice(bluetoothNotice);
+  } else {
+    // 回放模式
+    ipcRenderer.send("create-replay");
+    ipcRenderer.on("end-data-replay", rePlayNotice);
+    bluetooth.removeNotice(bluetoothNotice);
+    db.all(`select * from source where recordId = ${recordId.value}`).then(
+      (res) => {
+        pkgSourceData = res
+          .map((item) => {
+            return JSON.parse(item.data);
+          })
+          .flat();
+      }
+    );
+  }
+};
+
 // 回放数据
-const rePlayNotice = (event, data) => {  
-  handlePkgList({
-    ...data,
-    ...data.pkg,
-  });
-  console.log('测试');
+const rePlayNotice = (event, data) => {
+  console.log("rePlayNotice", data);
   
+  if (Array.isArray(data)) {
+
+    data.forEach((item) => {
+      handlePkgList(item);
+    });
+  } else {
+    handlePkgList(data);
+  }
+
   renderData();
 };
 
@@ -510,11 +548,6 @@ const realTimerRenderData = () => {
     renderData();
   }, minTimeGap);
 };
-
-// 缓存原始数据，这部分的数据将用于加工
-// const handleCacheSoureData = (data) => {
-  
-// }
 
 // 数据包处理
 const handlePkgList = (data) => {
@@ -541,19 +574,13 @@ const joinPkgList = (isGap: boolean = false) => {
   }
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
-    if (
-      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * 40 &&
-      item.pkg_type === 1
-    ) {
-      if (
-        isGap &&
-        item.time_mark - pkgSourceData[0].time_mark >=
-          (playIndex.value - 1) * 40
-      ) {
+    let reTime = item.time_mark - pkgSourceData[0].time_mark;
+    if (reTime <= playIndex.value * 40 && item.pkg_type === 1) {
+      if (isGap && reTime >= (playIndex.value - 1) * 40) {
         tempPkgDataList.push(item);
       }
 
-      if (!isGap) {
+      if (!isGap && reTime >= playIndex.value * 40 - pkgMaxTime * 1000) {
         tempPkgDataList.push(item);
       }
     }
@@ -581,30 +608,6 @@ const renderData = () => {
   }
 };
 
-const initialize = () => {
-  pkgSourceData = [];
-
-  if (!recordId.value) {
-    ipcRenderer.removeListener("end-data-replay", rePlayNotice);
-    ipcRenderer.send("close-replay");
-    bluetooth.addNotice(bluetoothNotice);
-  } else {
-    ipcRenderer.send("create-replay");
-    ipcRenderer.on("end-data-replay", rePlayNotice);
-    bluetooth.removeNotice(bluetoothNotice);
-    db.all(`select * from source where recordId = ${recordId.value}`).then(
-      (res) => {
-        pkgSourceData = res
-          .map((item) => {
-            return JSON.parse(item.data);
-          })
-          .flat();
-      }
-    );
-  }
-};
-
-
 const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
@@ -629,7 +632,6 @@ const handleChangeBandsType = () => {
     }
   });
 };
-
 
 // 现在只取EEG最后一个数据进行渲染,太卡了
 // const conversionPkgtoPsdMap = (typeChannel, step) => {
@@ -683,6 +685,7 @@ const conversionPkgtoPsdMap = (typeChannel, step) => {
 
   return psdMapData;
 };
+
 const initPsdMapData = (step) => {
   psdMapData = [];
   for (let i = 0; i < (1000 / EEGTimeGap) * step; i++) {
@@ -691,7 +694,6 @@ const initPsdMapData = (step) => {
     }
   }
 };
-
 const conversionPkgtoPsd = (typeChannel) => {
   if (pkgDataList.length < 1) return 0;
   return pkgDataList[pkgDataList.length - 1].psd_s[parseChannel(typeChannel)];
@@ -1070,7 +1072,5 @@ const parseChannel = (channel: string) => {
   }
   return 0;
 };
-
-
 </script>
 <style scoped></style>

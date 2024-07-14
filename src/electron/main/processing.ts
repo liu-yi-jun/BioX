@@ -16,7 +16,6 @@ let sample_rate = 250;
 const channel = 2;
 const timeGap = 40; //包时间间隔，单位ms
 // 近红外部分
-let ir_sample_rate = 12.5;
 const baseline_time = 10;
 const ir_channel = 8;
 const ir_step = 2;
@@ -41,8 +40,6 @@ function Processing(this: any, path: string, config: any) {
   console.log("config", config);
 
   this.config = JSON.parse(config);
-  sample_rate = this.config.eegFilter.sample_rate;
-  ir_sample_rate = this.config.irFilter.ir_sample_rate;
   this.ir_od_date = [];
   this.concentration_date = [];
   this.lossDataInfo = {
@@ -146,15 +143,17 @@ Processing.prototype.init = function (this: any) {
   this.signalProcess.clear_baseline();
   this.baseline_ok = false;
   this.signalProcess.init_irbp_filter(
-    ir_sample_rate,
+    this.config.irFilter.ir_sample_rate,
     ir_channel,
     this.config.irFilter.fl,
     this.config.irFilter.fh
   );
 };
 Processing.prototype.setInit = function (this: any) {
+  console.log('setInit', this.config.irFilter.ir_sample_rate);
+  
   this.signalProcess.init_irbp_filter(
-    ir_sample_rate,
+    this.config.irFilter.ir_sample_rate,
     ir_channel,
     this.config.irFilter.fl,
     this.config.irFilter.fh
@@ -220,6 +219,21 @@ Processing.prototype.processData = function (this: any, pkg: any) {
           ((pkg.time_mark - LDInfoEl.priorTimeMark) /
             (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
             i;
+        if (newPkg.pkg_type == 1) {
+          // 用最后一个数据去补充
+          for (let i = 0; i < newPkg.eeg_data_num - 1; i++) {
+            for (
+              let current_channel = 0;
+              current_channel < channel;
+              current_channel++
+            ) {
+              newPkg.brain_elec_channel[current_channel][i] =
+                newPkg.brain_elec_channel[current_channel][
+                  newPkg.eeg_data_num - 1
+                ];
+            }
+          }
+        }
         dataList.push(processSend.call(this, newPkg, LDInfoEl));
       }
     }
@@ -317,6 +331,8 @@ function calculatePacketLoss(this: any, pkg: any) {
 
 function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
   // 有EEG数据标志位
+  let copy_brain_elec_channel = JSON.parse(JSON.stringify(pkg.brain_elec_channel));
+  let copy_near_infrared = JSON.parse(JSON.stringify(pkg.near_infrared));
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
     for (let i = 0; i < pkg.eeg_data_num; i++) {
@@ -476,7 +492,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       // 基线
       this.baseline_ok = this.signalProcess.calc_baseline(
         current_channel,
-        ir_sample_rate,
+        this.config.irFilter.ir_sample_rate,
         baseline_time,
         ir_step,
         ir_data,
@@ -492,7 +508,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       if (this.baseline_ok) {
         this.signalProcess.calc_od(
           current_channel,
-          ir_sample_rate,
+          this.config.irFilter.ir_sample_rate,
           baseline_time,
           ir_step,
           ir_data,
@@ -588,6 +604,8 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     ir_od_date: this.ir_od_date,
     concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
+    copy_brain_elec_channel: copy_brain_elec_channel,
+    copy_near_infrared:copy_near_infrared
   };
 }
 

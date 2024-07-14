@@ -14,20 +14,38 @@ process.on("message", async function ({ type, data }) {
   if (type === "start-data-replay") {
     if (Array.isArray(data)) {
       let sendDataList: any = [];
+
+      
       data.forEach((item: any) => {
         let dataList = processing.processData(item);
         sendDataList = sendDataList.concat(dataList);
       });
+      sendDataList = sendDataList.map((data: any) => {
+        let pkg = data.pkg;
+        delete data.pkg
+        return {
+          ...data,
+          ...pkg,
+        };
+      });
+   
       process.send!({
         type: "end-data-replay",
         data: sendDataList,
       });
     } else {
+  
       let dataList = processing.processData(data);
-      dataList.forEach((item: any) => {
+    
+      dataList.forEach((data: any) => {
+        let pkg = data.pkg;
+        delete data.pkg
         process.send!({
           type: "end-data-replay",
-          data: item,
+          data: {
+            ...data,
+            ...pkg,
+          },
         });
       });
     }
