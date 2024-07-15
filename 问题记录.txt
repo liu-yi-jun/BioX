@@ -5,7 +5,7 @@
 5、"postinstall": "install-app-deps" 是一个在 package.json 文件中定义的 npm 脚本命令，用于在 npm install 命令完成后执行一些额外的任务
 6、sqlite3使用5.1.6构建，5.1.7找不到包
 7、"ffi-napi": "^4.0.3",不支持Electron 20.3.8 版本之后
-8、fatal error C1083: xxxxxx  No such file or directory 【xx-xxx\ffi-napi\build\ffi_bindings.vcxproj】，路径中不能带“-”或者空格，任务管理器结束掉viscode、占用文件的进程，在CPU中搜索句柄或者重启电脑试试看,删除package-lock重新安装试试,路径不要大小写，
+8、fatal error C1083: xxxxxx  No such file or directory 【xx-xxx\ffi-napi\build\ffi_bindings.vcxproj】，路径中不能带“-”或者空格，任务管理器结束掉viscode、占用文件的进程，在CPU中搜索句柄或者重启电脑试试看,删除package-lock重新安装试试,路径不要大小写，有可能和网络有关系
 9、npm i卡到删除package-lock再试
 10、[ERROR] Could not resolve "mock-aws-s3"
 [0]

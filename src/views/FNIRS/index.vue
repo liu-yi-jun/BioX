@@ -330,6 +330,18 @@
         </div>
       </div>
     </div>
+    <a-modal
+      v-model:open="baseLineLoadingOpen"
+      title="tip"
+      :closable="false"
+      :maskClosable="false" 
+      :footer="null"
+    >
+      <div class="eig-baseline-loading-box">
+        <span style="margin-bottom: 20px;">Baseline calculation, please wait...</span>
+        <a-spin />
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -397,6 +409,7 @@ import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
 import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
+let baseLineLoadingOpen = ref(false);
 let pkgDataList: any = [];
 let pkgSourceData: any = [];
 
@@ -657,7 +670,7 @@ watch(recordId, (value) => {
 
 watch(isConnect, (newValue) => {
   if (newValue) {
-    pkgDataList = [];
+    indexStore.isIrClear = true;
   }
 });
 
@@ -667,6 +680,9 @@ watch(
     if (newValue) {
       pkgDataList = [];
       indexStore.isIrClear = false;
+      if (radioValue.value == 2 || radioValue.value == 3) {
+        baseLineLoading();
+      }
     }
   },
   {
@@ -677,7 +693,7 @@ watch(
 
 onMounted(function () {
   indexStore.bluetoothATConfig.IRMODE.value = 0;
-  configData.value.irFilter.plotType  = 1;
+  configData.value.irFilter.plotType = 1;
   configData.value.irFilter.age = 25;
   configData.value.irFilter.ir_sample_rate =
     configData.value.irFilter.two_ir_sample_rate;
@@ -766,8 +782,15 @@ const handlePkgList = (data) => {
   if (data.pkg_type === 2) {
     packetLossRate.value = data.loss_data_info_el.packetLossRate;
     packetLossNum.value = data.loss_data_info_el.packetLossNum;
-
-    pkgDataList.push(data);
+    // 判断是否完成基线计算，完成关闭提示弹出框
+    
+    if ((radioValue.value == 2 || radioValue.value == 3) && data.baseline_ok) {
+      baseLineLoadingSuccess()
+    }
+    // if(!baseLineLoadingOpen.value) {
+      pkgDataList.push(data);
+    // }
+    
   }
 };
 
@@ -1248,9 +1271,11 @@ const changeConfigNoReply = (field) => {
 const changeConfigSuccess = (event, data) => {
   if (data.field === "plotType") {
     pkgDataList = [];
+    indexStore.isIrClear = true;
   }
   if (data.field === "wave") {
     pkgDataList = [];
+    indexStore.isIrClear = true;
   }
 };
 
@@ -1269,6 +1294,12 @@ const changeWavelength = (value) => {
   checkboxValue1.value.sort((a, b) => parseInt(a) - parseInt(b));
   checkboxValue2.value.sort((a, b) => parseInt(a) - parseInt(b));
   handleChange();
+};
+const baseLineLoading = () => {
+  baseLineLoadingOpen.value = true;
+};
+const baseLineLoadingSuccess = () => {
+  baseLineLoadingOpen.value = false;
 };
 </script>
 <style scoped></style>

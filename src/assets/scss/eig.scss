@@ -698,6 +698,13 @@ $roundRadius: 18px;
 }
 
 
+.eig-baseline-loading-box {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+}
+
 // canvas {
 //   transform: translate3d(0, 0, 0);
 //   will-change: transform;

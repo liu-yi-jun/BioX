@@ -150,8 +150,8 @@ Processing.prototype.init = function (this: any) {
   );
 };
 Processing.prototype.setInit = function (this: any) {
-  console.log('setInit', this.config.irFilter.ir_sample_rate);
-  
+  console.log("setInit", this.config.irFilter.ir_sample_rate);
+
   this.signalProcess.init_irbp_filter(
     this.config.irFilter.ir_sample_rate,
     ir_channel,
@@ -331,7 +331,9 @@ function calculatePacketLoss(this: any, pkg: any) {
 
 function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
   // 有EEG数据标志位
-  let copy_brain_elec_channel = JSON.parse(JSON.stringify(pkg.brain_elec_channel));
+  let copy_brain_elec_channel = JSON.parse(
+    JSON.stringify(pkg.brain_elec_channel)
+  );
   let copy_near_infrared = JSON.parse(JSON.stringify(pkg.near_infrared));
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
@@ -357,14 +359,19 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       }
 
       // 运行去基线
-      this.signalProcess.run_dc_remove_eeg(channel, brain_data, remove_output);
-
-      for (
-        let current_channel = 0;
-        current_channel < channel;
-        current_channel++
-      ) {
-        brain_data[current_channel] = remove_output[current_channel];
+      if (this.config.eegFilter.isDCRemove) {
+        this.signalProcess.run_dc_remove_eeg(
+          channel,
+          brain_data,
+          remove_output
+        );
+        for (
+          let current_channel = 0;
+          current_channel < channel;
+          current_channel++
+        ) {
+          brain_data[current_channel] = remove_output[current_channel];
+        }
       }
 
       // 开启Notch
@@ -602,10 +609,11 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     psd_relative_percent_s_multiple: this.psd_relative_percent_s_multiple,
     time_e_s_multiple: this.time_e_s_multiple,
     ir_od_date: this.ir_od_date,
+    baseline_ok:this.baseline_ok,
     concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
     copy_brain_elec_channel: copy_brain_elec_channel,
-    copy_near_infrared:copy_near_infrared
+    copy_near_infrared: copy_near_infrared,
   };
 }
 

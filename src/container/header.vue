@@ -1,7 +1,7 @@
 <template>
   <div class="header">
     <div>
-      BioMultiLite_1.1.12_240712_Alpha_Win
+      BioMultiLite_1.1.13_240715_Alpha_Win
       <a-button @click="openAtDebug">
         <template #icon>
           <BugOutlined />
@@ -76,7 +76,9 @@
                 </div>
               </a-menu-item> -->
               <a-menu-item>
-                <div style="padding: 0 10px;" @click="openSettingModal">Fillters</div>
+                <div style="padding: 0 10px" @click="openSettingModal">
+                  Fillters
+                </div>
               </a-menu-item>
             </a-menu>
           </template>
@@ -137,7 +139,9 @@
     <a-tabs class="header-tab" v-model:activeKey="activeKey" centered>
       <a-tab-pane key="1" tab="EEG">
         <div class="DC-Notch">
-          <a-checkbox v-model:checked="configData.eegFilter.isDCRemove"
+          <a-checkbox
+            :disabled="configData.eegFilter.isBandPass"
+            v-model:checked="configData.eegFilter.isDCRemove"
             >DC Offset</a-checkbox
           >
           <a-checkbox v-model:checked="configData.eegFilter.isNotch"
@@ -146,7 +150,9 @@
         </div>
         <a-divider />
         <div class="BP-wrap">
-          <a-checkbox v-model:checked="configData.eegFilter.isBandPass"
+          <a-checkbox
+            @change="changeEegBandPass"
+            v-model:checked="configData.eegFilter.isBandPass"
             >BandPass</a-checkbox
           >
           <div class="BP-input">
@@ -187,13 +193,17 @@
       </a-tab-pane>
       <a-tab-pane key="2" tab="FNIRS" force-render
         ><div class="DC-Notch">
-          <a-checkbox v-model:checked="configData.irFilter.isDCRemove"
+          <a-checkbox
+            :disabled="configData.irFilter.isBandPass"
+            v-model:checked="configData.irFilter.isDCRemove"
             >DC Offset</a-checkbox
           >
         </div>
         <a-divider />
         <div class="BP-wrap">
-          <a-checkbox v-model:checked="configData.irFilter.isBandPass"
+          <a-checkbox
+            @change="changeIrBandPass"
+            v-model:checked="configData.irFilter.isBandPass"
             >BandPass</a-checkbox
           >
           <div class="BP-input">
@@ -288,8 +298,7 @@ import {
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { isConnect, bluetoothATConfig, configData, isClear } =
-  storeToRefs(indexStore);
+const { isConnect, bluetoothATConfig, configData } = storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
 const ATValue = ref("");
@@ -656,6 +665,18 @@ const changeConfigSuccess = (event, data) => {
   if (data.field === "filterConfig") {
     indexStore.isEegClear = true;
     indexStore.isIrClear = true;
+  }
+};
+
+const changeEegBandPass = () => {
+  if (configData.value.eegFilter.isBandPass) {
+    indexStore.configData.eegFilter.isDCRemove = true;
+  }
+};
+
+const changeIrBandPass = () => {
+  if (configData.value.irFilter.isBandPass) {
+    indexStore.configData.irFilter.isDCRemove = true;
   }
 };
 </script>
