@@ -21,7 +21,9 @@ CustomDatabase.prototype.init = function (isMain = true) {
           describe VARCHAR(255) NOT NULL,
           recoredCreateTime INTEGER NOT NULL default(0),
           recoredTotalTime INTEGER NOT NULL default(0),
-          recoredEndTime INTEGER NOT NULL default(0)
+          recoredEndTime INTEGER NOT NULL default(0),
+          eegInputMarkerList BLOB,
+          irInputMarkerList BLOB
           )`);
         // 源数据表
         await this.run(`CREATE TABLE if not exists source(

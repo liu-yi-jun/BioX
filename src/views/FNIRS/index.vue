@@ -1220,7 +1220,7 @@ const conversionPkgtoTimeSeries = (field, channel, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     return {
-      value: [baseTime, item[field][channel][index]],
+      value: [baseTime, item[field][channel][index], item.time_stamp],
     };
   });
 };

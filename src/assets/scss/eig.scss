@@ -687,6 +687,7 @@ $roundRadius: 18px;
 
 .modal-btn-footer {
   display: flex;
+  margin-top: 12px;
   justify-content: center;
   .ant-btn {
     margin: 0 15px;
@@ -703,6 +704,34 @@ $roundRadius: 18px;
   align-items: center;
   flex-direction: column;
   justify-content: center;
+}
+
+.marker-item-delete {
+  display: line-block;
+  padding: 10px;
+  position: relative;
+  left: -18px;
+  top: 5px;
+  color: #666;
+  cursor: pointer;
+  &:hover {
+    color: #ec005d;
+  }
+}
+
+.marker-form {
+  :where(.css-dev-only-do-not-override-19iuou).ant-form-item {
+    margin-bottom: 15px;
+  }
+}
+
+.right-btn-footer {
+  display: flex;
+  margin-top: 12px;
+  justify-content: end;
+  .ant-btn {
+    margin-left: 10px;
+  }
 }
 
 // canvas {

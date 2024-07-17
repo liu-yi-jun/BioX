@@ -34,7 +34,7 @@
               <a-select
                 v-model:value="seriesStep"
                 style="width: 100px"
-                @change="undateTimeSerie('xAxis')"
+                @change="undateTimeSerie('xAxis');undateTimeSerie('series')"
                 aria-placeholder="Show Time"
                 :options="showTimeOptions"
                 size="small"
@@ -556,6 +556,7 @@ const handlePkgList = (data) => {
     pkgDataList[pkgDataList.length - 1].time_mark - pkgDataList[0].time_mark >
       pkgMaxTime * 1000
   ) {
+    
     pkgDataList.shift();
   }
   //  有EEG数据标志位
@@ -755,6 +756,7 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
         value: [
           baseTime + brainIndex * EEGTimeGap,
           brain_elec_channel[brainIndex],
+          item.time_stamp + brainIndex * EEGTimeGap,
         ],
         // 点演示
         // itemStyle: {

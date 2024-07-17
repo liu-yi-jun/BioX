@@ -14,7 +14,6 @@ const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度�
 const step = 10; //fft 步长
 let sample_rate = 250;
 const channel = 2;
-const timeGap = 40; //包时间间隔，单位ms
 // 近红外部分
 const baseline_time = 10;
 const ir_channel = 8;
@@ -42,6 +41,14 @@ function Processing(this: any, path: string, config: any) {
   this.config = JSON.parse(config);
   this.ir_od_date = [];
   this.concentration_date = [];
+  this.eegTimeStampInfo = {
+    correct_mark: 0,
+    time_stamp: 0,
+  };
+  this.irTimeStampInfo = {
+    correct_mark: 0,
+    time_stamp: 0,
+  };
   this.lossDataInfo = {
     EEG: JSON.parse(JSON.stringify(lossDataTemplate)),
     IR: JSON.parse(JSON.stringify(lossDataTemplate)),
@@ -267,6 +274,31 @@ const adjustTimestamps = (timestamp: number): number => {
   return timestamp - remainder;
 };
 
+
+
+// 包utc时间戳计算
+function calcTimeStamp(this: any, pkg: any) {
+  if (pkg.pkg_type == 1) {
+    if (this.eegTimeStampInfo.time_stamp == 0) {
+      this.eegTimeStampInfo.time_stamp = new Date().getTime();
+    }
+    // pkg.time_mark = this.eegTimeStampInfo.correct_mark;
+    // this.eegTimeStampInfo.correct_mark +=
+    //   pkg.eeg_data_num * (1000 / sample_rate);
+      return new Date().getTime();
+      // return this.eegTimeStampInfo.time_stamp + pkg.time_mark;
+  } else if (pkg.pkg_type == 2) {
+    if (this.irTimeStampInfo.time_stamp == 0) {
+      this.irTimeStampInfo.time_stamp = new Date().getTime();
+    }
+    // pkg.time_mark = this.irTimeStampInfo.correct_mark;
+    // this.irTimeStampInfo.correct_mark +=
+    //   1000 / this.config.irFilter.ir_sample_rate;
+    return new Date().getTime();
+    // return this.irTimeStampInfo.time_stamp + pkg.time_mark;
+  }
+}
+
 // 映射数据类型
 function mapLossDataInfo(this: any, pkg_type: number) {
   switch (pkg_type) {
@@ -335,6 +367,10 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     JSON.stringify(pkg.brain_elec_channel)
   );
   let copy_near_infrared = JSON.parse(JSON.stringify(pkg.near_infrared));
+  let time_stamp = 0;
+
+  // 计算时间戳
+  time_stamp = calcTimeStamp.call(this, pkg) || 0;
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
     for (let i = 0; i < pkg.eeg_data_num; i++) {
@@ -609,11 +645,12 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     psd_relative_percent_s_multiple: this.psd_relative_percent_s_multiple,
     time_e_s_multiple: this.time_e_s_multiple,
     ir_od_date: this.ir_od_date,
-    baseline_ok:this.baseline_ok,
+    baseline_ok: this.baseline_ok,
     concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
     copy_brain_elec_channel: copy_brain_elec_channel,
     copy_near_infrared: copy_near_infrared,
+    time_stamp: time_stamp,
   };
 }
 

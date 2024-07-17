@@ -102,6 +102,7 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons-vue";
 import { formatTimestamp, tipFormatter } from "../utils/common";
+import {irInputMarkerList,eegInputMarkerList} from "../global";
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const app = getCurrentInstance();
@@ -232,6 +233,7 @@ const openModal = () => {
   modelStatus.value = 1;
   // 停止存储
   ipcRenderer.send("stop-store");
+
   recoredTotalTime.value = recoredEndTime.value - recoredCreateTime.value;
   openStartRecordModal.value = true;
 };
@@ -255,6 +257,7 @@ const generateUniqueId = () => {
 
 const handleStartRecordModal = (e?: MouseEvent) => {
   if (status.value === 0 && modelStatus.value === 0) {
+    ipcRenderer.send("close-store");
     validate()
       .then(() => {
         message.success("开始记录");
@@ -265,6 +268,7 @@ const handleStartRecordModal = (e?: MouseEvent) => {
           ...toRaw(formData),
           recoredCreateTime: recoredCreateTime.value,
         }).then((res) => {
+
           // 创建存储进程
           ipcRenderer.send("create-store");
           // 开始存储
@@ -285,6 +289,8 @@ const handleStartRecordModal = (e?: MouseEvent) => {
         ...toRaw(formData),
         recoredEndTime: recoredEndTime.value,
         recoredTotalTime: recoredTotalTime.value,
+        eegInputMarkerList: JSON.stringify(eegInputMarkerList),
+        irInputMarkerList: JSON.stringify(irInputMarkerList),
       },
       {
         id: recordLastID,
@@ -348,7 +354,6 @@ onBeforeUnmount(() => {
   //  关闭存储进程
   ipcRenderer.send("close-store");
   ipcRenderer.send("stop-store");
-  ipcRenderer.send("close-store");
   // timerRecord && clearInterval(timerRecord);
 });
 </script>

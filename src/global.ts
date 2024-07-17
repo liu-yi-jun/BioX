@@ -1,2 +1,3 @@
-export let BluetoothData: any = [];
+export let eegInputMarkerList: any = [];
+export let irInputMarkerList: any = [];
   

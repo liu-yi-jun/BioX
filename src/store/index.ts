@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-
 export const useIndexStore = defineStore({
   id: "Index",
   state: () => ({
@@ -41,14 +40,25 @@ export const useIndexStore = defineStore({
         fl: 0.01,
         fh: 5,
         bpType: 1,
-        plotType: 1, 
+        plotType: 1,
         ir_sample_rate: 50,
-        two_ir_sample_rate:50,
-        three_ir_sample_rate:25,
+        two_ir_sample_rate: 50,
+        three_ir_sample_rate: 25,
       },
+    },
+    socketConfig: {
+      port: 9000,
     },
     isEegClear: false,
     isIrClear: false,
+    // 是否开始标记
+    isMarker: false,
+    markerList: [
+      {
+        type: undefined,
+        description: "",
+      },
+    ],
   }),
   actions: {},
 });

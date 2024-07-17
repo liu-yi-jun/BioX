@@ -31,6 +31,7 @@ const handleEndDataDecode = (event, data) => {
       ir_od_date: data.ir_od_date,
       baseline_ok:data.baseline_ok,
       concentration_date: data.concentration_date,
+      time_stamp:data.time_stamp
     });
   }
 };

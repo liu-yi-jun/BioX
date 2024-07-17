@@ -80,6 +80,11 @@
                   Fillters
                 </div>
               </a-menu-item>
+              <a-menu-item>
+                <div style="padding: 0 10px" @click="openMarkerModal">
+                  Marker
+                </div>
+              </a-menu-item>
             </a-menu>
           </template>
         </a-dropdown>
@@ -104,8 +109,7 @@
     width="40%"
     :maskClosable="false"
     okText="发送"
-    @ok="handleStartATModal"
-    @cancel="handleEndATModal"
+    :footer="null"
   >
     <span style="color: #999">例：AT+STOP_ALL(无需回车)</span>
     <a-textarea
@@ -126,6 +130,10 @@
         }}</span>
         <span>{{ item.content }}</span>
       </p>
+    </div>
+    <div class="right-btn-footer">
+      <a-button type="primary" @click="handleStartATModal">Send</a-button>
+      <a-button @click="handleEndATModal">Cancel</a-button>
     </div>
   </a-modal>
   <a-modal
@@ -248,6 +256,90 @@
       <a-button @click="handleCancelSetting">Cancel</a-button>
     </div>
   </a-modal>
+  <a-modal
+    v-model:open="openMarker"
+    title="Marker"
+    :footer="null"
+    @cancel="handleMarkerModal"
+    width="600px"
+    :maskClosable="true"
+  >
+    <div>
+      <p>
+        Please edit the Marker and define the trigger description for each
+        Marker
+      </p>
+      <a-form
+        :disabled="isMarker"
+        class="marker-form"
+        style="margin-bottom: 10px"
+      >
+        <a-row style="margin-top: 15px" :gutter="24">
+          <a-col :span="10"
+            ><span style="color: red">* </span><span>Marker</span></a-col
+          >
+          <a-col :span="14"><span>Description</span></a-col>
+        </a-row>
+        <div
+          style="
+            margin-top: 10px;
+            max-height: 60vh;
+            min-height: 20vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+          "
+        >
+          <a-row :gutter="24" v-for="(item, index) in markerList" :key="index">
+            <a-col :span="10">
+              <a-select
+                allowClear
+                style="width: 100%"
+                v-model:value="item.type"
+                placeholder="Please select the Marker"
+                :options="markerOptions"
+                @select="(e) => handleMarkerSelect(e, item)"
+              ></a-select>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item>
+                <a-input
+                  :disabled="!item.type || isMarker"
+                  v-model:value="item.description"
+                  placeholder="Please eidt the Description"
+                ></a-input>
+              </a-form-item>
+            </a-col>
+            <a-col :span="2">
+              <span
+                :style="{ cursor: isMarker ? 'not-allowed' : 'pointer' }"
+                v-if="markerList.length > 1"
+                @click="handleDeleteMarker(index)"
+                class="marker-item-delete"
+              >
+                <DeleteOutlined style="font-size: 14px"
+              /></span>
+            </a-col>
+          </a-row>
+        </div>
+      </a-form>
+      <div class="right-btn-footer">
+        <span
+          style="display: inline-block; padding-top: 5px; margin-right: 5px"
+          v-if="isMarker"
+          type="text"
+          ><CheckCircleOutlined style="color: #67c23a" />
+          <span style="margin-left: 2px">Started</span></span
+        >
+        <a-button v-else type="primary" @click="handleStartMarker"
+          >Start</a-button
+        >
+        <a-button type="primary" v-if="isMarker" @click="handleStopMarker"
+          >Stop</a-button
+        >
+        <a-button v-else @click="handleCancelMarker">Cancel</a-button>
+      </div>
+    </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -285,7 +377,12 @@ let ResetConfigData: any = {
   },
 };
 const ipcRenderer = require("electron").ipcRenderer;
-import { DeploymentUnitOutlined, MinusOutlined } from "@ant-design/icons-vue";
+import {
+  DeploymentUnitOutlined,
+  MinusOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons-vue";
 import { CustomBluetooth } from "../utils/bluetooth";
 import { CustomDatabase } from "../utils/db";
 import { formatTimestamp } from "../utils/common";
@@ -298,7 +395,8 @@ import {
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { isConnect, bluetoothATConfig, configData } = storeToRefs(indexStore);
+const { isConnect, bluetoothATConfig, configData, isMarker,markerList } =
+  storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
 const ATValue = ref("");
@@ -308,6 +406,7 @@ const app = getCurrentInstance();
 const db = new CustomDatabase();
 const openATModal = ref(false);
 const openSetting = ref(false);
+const openMarker = ref(false);
 const router = useRouter();
 const activeKey = ref("1");
 import { Modal, SelectProps } from "ant-design-vue";
@@ -326,6 +425,7 @@ const eegTypeOptionsData = [
   },
 ];
 const eegTypeOptions = ref<SelectProps["options"]>(eegTypeOptionsData);
+const markerOptions = ref<SelectProps["options"]>([]);
 let timer_uuid: any = null;
 const atContent: any = ref(null);
 
@@ -341,6 +441,8 @@ interface NoticeItem {
 let selectDeviceItem: DeviceItem | null = null;
 const deviceList = ref<DeviceItem[]>([]);
 const atNoticeList = reactive<NoticeItem[]>([]);
+
+
 
 const openConnectVisible = () => {
   connectVisible.value = true;
@@ -374,6 +476,24 @@ watch(
   bluetoothATConfig,
   (value) => {
     setAtConfig();
+  },
+  { deep: true }
+);
+
+watch(
+  markerList,
+  (value) => {
+    markerOptions.value?.forEach((item) => {
+      item.disabled = false;
+    });
+    value.forEach((marker) => {
+      let index = markerOptions.value?.findIndex(
+        (item) => marker.type === item.value
+      );
+      if (index !== undefined && index > -1) {
+        markerOptions.value && (markerOptions.value[index].disabled = true);
+      }
+    });
   },
   { deep: true }
 );
@@ -534,7 +654,19 @@ const scrollToBottom = () => {
   });
 };
 
+const initMarketOptions = () => {
+  for (let i = 65; i <= 90; i++) {
+    markerOptions.value?.push({
+      label: String.fromCharCode(i),
+      value: String.fromCharCode(i),
+      disabled: false,
+    });
+  }
+};
+
 onMounted(() => {
+  // 初始化A-Z Market选项
+  initMarketOptions();
   // 蓝牙扫描出来的设备
   ipcRenderer.on("find-device", (event, data) => {
     deviceList.value = data;
@@ -678,6 +810,46 @@ const changeIrBandPass = () => {
   if (configData.value.irFilter.isBandPass) {
     indexStore.configData.irFilter.isDCRemove = true;
   }
+};
+
+const openMarkerModal = () => {
+  openMarker.value = true;
+};
+
+const handleMarkerModal = () => {};
+
+// 删除标记
+const handleDeleteMarker = (index) => {
+  if (isMarker.value) {
+    return;
+  }
+  markerList.value.splice(index, 1);
+};
+const handleMarkerSelect = (value, oldItem) => {
+  let flag = false;
+  markerList.value.forEach((item) => {
+    if (!item.type) {
+      flag = true;
+    }
+  });
+  if (!flag) {
+    markerList.value.push({
+      type: undefined,
+      description: "",
+    });
+  }
+};
+
+const handleCancelMarker = () => {
+  openMarker.value = false;
+};
+const handleStartMarker = () => {
+  indexStore.isMarker = true;
+  // message.success("启动标记!");
+};
+const handleStopMarker = () => {
+  indexStore.isMarker = false;
+  // message.success("结束标记!");
 };
 </script>
 <style scoped></style>

@@ -8,6 +8,10 @@
 
 <script setup lang="ts">
 import { CustomBluetooth } from "../utils/bluetooth";
+import { useIndexStore } from "../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { isMarker, markerList } = storeToRefs(indexStore);
 import {
   onMounted,
   ref,
@@ -47,6 +51,10 @@ const colors = {
   Fp2: "#B3B3B3",
 };
 
+import {eegInputMarkerList} from "../global";
+
+
+
 // 实例
 class ChannelBar {
   x: number;
@@ -62,6 +70,8 @@ class ChannelBar {
   autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
+  xScalingFactor: number = 1;
+  yScalingFactor: number = 1;
   constructor(_channelIndex, _x, _y, _w, _h, _name, _lineColor) {
     this.x = _x;
     this.y = _y;
@@ -89,13 +99,14 @@ class ChannelBar {
     this.plot.getYAxis().setAxisLabelText(this.name);
     this.plot.getYAxis().getAxisLabel().setOffset(50);
     this.plot.getYAxis().setTickLabelOffset(2.5);
+    this.calcScaling();
     // this.plot.getYAxis().setRotate(false);
     offscreenCtx.lineWidth = 1;
   }
 
   updateSeries(series) {
-    if(!series || !series.length) {
-      return
+    if (!series || !series.length) {
+      return;
     }
     let points: any = [];
     if (this.yMin === undefined) {
@@ -114,7 +125,8 @@ class ChannelBar {
 
       points[i] = new window.GPoint(
         series[i].value[0] / 1000,
-        series[i].value[1]
+        series[i].value[1],
+        series[i].value[2]
       );
     }
     this.setYLim();
@@ -138,20 +150,26 @@ class ChannelBar {
   }
 
   setYLim() {
-    
     let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
     let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
-    if(min == Number.MAX_VALUE || max == Number.MIN_VALUE){
-      return
+    if (min == Number.MAX_VALUE || max == Number.MIN_VALUE) {
+      return;
     }
     min = Number(min);
     max = Number(max);
-   
-    
+
     if (min == max) {
       max += minGap;
     }
     this.plot.setYLim(min, max);
+    this.calcScaling();
+  }
+
+  calcScaling() {
+    this.xScalingFactor =
+      this.plot.dim[0] / (this.plot.xLim[1] - this.plot.xLim[0]);
+    this.yScalingFactor =
+      -this.plot.dim[1] / (this.plot.yLim[1] - this.plot.yLim[0]);
   }
 
   customLines() {
@@ -178,6 +196,46 @@ class ChannelBar {
     }
   }
 
+  customMarker() {
+    let plot = this.plot;
+    let plotPoints = plot.mainLayer.plotPoints;
+    if (!plotPoints[0]) return;
+    offscreenCtx.save();
+    offscreenCtx.strokeStyle = "#ff4d4f";
+    offscreenCtx.textAlign = "center";
+    offscreenCtx.textBaseline = "top";
+    offscreenCtx.fillStyle = "#ff4d4f";
+    offscreenCtx.translate(plot.pos[0] + plot.mar[1], 0);
+
+    eegInputMarkerList.forEach((item) => {
+      offscreenCtx.beginPath();
+      offscreenCtx.rect(
+        0,
+        topPadding,
+        this.w,
+        this.h * channel.length + topPadding + middlePadding
+      );
+      offscreenCtx.clip();
+      offscreenCtx.beginPath();
+
+      if (plotPoints[0].label) {
+        let time = (item.time_stamp - plotPoints[0].label) / 1000;
+        let x = (time - this.plot.xLim[0]) * this.xScalingFactor;
+        offscreenCtx.fillText(item.type, x, topPadding);
+        offscreenCtx.moveTo(x, topPadding +10);
+        offscreenCtx.lineTo(
+          x,
+          this.h * channel.length +
+            topPadding +
+            middlePadding * (channel.length - 1)
+        );
+      }
+
+      offscreenCtx.stroke();
+    });
+    offscreenCtx.restore();
+  }
+
   draw() {
     this.plot.beginDraw();
     this.plot.drawXAxis();
@@ -186,6 +244,10 @@ class ChannelBar {
     // this.plot.drawLines();
     // 自定义画线
     this.customLines();
+    if (this.channelIndex == channel.length - 1) {
+      this.customMarker();
+    }
+
     this.plot.endDraw();
   }
 }
@@ -282,10 +344,25 @@ const defaultPlotSketch = (p) => {
   };
 };
 
+const handleKeydown = (e) => {
+  if (isMarker.value) {
+    let findItem = markerList.value.find((item) => {
+      return item.type === e.key;
+    });
+    if (findItem) {
+      eegInputMarkerList.push({
+        time_stamp: new Date().getTime(),
+        type: findItem.type,
+      });
+    }
+  }
+};
+
 onMounted(() => {
   sketch && sketch.remove();
   sketch = new window.p5((p) => defaultPlotSketch(p), "TimeSeries");
   window.addEventListener("resize", resizeing);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onBeforeUnmount(() => {
@@ -294,6 +371,7 @@ onBeforeUnmount(() => {
   channelBars = [];
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
+  window.removeEventListener("keydown", handleKeydown);
 });
 
 defineExpose({

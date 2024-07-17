@@ -1,6 +1,8 @@
 import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
+const net = require("net");
+let client: any = null;
 let child: typeof child_process;
 let storeChild: typeof child_process;
 let replayChild: typeof child_process;
@@ -57,6 +59,10 @@ const removZero = ({ pkg }: any) => {
   pkg.near_infrared = near_infrared;
 };
 
+const handleSocketReceiveData = (data: any) => {
+  console.log("handleSocketReceiveData", data);
+};
+
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -70,6 +76,26 @@ function createWindow() {
     },
   });
   mainWindow.setFullScreen(true);
+
+  // 连接socket
+  ipcMain.on("connect-socket", (event, data) => {
+    console.log("connect-socket", data);
+    client && client.removeListener("data", handleSocketReceiveData);
+    client && client.end();
+    client = net.createConnection(data, function () {
+      console.log("connect success");
+      event.sender.send("receive-socket", { msg: "connect success", type: 1 });
+    });
+    client.on("data", handleSocketReceiveData);
+  });
+
+  // 取消socket连接
+  ipcMain.on("cancel-socket", (event, data) => {
+    console.log("cancel-socket", data);
+    event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
+    client.end();
+    client = null;
+  });
 
   //   蓝牙连接部分
   // 扫描蓝牙设备
@@ -354,10 +380,13 @@ function createWindow() {
             type: "end-data-decode",
             data: {
               ...data.pkg,
+              time_stamp: data.time_stamp,
               brain_elec_channel: data.copy_brain_elec_channel,
               near_infrared: data.copy_near_infrared,
+              isLosspkg: data.loss_data_info_el.isLosspkg,
             },
           });
+        client && client.write && client.write(JSON.stringify(data.pkg));
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
         event.sender.send("end-data-decode", data);
