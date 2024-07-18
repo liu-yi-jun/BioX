@@ -42,12 +42,17 @@ function Processing(this: any, path: string, config: any) {
   this.ir_od_date = [];
   this.concentration_date = [];
   this.eegTimeStampInfo = {
+    // 自己计算硬件时间戳
     correct_mark: 0,
-    time_stamp: 0,
+    // 第一个点的utc
+    origin_utc: 0,
+    // 第一个点的硬件时间戳
+    origin_time_mark: 0,
   };
   this.irTimeStampInfo = {
     correct_mark: 0,
-    time_stamp: 0,
+    origin_utc: 0,
+    origin_time_mark: 0,
   };
   this.lossDataInfo = {
     EEG: JSON.parse(JSON.stringify(lossDataTemplate)),
@@ -274,29 +279,57 @@ const adjustTimestamps = (timestamp: number): number => {
   return timestamp - remainder;
 };
 
-
-
 // 包utc时间戳计算
 function calcTimeStamp(this: any, pkg: any) {
   if (pkg.pkg_type == 1) {
-    if (this.eegTimeStampInfo.time_stamp == 0) {
-      this.eegTimeStampInfo.time_stamp = new Date().getTime();
+    if (this.eegTimeStampInfo.origin_utc == 0) {
+      this.eegTimeStampInfo.origin_utc = new Date().getTime();
+      this.eegTimeStampInfo.origin_time_mark = pkg.time_mark;
+      console.log(
+        pkg.pkg_type,
+        this.eegTimeStampInfo.origin_utc,
+        pkg.time_mark
+      );
     }
+    // 自己计算硬件时间戳
     // pkg.time_mark = this.eegTimeStampInfo.correct_mark;
     // this.eegTimeStampInfo.correct_mark +=
     //   pkg.eeg_data_num * (1000 / sample_rate);
-      return new Date().getTime();
-      // return this.eegTimeStampInfo.time_stamp + pkg.time_mark;
+
+    return {
+      // 软件时间戳
+      time_stamp: new Date().getTime(),
+      // 换算后的硬件时间戳
+      time_utc:
+        this.eegTimeStampInfo.origin_utc +
+        (pkg.time_mark - this.eegTimeStampInfo.origin_time_mark),
+    };
   } else if (pkg.pkg_type == 2) {
-    if (this.irTimeStampInfo.time_stamp == 0) {
-      this.irTimeStampInfo.time_stamp = new Date().getTime();
+    if (this.irTimeStampInfo.origin_utc == 0) {
+      this.irTimeStampInfo.origin_utc = new Date().getTime();
+      this.irTimeStampInfo.origin_time_mark = pkg.time_mark;
+      console.log(
+        pkg.pkg_type,
+        this.eegTimeStampInfo.origin_utc,
+        pkg.time_mark
+      );
     }
+    // 自己计算硬件时间戳
     // pkg.time_mark = this.irTimeStampInfo.correct_mark;
     // this.irTimeStampInfo.correct_mark +=
     //   1000 / this.config.irFilter.ir_sample_rate;
-    return new Date().getTime();
-    // return this.irTimeStampInfo.time_stamp + pkg.time_mark;
+
+    return {
+      time_stamp: new Date().getTime(),
+      time_utc:
+        this.irTimeStampInfo.origin_utc +
+        (pkg.time_mark - this.irTimeStampInfo.origin_time_mark),
+    };
   }
+  return {
+    time_stamp: 0,
+    time_utc: 0,
+  };
 }
 
 // 映射数据类型
@@ -367,10 +400,8 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     JSON.stringify(pkg.brain_elec_channel)
   );
   let copy_near_infrared = JSON.parse(JSON.stringify(pkg.near_infrared));
-  let time_stamp = 0;
-
   // 计算时间戳
-  time_stamp = calcTimeStamp.call(this, pkg) || 0;
+  let { time_stamp, time_utc } = calcTimeStamp.call(this, pkg);
   if (pkg.pkg_type === 1) {
     // 循环EEG数据
     for (let i = 0; i < pkg.eeg_data_num; i++) {
@@ -651,6 +682,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     copy_brain_elec_channel: copy_brain_elec_channel,
     copy_near_infrared: copy_near_infrared,
     time_stamp: time_stamp,
+    time_utc: time_utc,
   };
 }
 

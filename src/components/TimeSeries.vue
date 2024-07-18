@@ -51,9 +51,7 @@ const colors = {
   Fp2: "#B3B3B3",
 };
 
-import {eegInputMarkerList} from "../global";
-
-
+import { eegInputMarkerList } from "../global";
 
 // 实例
 class ChannelBar {
@@ -65,6 +63,7 @@ class ChannelBar {
   lineColor: string;
   channelIndex: number;
   plot: any;
+  series: any[] = [];
 
   autoscaleMax: number = 1;
   autoscaleMin: number = 0;
@@ -108,6 +107,7 @@ class ChannelBar {
     if (!series || !series.length) {
       return;
     }
+    this.series = series;
     let points: any = [];
     if (this.yMin === undefined) {
       this.autoscaleMin = Number.MAX_VALUE;
@@ -125,8 +125,7 @@ class ChannelBar {
 
       points[i] = new window.GPoint(
         series[i].value[0] / 1000,
-        series[i].value[1],
-        series[i].value[2]
+        series[i].value[1]
       );
     }
     this.setYLim();
@@ -199,6 +198,7 @@ class ChannelBar {
   customMarker() {
     let plot = this.plot;
     let plotPoints = plot.mainLayer.plotPoints;
+    let points = plot.mainLayer.points;
     if (!plotPoints[0]) return;
     offscreenCtx.save();
     offscreenCtx.strokeStyle = "#ff4d4f";
@@ -217,19 +217,23 @@ class ChannelBar {
       );
       offscreenCtx.clip();
       offscreenCtx.beginPath();
-
-      if (plotPoints[0].label) {
-        let time = (item.time_stamp - plotPoints[0].label) / 1000;
-        let x = (time - this.plot.xLim[0]) * this.xScalingFactor;
-        offscreenCtx.fillText(item.type, x, topPadding);
-        offscreenCtx.moveTo(x, topPadding +10);
-        offscreenCtx.lineTo(
-          x,
-          this.h * channel.length +
-            topPadding +
-            middlePadding * (channel.length - 1)
-        );
+      let ors_time_mark = -1;
+      for (let index = this.series.length - 1; index >= 0; index--) {
+        const sItem = this.series[index];
+        if (sItem.value[2] <= item.time_stamp) {
+          ors_time_mark = sItem.value[0] / 1000;
+          break;
+        }
       }
+      let x = (ors_time_mark - this.plot.xLim[0]) * this.xScalingFactor;
+      offscreenCtx.fillText(item.type, x, topPadding);
+      offscreenCtx.moveTo(x, topPadding + 10);
+      offscreenCtx.lineTo(
+        x,
+        this.h * channel.length +
+          topPadding +
+          middlePadding * (channel.length - 1)
+      );
 
       offscreenCtx.stroke();
     });
@@ -354,6 +358,7 @@ const handleKeydown = (e) => {
         time_stamp: new Date().getTime(),
         type: findItem.type,
       });
+      return;
     }
   }
 };

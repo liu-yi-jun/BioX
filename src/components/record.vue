@@ -102,12 +102,12 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons-vue";
 import { formatTimestamp, tipFormatter } from "../utils/common";
-import {irInputMarkerList,eegInputMarkerList} from "../global";
+import { irInputMarkerList, eegInputMarkerList } from "../global";
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const app = getCurrentInstance();
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect } =
+const { play, recordId, playIndex, isDragSlider, isConnect, markerList } =
   storeToRefs(indexStore);
 const useForm = Form.useForm;
 const disabled = ref<boolean>(true);
@@ -268,7 +268,6 @@ const handleStartRecordModal = (e?: MouseEvent) => {
           ...toRaw(formData),
           recoredCreateTime: recoredCreateTime.value,
         }).then((res) => {
-
           // 创建存储进程
           ipcRenderer.send("create-store");
           // 开始存储
@@ -283,14 +282,28 @@ const handleStartRecordModal = (e?: MouseEvent) => {
       });
   } else if (status.value === 0 && modelStatus.value === 1) {
     app?.proxy?.loading.show("保存中...");
+    let eegInputMarkerListCopy = eegInputMarkerList.filter((item) => {
+      return (
+        recoredCreateTime.value <= item.time_stamp &&
+        item.time_stamp <= recoredEndTime.value
+      );
+    });
+
+    let irInputMarkerListCopy = irInputMarkerList.filter((item) => {
+      return (
+        recoredCreateTime.value <= item.time_stamp &&
+        item.time_stamp <= recoredEndTime.value
+      );
+    });
     db.update(
       "record",
       {
         ...toRaw(formData),
         recoredEndTime: recoredEndTime.value,
         recoredTotalTime: recoredTotalTime.value,
-        eegInputMarkerList: JSON.stringify(eegInputMarkerList),
-        irInputMarkerList: JSON.stringify(irInputMarkerList),
+        eegInputMarkerList: JSON.stringify(eegInputMarkerListCopy),
+        irInputMarkerList: JSON.stringify(irInputMarkerListCopy),
+        markerList: JSON.stringify(markerList.value),
       },
       {
         id: recordLastID,

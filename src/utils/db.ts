@@ -23,7 +23,8 @@ CustomDatabase.prototype.init = function (isMain = true) {
           recoredTotalTime INTEGER NOT NULL default(0),
           recoredEndTime INTEGER NOT NULL default(0),
           eegInputMarkerList BLOB,
-          irInputMarkerList BLOB
+          irInputMarkerList BLOB,
+          markerList TEXT
           )`);
         // 源数据表
         await this.run(`CREATE TABLE if not exists source(

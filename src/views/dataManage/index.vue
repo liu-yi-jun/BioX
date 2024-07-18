@@ -113,7 +113,7 @@ import { useIndexStore } from "../../store/index";
 const app = getCurrentInstance();
 const router = useRouter();
 const indexStore = useIndexStore();
-const { play, recordId } = storeToRefs(indexStore);
+const { play, recordId, configData } = storeToRefs(indexStore);
 const input_name = ref();
 const input_describe = ref();
 const db = new CustomDatabase();
@@ -127,6 +127,7 @@ interface DataItem {
   describe: string;
   eegInputMarkerList: string;
   irInputMarkerList: string;
+  markerList: string;
 }
 const recordList = ref<DataItem[]>([]);
 
@@ -159,7 +160,7 @@ onMounted(() => {
 
 const getDate = async () => {
   recordList.value = await db.all(
-    `select id,instanceID,name,recoredCreateTime,recoredTotalTime,recoredEndTime,describe,eegInputMarkerList,irInputMarkerList from record where  '${searchValue.value}' = '' or name Like '%${searchValue.value}%'  or instanceID Like '%${searchValue.value}%'`
+    `select id,instanceID,name,recoredCreateTime,recoredTotalTime,recoredEndTime,describe,eegInputMarkerList,irInputMarkerList,markerList from record where  '${searchValue.value}' = '' or name Like '%${searchValue.value}%'  or instanceID Like '%${searchValue.value}%'`
   );
 };
 
@@ -188,7 +189,8 @@ const deleteRow = (record: DataItem) => {
 const exportCsv = async (record: DataItem) => {
   let eegInputMarkerList = JSON.parse(record.eegInputMarkerList);
   let irInputMarkerList = JSON.parse(record.irInputMarkerList);
-  console.log(eegInputMarkerList, irInputMarkerList);
+  let markerList = JSON.parse(record.markerList);
+  console.log(eegInputMarkerList, irInputMarkerList, markerList);
 
   let csvContent = "";
   let eegChannel = 1;
@@ -237,11 +239,12 @@ const exportCsv = async (record: DataItem) => {
   );
   console.log(res);
 
-  const sourceData = res
+  let sourceData = res
     .map((item) => {
       return JSON.parse(item.data);
     })
     .flat();
+  // sourceData = sourceData.sort((a, b) => a.time_utc - b.time_utc);
   console.log(sourceData.length);
 
   // 检查sourceData是否是数组以及是否有数据
@@ -337,7 +340,11 @@ const exportCsv = async (record: DataItem) => {
         // 处理二维数组
         // console.log('Found array:', valueArrayArrayForKey);
         for (let col = 0; col < eegDataNum; col++) {
-          csvContent += "" + (pkgData.time_stamp + col * (1000 / 250)) + ",";
+          csvContent +=
+            "" +
+            (pkgData.time_utc +
+              col * (1000 / configData.value.eegFilter.sample_rate)) +
+            ",";
           //增加eeg counter
           csvContent += "" + eegCounter + ",";
           eegCounter += 1;
@@ -365,7 +372,7 @@ const exportCsv = async (record: DataItem) => {
     } else if (valueForKey == 2) {
       // 近红外数据
       // EEG 数据应该是空的，所以空起来
-      csvContent += "" + pkgData.time_stamp + ",";
+      csvContent += "" + pkgData.time_utc + ",";
       for (let index = 0; index < eegChannel + 1; index++) {
         csvContent += ",";
       }

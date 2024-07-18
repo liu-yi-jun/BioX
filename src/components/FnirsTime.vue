@@ -44,7 +44,7 @@ const colors = {
   3: "#0073ff",
 };
 
-import {irInputMarkerList} from "../global";
+import { irInputMarkerList } from "../global";
 
 // 实例
 class ChannelBar {
@@ -56,6 +56,7 @@ class ChannelBar {
   lineSeries: any;
   channelIndex: number;
   plot: any;
+  series: any = [];
 
   autoscaleMax: number = 1;
   autoscaleMin: number = 0;
@@ -109,6 +110,7 @@ class ChannelBar {
     if (!series || (!series.radioRows && !series.radioRows.length)) {
       return;
     }
+    this.series = series;
     if (this.yMin === undefined) {
       this.autoscaleMin = Number.MAX_VALUE;
     }
@@ -127,8 +129,7 @@ class ChannelBar {
         }
         points[j] = new window.GPoint(
           series.radioRows[i][j].value[0] / 1000,
-          series.radioRows[i][j].value[1],
-          series.radioRows[i][j].value[2]
+          series.radioRows[i][j].value[1]
         );
       }
       this.lineSeries[i].layer.setPoints(points);
@@ -202,46 +203,54 @@ class ChannelBar {
 
   customMarker() {
     let plot = this.plot;
-    for (let i = 0; i < this.lineSeries.length; i++) {
-      let plotPoints = this.lineSeries[i].layer.plotPoints;
-      if (!plotPoints[0]) return;
-      offscreenCtx.save();
-      offscreenCtx.strokeStyle = "#ff4d4f";
-      offscreenCtx.textAlign = "center";
-      offscreenCtx.textBaseline = "top";
-      offscreenCtx.fillStyle = "#ff4d4f";
-      offscreenCtx.translate(plot.pos[0] + plot.mar[1], 0);
+    if(!this.lineSeries[0]) return
+    let plotPoints = this.lineSeries[0].layer.plotPoints;
+    if (!plotPoints[0]) return;
+    offscreenCtx.save();
+    offscreenCtx.strokeStyle = "#ff4d4f";
+    offscreenCtx.textAlign = "center";
+    offscreenCtx.textBaseline = "top";
+    offscreenCtx.fillStyle = "#ff4d4f";
+    offscreenCtx.translate(plot.pos[0] + plot.mar[1], 0);
 
-      irInputMarkerList.forEach((item) => {
-        offscreenCtx.beginPath();
-        offscreenCtx.rect(
-          0,
-          topPadding,
-          this.w,
-          this.h * channel.length +
-            topPadding +
-            middlePadding * (channel.length - 1)
-        );
-        offscreenCtx.clip();
-        offscreenCtx.beginPath();
+    irInputMarkerList.forEach((item) => {
+      offscreenCtx.beginPath();
+      offscreenCtx.rect(
+        0,
+        topPadding,
+        this.w,
+        this.h * channel.length +
+          topPadding +
+          middlePadding * (channel.length - 1)
+      );
+      offscreenCtx.clip();
+      offscreenCtx.beginPath();
 
-        if (plotPoints[0].label) {
-          let time = (item.time_stamp - plotPoints[0].label) / 1000;
-          let x = (time - this.plot.xLim[0]) * this.xScalingFactor;
-          offscreenCtx.fillText(item.type, x, topPadding);
-          offscreenCtx.moveTo(x, topPadding + 10);
-          offscreenCtx.lineTo(
-            x,
-            this.h * channel.length +
-              topPadding +
-              middlePadding * (channel.length - 1)
-          );
+      let ors_time_mark = -1;
+      for (
+        let index = this.series.radioRows[0].length - 1;
+        index >= 0;
+        index--
+      ) {
+        const sItem = this.series.radioRows[0][index];
+        if (sItem.value[2] <= item.time_stamp) {
+          ors_time_mark = sItem.value[0] / 1000;
+          break;
         }
+      }
+      let x = (ors_time_mark - this.plot.xLim[0]) * this.xScalingFactor;
+      offscreenCtx.fillText(item.type, x, topPadding);
+      offscreenCtx.moveTo(x, topPadding + 10);
+      offscreenCtx.lineTo(
+        x,
+        this.h * channel.length +
+          topPadding +
+          middlePadding * (channel.length - 1)
+      );
 
-        offscreenCtx.stroke();
-      });
-      offscreenCtx.restore();
-    }
+      offscreenCtx.stroke();
+    });
+    offscreenCtx.restore();
   }
 
   draw() {

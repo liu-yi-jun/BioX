@@ -380,7 +380,7 @@ function createWindow() {
             type: "end-data-decode",
             data: {
               ...data.pkg,
-              time_stamp: data.time_stamp,
+              time_utc: data.time_utc,
               brain_elec_channel: data.copy_brain_elec_channel,
               near_infrared: data.copy_near_infrared,
               isLosspkg: data.loss_data_info_el.isLosspkg,
