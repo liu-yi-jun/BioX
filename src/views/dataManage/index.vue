@@ -3,12 +3,8 @@
     <div class="eig-filter">
       <div class="filter-right">
         <a-space>
-          <a-input-search
-            v-model:value="searchValue"
-            placeholder="input search text"
-            style="width: 200px"
-            @search="onSearch"
-          />
+          <a-input-search v-model:value="searchValue" placeholder="input search text" style="width: 200px"
+            @search="onSearch" />
           <a-button class="eig-icon-btn" @click="onRefresh">
             <template #icon>
               <RedoOutlined :style="{ color: 'rgba(0, 0, 0, 0.45)' }" />
@@ -18,60 +14,28 @@
       </div>
     </div>
     <div class="eig-table">
-      <a-table
-        :columns="columns"
-        :data-source="recordList"
-        :scroll="{ y: 'calc(100vh - 220px' }"
-      >
+      <a-table :columns="columns" :data-source="recordList" :scroll="{ y: 'calc(100vh - 220px' }">
         <template #bodyCell="{ column, text, record }">
-          <template
-            v-if="
-              column.dataIndex === 'name' || column.dataIndex === 'describe'
-            "
-          >
+          <template v-if="column.dataIndex === 'name' || column.dataIndex === 'describe'
+            ">
             <div class="editable-cell">
-              <div
-                v-if="editableData[`${record.id}_${column.dataIndex}`]"
-                class="editable-cell-input-wrapper"
-              >
-                <a-input
-                  v-if="column.dataIndex === 'name'"
-                  v-model:value="
-                    editableData[`${record.id}_${column.dataIndex}`].name
-                  "
-                  ref="input_name"
-                  style="width: 120px"
-                  size="small"
-                  @pressEnter="save(record.id, column.dataIndex)"
-                  @blur="save(record.id, column.dataIndex)"
-                />
+              <div v-if="editableData[`${record.id}_${column.dataIndex}`]" class="editable-cell-input-wrapper">
+                <a-input v-if="column.dataIndex === 'name'" v-model:value="editableData[`${record.id}_${column.dataIndex}`].name
+                  " ref="input_name" style="width: 120px" size="small" @pressEnter="save(record.id, column.dataIndex)"
+                  @blur="save(record.id, column.dataIndex)" />
 
-                <a-input
-                  v-if="column.dataIndex === 'describe'"
-                  v-model:value="
-                    editableData[`${record.id}_${column.dataIndex}`].describe
-                  "
-                  size="small"
-                  ref="input_describe"
-                  @pressEnter="save(record.id, column.dataIndex)"
-                  @blur="save(record.id, column.dataIndex)"
-                />
+                <a-input v-if="column.dataIndex === 'describe'" v-model:value="editableData[`${record.id}_${column.dataIndex}`].describe
+                  " size="small" ref="input_describe" @pressEnter="save(record.id, column.dataIndex)"
+                  @blur="save(record.id, column.dataIndex)" />
               </div>
               <div v-else class="editable-cell-text-wrapper">
                 <p>
-                  <a
-                    v-if="column.dataIndex === 'name'"
-                    Href="javascript:;"
-                    @click="lookRecord(record.id)"
-                    >{{ text || " " }}</a
-                  >
+                  <a v-if="column.dataIndex === 'name'" Href="javascript:;" @click="lookRecord(record.id)">{{ text || " "
+                  }}</a>
                   <span v-else>
                     {{ text || " " }}
                   </span>
-                  <edit-outlined
-                    class="editable-cell-icon"
-                    @click="edit(record.id, column.dataIndex)"
-                  />
+                  <edit-outlined class="editable-cell-icon" @click="edit(record.id, column.dataIndex)" />
                 </p>
                 <p v-if="column.dataIndex === 'name'">
                   <span>{{ record.instanceID }}</span>
@@ -212,6 +176,8 @@ const exportCsv = async (record: DataItem) => {
     "IR CHANNELS",
     "IR WAVELENGTHS",
     "IR SAMPLING RATE",
+    "MARKER DESCRIPTION",
+    "LOSS NUM",
   ]);
   csvContent = csvContent + metaDataKeys.value.join(",") + "\n";
   // 保存record的信息
@@ -244,7 +210,6 @@ const exportCsv = async (record: DataItem) => {
       return JSON.parse(item.data);
     })
     .flat();
-  // sourceData = sourceData.sort((a, b) => a.time_utc - b.time_utc);
   console.log(sourceData.length);
 
   // 检查sourceData是否是数组以及是否有数据
@@ -259,8 +224,8 @@ const exportCsv = async (record: DataItem) => {
   let keyToFind = "eeg_channel";
   let valueForKey = (
     firstEntries.find(([key]) => key === keyToFind) as
-      | [string, number]
-      | undefined
+    | [string, number]
+    | undefined
   )?.[1];
   if (valueForKey != undefined) {
     csvContent += valueForKey + ",";
@@ -274,8 +239,8 @@ const exportCsv = async (record: DataItem) => {
   keyToFind = "ir_channel";
   valueForKey = (
     firstEntries.find(([key]) => key === keyToFind) as
-      | [string, number]
-      | undefined
+    | [string, number]
+    | undefined
   )?.[1];
   if (valueForKey != undefined) {
     csvContent += valueForKey + ",";
@@ -286,14 +251,37 @@ const exportCsv = async (record: DataItem) => {
   // IR WAVELENGTHS
   csvContent += "" + ",";
   // IR SAMPLING RATE
-  csvContent += "" + "\n";
+  csvContent += "" + ",";
+  // MARKER DESCRIPTION
+  if (markerList.length > 0) {
+    markerList.sort((a, b) => {
+      if (a.type < b.type) {
+        return -1;
+      }
+      if (a.type > b.type) {
+        return 1;
+      }
+      return 0;
+    });
+  }
+
+  let markerDescription = reactive<string[]>([]);
+  markerList.forEach((element) => {
+    if (element.type && element.type.trim() !== '') {
+      markerDescription.push(`${element.type}:${element.description}`);
+    }
+  });
+  csvContent += markerDescription.join(";") + ",";
+  // LOSS NUM
+  let lossNum = parseInt(eegInputMarkerList.length + irInputMarkerList.length, 10)
+  csvContent += lossNum.toString() + "\n";
 
   // 获取eeg data num
   keyToFind = "eeg_data_num";
   valueForKey = (
     firstEntries.find(([key]) => key === keyToFind) as
-      | [string, number]
-      | undefined
+    | [string, number]
+    | undefined
   )?.[1];
   if (valueForKey != undefined) {
     eegDataNum = valueForKey;
@@ -316,13 +304,57 @@ const exportCsv = async (record: DataItem) => {
   items.forEach((item) => {
     thirdRowList.value.push(item);
   });
+  thirdRowList.value.push("MARKER")
+  thirdRowList.value.push("IS_LOSS")
   csvContent += thirdRowList.value.join(",") + "\n";
+
+  // 第三行值的长度，即记录的数据字段的个数
+  let thirdRowListLength = thirdRowList.value.length
+
+  // 第三行以后的值
+
+
+  // 处理marker数组
+  // 合并两个marker数组
+  let mergedMarkerData = [...eegInputMarkerList, ...irInputMarkerList];
+  // 对合并后的数组按 timestamp 排序
+  mergedMarkerData.sort((a, b) => a.timestamp - b.timestamp);
+
+  // 处理marker数组和sourceData，将两者合并
+  // 首先给数据加入一个标识符，表明来自于哪个数组
+  sourceData.forEach(item => {
+    item.source = 'sourceData';
+  });
+
+  mergedMarkerData.forEach(item => {
+    item.source = 'mergedMarkerData';
+  });
+  let mergedData = [...sourceData, ...mergedMarkerData];
+  debugger;
+  mergedData.sort((a, b) => {
+    const timeA = a.source === 'sourceData' ? a.time_utc : a.time_stamp;
+    const timeB = b.source === 'sourceData' ? b.time_utc : b.time_stamp;
+    return timeA - timeB;
+  });
 
   let eegCounter = 0;
   let fnirsCounter = 0;
   let valueArrayArrayForKey;
   // 转换数据到CSV格式
-  sourceData.forEach((pkgData) => {
+  // 转换数据时，需要将数据包数组与marker数组的数据进行融合写入文件里
+  mergedData.forEach((pkgData) => {
+    // 数据是marker数组内的数据
+    if (pkgData.source == "mergedMarkerData") {
+      csvContent += pkgData.time_stamp + ",";
+      // 中间的eeg或者ir数据都写为空
+      for (let index = 0; index < thirdRowListLength - 3; index++) {
+        csvContent += "" + ",";
+      }
+      csvContent += pkgData.type + ",";
+      csvContent += "" + "\n";
+      return;
+    }
+    // 正常的数据包数据
     const entries = Object.entries(pkgData);
     keyToFind = "pkg_type";
     valueForKey = (
@@ -333,8 +365,8 @@ const exportCsv = async (record: DataItem) => {
       keyToFind = "brain_elec_channel";
       valueArrayArrayForKey = (
         entries.find(([key]) => key === keyToFind) as
-          | [string, number[][]]
-          | undefined
+        | [string, number[][]]
+        | undefined
       )?.[1];
       if (Array.isArray(valueArrayArrayForKey)) {
         // 处理二维数组
@@ -355,15 +387,18 @@ const exportCsv = async (record: DataItem) => {
             const element = valueArrayArrayForKey[row];
             csvContent += "" + element[col] + ",";
           }
-          // 之后的近红外数据应该都是空的
-          for (let index = 0; index < items.length; index++) {
+          // 之后的近红外数据和marker数据应该都是空的
+          // remainFieldNumber: 余下的还没赋值的字段数量
+          let remainFieldNumber = items.length + 2
+          for (let index = 0; index < remainFieldNumber; index++) {
             csvContent += ",";
           }
           csvContent += "\n";
         }
       } else {
         // 找不到数据，这行都是空的
-        for (let index = 0; index < eegChannel + items.length + 1; index++) {
+        // 2是marker数据字段的长度
+        for (let index = 0; index < eegChannel + items.length + 2 + 1; index++) {
           csvContent += ",";
         }
         csvContent += "\n";
@@ -385,21 +420,28 @@ const exportCsv = async (record: DataItem) => {
       keyToFind = "near_infrared";
       valueArrayArrayForKey = (
         entries.find(([key]) => key === keyToFind) as
-          | [string, number[][]]
-          | undefined
+        | [string, number[][]]
+        | undefined
       )?.[1];
+
+      // 余下的还没赋值的字段数量
+      let remainFieldNumber = items.length + 2
       if (Array.isArray(valueArrayArrayForKey)) {
         let neadInfrared = valueArrayArrayForKey?.flat();
         for (let index = 0; index < items.length; index++) {
-          if (index == items.length - 1) {
-            csvContent += "" + neadInfrared[index] + "\n";
-          } else {
-            csvContent += "" + neadInfrared[index] + ",";
+          csvContent += "" + neadInfrared[index] + ",";
+        }
+        // 2 是marker数据字段
+        for (let index = 0; index < 2; index++) {
+          if (index == 1) {
+            csvContent += "" + "\n";
+            continue;
           }
+          csvContent += "" + ",";
         }
       } else {
         // 找不到数据，这行都是空的
-        for (let index = 0; index < eegChannel + items.length + 1; index++) {
+        for (let index = 0; index < eegChannel + remainFieldNumber + 1; index++) {
           csvContent += ",";
         }
         csvContent += "\n";
