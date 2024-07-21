@@ -273,7 +273,12 @@ const exportCsv = async (record: DataItem) => {
   });
   csvContent += markerDescription.join(";") + ",";
   // LOSS NUM
-  let lossNum = parseInt(eegInputMarkerList.length + irInputMarkerList.length, 10)
+  let lossNum = 0
+  sourceData.forEach(ele => {
+    if (ele.isLosspkg == true) {
+      lossNum += 1
+    }
+  })
   csvContent += lossNum.toString() + "\n";
 
   // 获取eeg data num
@@ -330,7 +335,7 @@ const exportCsv = async (record: DataItem) => {
     item.source = 'mergedMarkerData';
   });
   let mergedData = [...sourceData, ...mergedMarkerData];
-  debugger;
+  // debugger;
   mergedData.sort((a, b) => {
     const timeA = a.source === 'sourceData' ? a.time_utc : a.time_stamp;
     const timeB = b.source === 'sourceData' ? b.time_utc : b.time_stamp;
@@ -390,12 +395,12 @@ const exportCsv = async (record: DataItem) => {
           // 之后的近红外数据和marker数据应该都是空的
           // remainFieldNumber: 余下的还没赋值的字段数量
           let remainFieldNumber = items.length + 2
-          for (let index = 0; index < remainFieldNumber ; index++) {
+          for (let index = 0; index < remainFieldNumber; index++) {
             csvContent += ",";
           }
-          if(pkgData.isLosspkg == true){
+          if (pkgData.isLosspkg == true) {
             csvContent += "1"
-          }else {
+          } else {
             csvContent += "0"
           }
           csvContent += "\n";
@@ -438,12 +443,12 @@ const exportCsv = async (record: DataItem) => {
         }
         // 2 是marker数据字段
         csvContent += "" + ",";
-        if(pkgData.isLosspkg == true){
-            csvContent += "1"
-          }else {
-            csvContent += "0"
-          }
-          csvContent += "\n";
+        if (pkgData.isLosspkg == true) {
+          csvContent += "1"
+        } else {
+          csvContent += "0"
+        }
+        csvContent += "\n";
       } else {
         // 找不到数据，这行都是空的
         for (let index = 0; index < eegChannel + remainFieldNumber + 1; index++) {
@@ -453,7 +458,6 @@ const exportCsv = async (record: DataItem) => {
       }
     }
   });
-  debugger;
   // 创建一个Blob对象
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 
