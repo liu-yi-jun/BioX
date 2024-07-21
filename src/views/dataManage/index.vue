@@ -390,8 +390,13 @@ const exportCsv = async (record: DataItem) => {
           // 之后的近红外数据和marker数据应该都是空的
           // remainFieldNumber: 余下的还没赋值的字段数量
           let remainFieldNumber = items.length + 2
-          for (let index = 0; index < remainFieldNumber; index++) {
+          for (let index = 0; index < remainFieldNumber ; index++) {
             csvContent += ",";
+          }
+          if(pkgData.isLosspkg == true){
+            csvContent += "1"
+          }else {
+            csvContent += "0"
           }
           csvContent += "\n";
         }
@@ -432,13 +437,13 @@ const exportCsv = async (record: DataItem) => {
           csvContent += "" + neadInfrared[index] + ",";
         }
         // 2 是marker数据字段
-        for (let index = 0; index < 2; index++) {
-          if (index == 1) {
-            csvContent += "" + "\n";
-            continue;
+        csvContent += "" + ",";
+        if(pkgData.isLosspkg == true){
+            csvContent += "1"
+          }else {
+            csvContent += "0"
           }
-          csvContent += "" + ",";
-        }
+          csvContent += "\n";
       } else {
         // 找不到数据，这行都是空的
         for (let index = 0; index < eegChannel + remainFieldNumber + 1; index++) {
