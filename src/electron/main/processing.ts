@@ -679,6 +679,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     baseline_ok: this.baseline_ok,
     concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
+    isLosspkg:LDInfoEl.isLosspkg,
     copy_brain_elec_channel: copy_brain_elec_channel,
     copy_near_infrared: copy_near_infrared,
     time_stamp: time_stamp,

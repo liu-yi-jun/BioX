@@ -383,7 +383,7 @@ function createWindow() {
               time_utc: data.time_utc,
               brain_elec_channel: data.copy_brain_elec_channel,
               near_infrared: data.copy_near_infrared,
-              isLosspkg: data.loss_data_info_el.isLosspkg,
+              isLosspkg: data.isLosspkg,
             },
           });
         client && client.write && client.write(JSON.stringify(data.pkg));
