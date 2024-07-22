@@ -424,14 +424,15 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         brain_data[current_channel] =
           pkg.brain_elec_channel[current_channel][i];
       }
+      
+      this.signalProcess.run_dc_remove_eeg(
+        channel,
+        brain_data,
+        remove_output
+      );
 
       // 运行去基线
       if (this.config.eegFilter.isDCRemove) {
-        this.signalProcess.run_dc_remove_eeg(
-          channel,
-          brain_data,
-          remove_output
-        );
         for (
           let current_channel = 0;
           current_channel < channel;

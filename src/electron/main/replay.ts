@@ -50,4 +50,26 @@ process.on("message", async function ({ type, data }) {
       });
     }
   }
+  if (type === "change-config") {
+    processing.setConfig(JSON.parse(data));
+    process.send!({
+      type: "change-config-success",
+      data: true,
+    });
+  }
+  if (type === "change-config-field") {
+    processing.setConfig(JSON.parse(data).config);
+    let field = JSON.parse(data).field;
+    if (field === "filterConfig" || field === "plotType" || field === "wave") {
+      processing.setInit();
+    }
+
+    process.send!({
+      type: "change-config-field-success",
+      data: {
+        field: field,
+        status: true,
+      },
+    });
+  }
 });

@@ -193,18 +193,24 @@ function createWindow() {
 
   // 修改配置项
   ipcMain.on("change-config", (event, data) => {
+    config = Object.assign(config, JSON.parse(data));
     child &&
       child.connected &&
       child.send({ type: "change-config", data: data });
-    config = Object.assign(config, JSON.parse(data));
+    replayChild &&
+      replayChild.connected &&
+      replayChild.send({ type: "change-config", data: data });
   });
 
   // 修改配置项带具体回复
   ipcMain.on("change-config-field", (event, data) => {
+    config = Object.assign(config, JSON.parse(data).config);
     child &&
       child.connected &&
       child.send({ type: "change-config-field", data: data });
-    config = Object.assign(config, JSON.parse(data).config);
+    replayChild &&
+      replayChild.connected &&
+      replayChild.send({ type: "change-config-field", data: data });
   });
 
   // 开始存储
@@ -292,6 +298,12 @@ function createWindow() {
     replayChild.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-replay") {
         event.sender.send("end-data-replay", data);
+      }
+      if (type === "change-config-success") {
+        event.sender.send("change-config-success", data);
+      }
+      if (type === "change-config-field-success") {
+        event.sender.send("change-config-field-success", data);
       }
     });
   });

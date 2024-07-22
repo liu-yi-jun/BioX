@@ -411,6 +411,7 @@ watch(
             return;
           }
           let dataList = joinPkgList(true);
+          
           dataList.forEach((item) => {
             ipcRenderer.send("start-data-replay", item);
           });
@@ -516,8 +517,6 @@ const initialize = () => {
 
 // 回放数据
 const rePlayNotice = (event, data) => {
-  console.log("rePlayNotice", data);
-  
   if (Array.isArray(data)) {
 
     data.forEach((item) => {
@@ -577,15 +576,15 @@ const joinPkgList = (isGap: boolean = false) => {
     const item = pkgSourceData[index];
     let reTime = item.time_mark - pkgSourceData[0].time_mark;
     if (reTime <= playIndex.value * 40 && item.pkg_type === 1) {
-      if (isGap && reTime >= (playIndex.value - 1) * 40) {
+      if (isGap && reTime > (playIndex.value - 1) * 40) {
         tempPkgDataList.push(item);
       }
 
-      if (!isGap && reTime >= playIndex.value * 40 - pkgMaxTime * 1000) {
+      if (!isGap && reTime > playIndex.value * 40 - pkgMaxTime * 1000) {
         tempPkgDataList.push(item);
       }
     }
-  }
+  }  
   return tempPkgDataList;
 };
 
