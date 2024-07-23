@@ -134,6 +134,8 @@ const instanceID = ref<string>("");
 
 const ipcRenderer = require("electron").ipcRenderer;
 
+let tempCurrentTime = 0;
+
 // const recordSaveTime = 10 * 1000;
 
 let recordLastID = 0;
@@ -170,6 +172,14 @@ watch(isRecord, (newValue, oldValue) => {
 watch(status, (newValue, oldValue) => {
   emit("onStatus", newValue);
 });
+watch(
+  play,
+  (newValue) => {
+    if(!newValue) {
+      changeStatus()
+    }
+  }
+);
 
 interface FormState {
   name: string;
@@ -346,8 +356,12 @@ const clearData = () => {
 };
 
 const changeTime = (value) => {
+  if(tempCurrentTime == value) {
+    return
+  }
   indexStore.playIndex = parseInt(value / playGap.value + "");
   indexStore.isDragSlider = true;
+  tempCurrentTime = value
 };
 
 const playClose = () => {

@@ -281,6 +281,7 @@ import { useIndexStore } from "../../store/index";
 import { storeToRefs } from "pinia";
 import { Item } from "ant-design-vue/es/menu";
 const indexStore = useIndexStore();
+const app = getCurrentInstance();
 const {
   play,
   recordId,
@@ -434,6 +435,8 @@ watch(isDragSlider, (newValue) => {
     indexStore.isDragSlider = false;
     pkgDataList = [];
     let dataList = joinPkgList();
+    app?.proxy?.loading.show("解析中...");
+    play.value = false
     ipcRenderer.send("start-data-replay", dataList);
   }
 });
@@ -519,7 +522,7 @@ const initialize = () => {
 // 回放数据
 const rePlayNotice = (event, data) => {
   if (Array.isArray(data)) {
-
+    app?.proxy?.loading.hide();
     data.forEach((item) => {
       handlePkgList(item);
     });
