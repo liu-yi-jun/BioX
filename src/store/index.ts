@@ -10,6 +10,8 @@ export const useIndexStore = defineStore({
     isConnect: false,
     // 播放的时刻 index * 40
     playIndex: 0,
+    // 播放间隔
+    playGap: 40,
     // 是否拖拽进度条
     isDragSlider: false,
     // 蓝牙配置
@@ -19,7 +21,6 @@ export const useIndexStore = defineStore({
         value: 0,
       },
     },
-
     // 配置数据
     configData: {
       eegFilter: {

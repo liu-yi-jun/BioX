@@ -32,7 +32,7 @@
           <a-slider
             :min="minTime"
             :max="totalTime"
-            :step="40"
+            :step="playGap"
             @afterChange="changeTime"
             :tipFormatter="tipFormatter"
             v-model:value="currentTime"
@@ -107,7 +107,7 @@ import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const app = getCurrentInstance();
 const indexStore = useIndexStore();
-const { play, recordId, playIndex, isDragSlider, isConnect, markerList } =
+const { play, recordId, playGap,playIndex, isDragSlider, isConnect, markerList } =
   storeToRefs(indexStore);
 const useForm = Form.useForm;
 const disabled = ref<boolean>(true);
@@ -201,7 +201,7 @@ const changeStatus = () => {
   // 进行中
   if (status.value === 1) {
     timer = setInterval(() => {
-      currentTime.value = currentTime.value + 40;
+      currentTime.value = currentTime.value + playGap.value;
       if (currentTime.value > totalTime.value) {
         if (isRecord.value) {
           openModal();
@@ -212,7 +212,7 @@ const changeStatus = () => {
         return;
       }
       indexStore.playIndex++;
-    }, 40);
+    }, playGap.value);
   }
 
   // 暂停
@@ -346,7 +346,7 @@ const clearData = () => {
 };
 
 const changeTime = (value) => {
-  indexStore.playIndex = parseInt(value / 40 + "");
+  indexStore.playIndex = parseInt(value / playGap.value + "");
   indexStore.isDragSlider = true;
 };
 

@@ -423,6 +423,7 @@ const {
   isConnect,
   configData,
   isIrClear,
+  playGap,
   bluetoothATConfig,
 } = storeToRefs(indexStore);
 const db = new CustomDatabase();
@@ -620,7 +621,7 @@ watch(
       timerPlay = setInterval(() => {
         if (pkgSourceData.length) {
           if (
-            playIndex.value * 40 >=
+            playIndex.value * playGap.value >=
             pkgSourceData[pkgSourceData.length - 1].time_mark
           ) {
             timerPlay && clearInterval(timerPlay);
@@ -632,7 +633,7 @@ watch(
           });
           // renderData();
         }
-      }, 40);
+      }, playGap.value);
     } else {
       timerPlay && clearInterval(timerPlay);
     }
@@ -803,13 +804,13 @@ const joinPkgList = (isGap: boolean = false) => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * 40 &&
+      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * playGap.value &&
       item.pkg_type === 2
     ) {
       if (
         isGap &&
         item.time_mark - pkgSourceData[0].time_mark >=
-          (playIndex.value - 1) * 40
+          (playIndex.value - 1) * playGap.value
       ) {
         tempPkgDataList.push(item);
       }
