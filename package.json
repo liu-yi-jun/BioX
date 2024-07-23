@@ -1,7 +1,7 @@
 {
   "name": "BioMultiLite",
   "private": true,
-  "version": "1.1.13",
+  "version": "1.1.16",
   "author": "Your Name",
   "main": "dist/electron/main/main.js",
   "scripts": {

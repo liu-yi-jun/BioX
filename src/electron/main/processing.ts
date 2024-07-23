@@ -231,21 +231,21 @@ Processing.prototype.processData = function (this: any, pkg: any) {
           ((pkg.time_mark - LDInfoEl.priorTimeMark) /
             (pkg.pkgnum - LDInfoEl.priorPkgnum)) *
             i;
-        if (newPkg.pkg_type == 1) {
-          // 用最后一个数据去补充
-          for (let i = 0; i < newPkg.eeg_data_num - 1; i++) {
-            for (
-              let current_channel = 0;
-              current_channel < channel;
-              current_channel++
-            ) {
-              newPkg.brain_elec_channel[current_channel][i] =
-                newPkg.brain_elec_channel[current_channel][
-                  newPkg.eeg_data_num - 1
-                ];
-            }
-          }
-        }
+        // if (newPkg.pkg_type == 1) {
+        //   // 用最后一个数据去补充
+        //   for (let i = 0; i < newPkg.eeg_data_num - 1; i++) {
+        //     for (
+        //       let current_channel = 0;
+        //       current_channel < channel;
+        //       current_channel++
+        //     ) {
+        //       newPkg.brain_elec_channel[current_channel][i] =
+        //         newPkg.brain_elec_channel[current_channel][
+        //           newPkg.eeg_data_num - 1
+        //         ];
+        //     }
+        //   }
+        // }
         dataList.push(processSend.call(this, newPkg, LDInfoEl));
       }
     }
