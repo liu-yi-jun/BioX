@@ -152,7 +152,6 @@ function createWindow() {
     // 读取文件中的每一行
     rl.on("line", (line: any) => {
       lines.push(line);
-      client && client.write && client.write(line);
     });
 
     // 当读取完成时
