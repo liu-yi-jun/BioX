@@ -1,11 +1,11 @@
-const fs = require('fs');
-const net = require('net');
-
+const fs = require("fs");
+const net = require("net");
+const queue = [];
+let isWriting = false;
 // 创建一个 TCP 服务器
 const server = net.createServer((socket) => {
-  console.log('客户端已连接');
+  console.log("客户端已连接");
 
-  
   // // 创建一个文件流
   // let fileStream;
   // try {
@@ -17,20 +17,44 @@ const server = net.createServer((socket) => {
   //   return;
   // }
 
+  // // 定义一个函数来处理接收到的数据
+  // function handleData(data) {
+  //   queue.push(data);
+
+  //   if (!isWriting) {
+  //     writeNext();
+  //   }
+  // }
+
+  // // 定义一个函数来执行下一次写入操作
+  // function writeNext() {
+  //   if (queue.length === 0) {
+  //     isWriting = false;
+  //     return;
+  //   }
+
+  //   const data = queue.shift();
+  //   isWriting = true;
+
+  //   fileStream.write(data + '\n', () => {
+  //     isWriting = false;
+  //     writeNext();
+  //   });
+  // }
+
   // 当客户端发送数据时
-  socket.on('data', (data) => {
+  socket.on("data", (data) => {
     console.log(`接收到数据: ${data}`);
-     // 将数据写入文件
-    //  fileStream.write(data + '\n');
+    // handleData(data);
   });
 
   // 当客户端断开连接时
-  socket.on('end', () => {
-    console.log('客户端已断开连接');
+  socket.on("end", () => {
+    console.log("客户端已断开连接");
   });
 
   // 当客户端发生错误时
-  socket.on('error', (err) => {
+  socket.on("error", (err) => {
     console.error(`客户端发生错误: ${err}`);
     // 关闭连接
     socket.end();
@@ -44,8 +68,8 @@ server.listen(PORT, () => {
 });
 
 // 当服务器关闭时
-server.on('close', () => {
-  console.log('服务器已关闭');
+server.on("close", () => {
+  console.log("服务器已关闭");
 });
 
 // 如果你想在某个条件下关闭服务器，可以调用 server.close()
