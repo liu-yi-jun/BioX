@@ -424,12 +424,8 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         brain_data[current_channel] =
           pkg.brain_elec_channel[current_channel][i];
       }
-      
-      this.signalProcess.run_dc_remove_eeg(
-        channel,
-        brain_data,
-        remove_output
-      );
+
+      this.signalProcess.run_dc_remove_eeg(channel, brain_data, remove_output);
 
       // 运行去基线
       if (this.config.eegFilter.isDCRemove) {
@@ -680,9 +676,9 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     baseline_ok: this.baseline_ok,
     concentration_date: this.concentration_date,
     loss_data_info_el: LDInfoEl,
-    isLosspkg:LDInfoEl.isLosspkg,
-    copy_brain_elec_channel: copy_brain_elec_channel,
-    copy_near_infrared: copy_near_infrared,
+    isLosspkg: LDInfoEl.isLosspkg,
+    copy_brain_elec_channel: pkg.pkg_type == 1 ? copy_brain_elec_channel : [],
+    copy_near_infrared: pkg.pkg_type == 2 ? copy_near_infrared : [],
     time_stamp: time_stamp,
     time_utc: time_utc,
   };

@@ -176,7 +176,8 @@ watch(
   play,
   (newValue) => {
     if(!newValue) {
-      changeStatus()
+      status.value = 0
+      timer && clearInterval(timer);
     }
   }
 );

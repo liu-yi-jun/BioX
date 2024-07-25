@@ -46,7 +46,6 @@ const onRecord = (value) => {
 };
 
 const onStatus = (value) => {
-  console.log("onStatus", value);
   status.value = value;
 };
 

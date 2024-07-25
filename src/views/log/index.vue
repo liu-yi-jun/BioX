@@ -31,8 +31,16 @@
             :step="1"
           ></a-input-number>
         </a-form-item>
-        <a-button v-if="!isConnectSocket" @click="changeSocket">连接</a-button>
-        <a-button v-else   @click="changeSocket">取消连接</a-button>
+        <a-space>
+          <a-button v-if="!isConnectSocket" @click="changeSocket"
+            >连接</a-button
+          >
+          <a-button v-else @click="changeSocket">取消连接</a-button>
+          <a-button v-if="isSendSocket" @click="cancelSocket"
+            >取消发送</a-button
+          >
+          <a-button v-else @click="sendSocket">模拟发送</a-button>
+        </a-space>
       </a-form>
     </div>
   </div>
@@ -50,6 +58,8 @@ import { CustomDatabase } from "../../utils/db";
 import { message } from "ant-design-vue";
 const db = new CustomDatabase();
 const isConnectSocket = ref<boolean>(false);
+const isSendSocket = ref<boolean>(false);
+const isCreateSocketServer = ref<boolean>(false);
 const changewava = () => {
   ipcRenderer.send(
     "change-config-field",
@@ -82,13 +92,16 @@ const changewava = () => {
 };
 const handleSocketReceiveData = (event: any, data: any) => {
   if (data.msg) {
-    
-    message.success(data.msg);
-    if(data.type == 1){
+    if (data.type == 1) {
+      message.success(data.msg);
       isConnectSocket.value = true;
     }
-    if(data.type == 0){
+    if (data.type == 0) {
+      message.success(data.msg);
       isConnectSocket.value = false;
+    }
+    if (data.type == -1) {
+      message.error(data.msg);
     }
   }
 };
@@ -101,6 +114,19 @@ const changeSocket = () => {
       port: socketConfig.value.port,
     });
   }
+};
+
+const sendSocket = () => {
+  if (!isConnectSocket.value) {
+    return message.error("请先连接");
+  }
+  // 读取txt文件并且将数据发送到socket
+  ipcRenderer.send("start-send-socket");
+  isSendSocket.value = true;
+};
+const cancelSocket = () => {
+  ipcRenderer.send("end-send-socket");
+  isSendSocket.value = false;
 };
 
 onMounted(() => {

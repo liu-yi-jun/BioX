@@ -3,10 +3,18 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 var child_process = require("child_process");
 const net = require("net");
 let client: any = null;
+const fs = require("fs");
+let rl: any = null;
+const readline = require("readline");
 let child: typeof child_process;
 let storeChild: typeof child_process;
 let replayChild: typeof child_process;
 let isStartStore = false;
+// 读取文件中的所有行数据
+const lines: string[] = [];
+// 定时器变量
+let socketTimer: any;
+const socketTimeGap = 40;
 import log from "electron-log/main";
 log.transports.file.level = "silly";
 log.transports.console.level = "silly";
@@ -38,25 +46,45 @@ async function handleFileOpen() {
   }
 }
 
-// 去除多余的0
-const removZero = ({ pkg }: any) => {
-  let brain_elec_channel: any = [];
-  let near_infrared: any = [];
-  for (let i = 0; i < pkg.eeg_channel; i++) {
-    brain_elec_channel[i] = [];
-    for (let j = 0; j < pkg.eeg_data_num; j++) {
-      brain_elec_channel[i][j] = pkg.brain_elec_channel[i][j];
-    }
-  }
+// // 去除多余的0
+// const removZero = (pkg: any) => {
+//   let brain_elec_channel: any = [];
+//   let copy_brain_elec_channel: any = [];
+//   let near_infrared: any = [];
+//   let copy_near_infrared: any = [];
+//   for (let i = 0; i < pkg.eeg_channel; i++) {
+//     brain_elec_channel[i] = [];
+//     copy_brain_elec_channel[i] = [];
+//     for (let j = 0; j < pkg.eeg_data_num; j++) {
+//       brain_elec_channel[i][j] = pkg.brain_elec_channel[i][j];
+//       copy_brain_elec_channel[i][j] = pkg.copy_brain_elec_channel[i][j];
+//     }
+//   }
 
-  for (let i = 0; i < pkg.ir_channel; i++) {
-    near_infrared[i] = [];
-    for (let j = 0; j < max__wave_channel; j++) {
-      near_infrared[i][j] = pkg.near_infrared[i][j];
+//   for (let i = 0; i < pkg.ir_channel; i++) {
+//     near_infrared[i] = [];
+//     copy_near_infrared[i] = [];
+//     for (let j = 0; j < max__wave_channel; j++) {
+//       near_infrared[i][j] = pkg.near_infrared[i][j];
+//       copy_near_infrared[i][j] = pkg.copy_near_infrared[i][j];
+//     }
+//   }
+//   pkg.brain_elec_channel = brain_elec_channel;
+//   pkg.copy_brain_elec_channel = copy_brain_elec_channel;
+//   pkg.near_infrared = near_infrared;
+//   pkg.copy_near_infrared = copy_near_infrared;
+// };
+
+// 去除多余的0
+const removZero = (list: any, channelNum: number, num: number) => {
+  let newList: any = [];
+  for (let i = 0; i < channelNum; i++) {
+    newList[i] = [];
+    for (let j = 0; j < num; j++) {
+      newList[i][j] = list[i][j];
     }
   }
-  pkg.brain_elec_channel = brain_elec_channel;
-  pkg.near_infrared = near_infrared;
+  return newList;
 };
 
 const handleSocketReceiveData = (data: any) => {
@@ -82,10 +110,22 @@ function createWindow() {
     console.log("connect-socket", data);
     client && client.removeListener("data", handleSocketReceiveData);
     client && client.end();
-    client = net.createConnection(data, function () {
-      console.log("connect success");
-      event.sender.send("receive-socket", { msg: "connect success", type: 1 });
-    });
+
+    client = net
+      .createConnection(data, function () {
+        console.log("connect success");
+        event.sender.send("receive-socket", {
+          msg: "connect success",
+          type: 1,
+        });
+      })
+      .on("error", function () {
+        console.log("connect error");
+        event.sender.send("receive-socket", {
+          msg: "connect error,please open socket server",
+          type: -1,
+        });
+      });
     client.on("data", handleSocketReceiveData);
   });
 
@@ -95,6 +135,50 @@ function createWindow() {
     event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
     client.end();
     client = null;
+  });
+
+  // 读取txt文件并且将数据发送到socket
+  ipcMain.on("start-send-socket", (event, data) => {
+    // 创建一个可读流
+    const readStream = fs.createReadStream(
+      join(_product_path, "/nodeServer/rawData.txt")
+    );
+    rl && rl.close();
+    socketTimer && clearInterval(socketTimer);
+    // 创建一个可读流的接口
+    rl = readline.createInterface({
+      input: readStream,
+    });
+    // 读取文件中的每一行
+    rl.on("line", (line: any) => {
+      lines.push(line);
+      client && client.write && client.write(line);
+    });
+
+    // 当读取完成时
+    rl.on("close", () => {
+      console.log("读取完成");
+      let lineIndex = 0;
+      socketTimer = setInterval(() => {
+        if (lineIndex < lines.length) {
+          // 发送一行数据
+          const line = lines[lineIndex];
+          client && client.write && client.write(line);
+          lineIndex++;
+        } else {
+          lineIndex = 0;
+        }
+      }, socketTimeGap);
+      // 关闭可读流的接口
+      rl.close();
+    });
+  });
+
+  ipcMain.on("end-send-socket", (event, data) => {
+    // 关闭可读流的接口
+    rl && rl.close();
+    socketTimer && clearInterval(socketTimer);
+    socketTimer = null;
   });
 
   //   蓝牙连接部分
@@ -385,20 +469,51 @@ function createWindow() {
     });
     child.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-decode") {
-        removZero(data);
+        // 去除多余的0
+
+        if (data.pkg.pkg_type == 1) {
+          data.pkg.brain_elec_channel = removZero(
+            data.pkg.brain_elec_channel,
+            data.pkg.eeg_channel,
+            data.pkg.eeg_data_num
+          );
+          data.copy_brain_elec_channel = removZero(
+            data.copy_brain_elec_channel,
+            data.pkg.eeg_channel,
+            data.pkg.eeg_data_num
+          );
+          data.pkg.near_infrared = [];
+        }
+
+        if (data.pkg.pkg_type == 2) {
+          data.pkg.near_infrared = removZero(
+            data.pkg.near_infrared,
+            data.pkg.ir_channel,
+            max__wave_channel
+          );
+
+          data.copy_near_infrared = removZero(
+            data.copy_near_infrared,
+            data.pkg.ir_channel,
+            max__wave_channel
+          );
+          data.pkg.brain_elec_channel = [];
+        }
+
+        let copyOrigin = {
+          ...data.pkg,
+          time_utc: data.time_utc,
+          brain_elec_channel: data.copy_brain_elec_channel,
+          near_infrared: data.copy_near_infrared,
+          isLosspkg: data.isLosspkg,
+        };
         isStartStore &&
           storeChild &&
           storeChild.send({
             type: "end-data-decode",
-            data: {
-              ...data.pkg,
-              time_utc: data.time_utc,
-              brain_elec_channel: data.copy_brain_elec_channel,
-              near_infrared: data.copy_near_infrared,
-              isLosspkg: data.isLosspkg,
-            },
+            data: copyOrigin,
           });
-        client && client.write && client.write(JSON.stringify(data.pkg));
+        client && client.write && client.write(JSON.stringify(copyOrigin));
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
         event.sender.send("end-data-decode", data);
