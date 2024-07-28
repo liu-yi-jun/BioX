@@ -46,6 +46,13 @@ export const useIndexStore = defineStore({
         two_ir_sample_rate: 50,
         three_ir_sample_rate: 25,
       },
+      lsl: {
+        isEeg:true,
+        isIr:true,
+        isMotion: true,
+        isOutLet:false,
+        isInlet:false,
+      }
     },
     socketConfig: {
       port: 9000,

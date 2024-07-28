@@ -19,9 +19,10 @@ const selectedKeys = ref<string[]>([route.path]);
 
 import {
   LineChartOutlined,
-  BarChartOutlined ,
+  BarChartOutlined,
   AppstoreOutlined,
   FileTextOutlined,
+  PartitionOutlined,
   SettingOutlined,
 } from "@ant-design/icons-vue";
 const state = reactive({
@@ -38,7 +39,7 @@ const items = reactive([
   },
   {
     key: "/FNIRS",
-    icon: () => h(BarChartOutlined  ),
+    icon: () => h(BarChartOutlined),
     label: "FNIRS",
     title: "FNIRS",
   },
@@ -47,6 +48,12 @@ const items = reactive([
     icon: () => h(AppstoreOutlined),
     label: "数据管理",
     title: "数据管理",
+  },
+  {
+    key: "/LSL",
+    icon: () => h(PartitionOutlined),
+    label: "LSL",
+    title: "LSL",
   },
   // {
   //   key: "/setting",

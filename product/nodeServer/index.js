@@ -51,6 +51,7 @@ const server = net.createServer((socket) => {
   // 当客户端断开连接时
   socket.on("end", () => {
     console.log("客户端已断开连接");
+    console.log('server end')
   });
 
   // 当客户端发生错误时
@@ -65,6 +66,7 @@ const server = net.createServer((socket) => {
 const PORT = 9000;
 server.listen(PORT, () => {
   console.log(`服务器已启动，监听端口 ${PORT}`);
+  console.log('server suscess')
 });
 
 // 当服务器关闭时

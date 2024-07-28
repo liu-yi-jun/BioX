@@ -52,7 +52,7 @@
         <template #overlay>
           <a-menu>
             <a-menu-item>
-              <div @click="closeDevice" style="text-align: center; color: #666">
+              <div @click="closeDevice" style="text-align: center; color: #666;padding: 6px 12px;">
                 断开连接
               </div>
             </a-menu-item>
@@ -62,7 +62,7 @@
     </div>
     <div>
       <a-space size="middle">
-        <a-dropdown placement="bottom">
+        <a-dropdown placement="bottom" >
           <a-button>
             <template #icon>
               <SettingOutlined />
@@ -76,12 +76,12 @@
                 </div>
               </a-menu-item> -->
               <a-menu-item>
-                <div style="padding: 0 10px" @click="openSettingModal">
+                <div style="padding: 6px 26px" @click="openSettingModal">
                   Fillters
                 </div>
               </a-menu-item>
               <a-menu-item>
-                <div style="padding: 0 10px" @click="openMarkerModal">
+                <div style="padding: 6px 26px" @click="openMarkerModal">
                   Marker
                 </div>
               </a-menu-item>
@@ -328,7 +328,7 @@
           v-if="isMarker"
           type="text"
           ><CheckCircleOutlined style="color: #67c23a" />
-          <span style="margin-left: 2px">Started</span></span
+          <span style="margin-left: 6px;color: #67c23a">Started</span></span
         >
         <a-button v-else type="primary" @click="handleStartMarker"
           >Start</a-button

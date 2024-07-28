@@ -10,6 +10,7 @@ let child: typeof child_process;
 let storeChild: typeof child_process;
 let replayChild: typeof child_process;
 let isStartStore = false;
+let nodeServer: any;
 // 读取文件中的所有行数据
 const lines: string[] = [];
 // 定时器变量
@@ -35,7 +36,7 @@ log.error("process.env.NODE_ENV:" + process.env.NODE_ENV);
 log.error("main:path:" + _product_path);
 
 // 定义child配置项
-let config = {};
+let config: any = {};
 
 async function handleFileOpen() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -110,23 +111,48 @@ function createWindow() {
     console.log("connect-socket", data);
     client && client.removeListener("data", handleSocketReceiveData);
     client && client.end();
+    nodeServer && nodeServer.kill();
+    nodeServer = child_process.spawn("node", [
+      join(_product_path, `/nodeServer/index.js`),
+    ]);
 
-    client = net
-      .createConnection(data, function () {
-        console.log("connect success");
-        event.sender.send("receive-socket", {
-          msg: "connect success",
-          type: 1,
+    nodeServer.stdout.on("data", (serData: any) => {
+      console.log(`server stdout: ${serData}`);
+      // 服务器创建成功
+      if (serData.toString().indexOf("server suscess") > -1) {
+        client = net.createConnection(data, function () {
+          client && client.write && client.write(JSON.stringify(config.lsl));
+          event.sender.send("receive-socket", {
+            msg: "connect success",
+            type: 1,
+          });
         });
-      })
-      .on("error", function () {
-        console.log("connect error");
-        event.sender.send("receive-socket", {
-          msg: "connect error,please open socket server",
-          type: -1,
+        client.on("error", function () {
+          console.log("client error");
+          event.sender.send("receive-socket", {
+            msg: "connect error,please open socket server",
+            type: -1,
+          });
         });
-      });
-    client.on("data", handleSocketReceiveData);
+        client.on("close", () => {
+          console.log("client close");
+          //服务器关闭
+          if (serData.toString().indexOf("server end") > -1) {
+            nodeServer.kill();
+            nodeServer = null;
+          }
+        });
+        client.on("data", handleSocketReceiveData);
+      }
+    });
+
+    nodeServer.on("error", (err: any) => {
+      console.error("server error:", err);
+    });
+
+    nodeServer.on("exit", (code: number, signal: string) => {
+      console.log(`server退出码: ${code}, 信号: ${signal}`);
+    });
   });
 
   // 取消socket连接
