@@ -34,7 +34,10 @@
               <a-select
                 v-model:value="seriesStep"
                 style="width: 100px"
-                @change="undateTimeSerie('xAxis');undateTimeSerie('series')"
+                @change="
+                  undateTimeSerie('xAxis');
+                  undateTimeSerie('series');
+                "
                 aria-placeholder="Show Time"
                 :options="showTimeOptions"
                 size="small"
@@ -245,7 +248,7 @@ let cachePkgSourceData: any = [];
 let drawPkgSourceData: any = [];
 let pkgDataList: any = [];
 let pkgMaxTime = 20;
-const EEGTimeGap = 4; // 采样间隔
+
 let colors: string[] = ["#8FDCFE", "#B3B3B3"];
 let bluetooth = new CustomBluetooth();
 let psdMapData: number[][] = [];
@@ -292,6 +295,7 @@ const {
   playGap,
   configData,
 } = storeToRefs(indexStore);
+const EEGTimeGap = 1000 / configData.value.eegFilter.sample_rate; // 采样间隔
 const db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
@@ -413,7 +417,7 @@ watch(
             return;
           }
           let dataList = joinPkgList(true);
-          
+
           dataList.forEach((item) => {
             ipcRenderer.send("start-data-replay", item);
           });
@@ -436,7 +440,7 @@ watch(isDragSlider, (newValue) => {
     pkgDataList = [];
     let dataList = joinPkgList();
     app?.proxy?.loading.show("解析中...");
-    play.value = false
+    play.value = false;
     ipcRenderer.send("start-data-replay", dataList);
   }
 });
@@ -559,7 +563,6 @@ const handlePkgList = (data) => {
     pkgDataList[pkgDataList.length - 1].time_mark - pkgDataList[0].time_mark >
       pkgMaxTime * 1000
   ) {
-    
     pkgDataList.shift();
   }
   //  有EEG数据标志位
@@ -584,11 +587,14 @@ const joinPkgList = (isGap: boolean = false) => {
         tempPkgDataList.push(item);
       }
 
-      if (!isGap && reTime > playIndex.value * playGap.value - pkgMaxTime * 1000) {
+      if (
+        !isGap &&
+        reTime > playIndex.value * playGap.value - pkgMaxTime * 1000
+      ) {
         tempPkgDataList.push(item);
       }
     }
-  }  
+  }
   return tempPkgDataList;
 };
 
@@ -725,14 +731,36 @@ const conversionPkgtoBarnsTimeOrRelated = (field, typeChannel, index, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     let fieldDataList = item[field + "_multiple"];
-
-    for (let fieldIndex = 0; fieldIndex < fieldDataList.length; fieldIndex++) {
-      tempSliceData.push({
-        value: [
-          baseTime + fieldIndex * EEGTimeGap,
-          fieldDataList[fieldIndex][parseChannel(typeChannel)][index],
-        ],
-      });
+    if (item.isLosspkg && sliceIndex !== sliceData.length - 1) {
+      // 补包的情况下自己算间隔，因为丢包后的时间戳不太对
+      let TimeGap =
+        (sliceData[sliceIndex + 1].time_mark - item.time_mark) /
+        item.eeg_data_num;
+      for (
+        let fieldIndex = 0;
+        fieldIndex < fieldDataList.length;
+        fieldIndex++
+      ) {
+        tempSliceData.push({
+          value: [
+            baseTime + fieldIndex * TimeGap,
+            fieldDataList[fieldIndex][parseChannel(typeChannel)][index],
+          ],
+        });
+      }
+    } else {
+      for (
+        let fieldIndex = 0;
+        fieldIndex < fieldDataList.length;
+        fieldIndex++
+      ) {
+        tempSliceData.push({
+          value: [
+            baseTime + fieldIndex * EEGTimeGap,
+            fieldDataList[fieldIndex][parseChannel(typeChannel)][index],
+          ],
+        });
+      }
     }
   }
   return tempSliceData;
@@ -754,19 +782,35 @@ const conversionPkgtoSeriesData = (typeChannel, step) => {
       baseTime += item.time_mark - sliceData[sliceIndex - 1].time_mark;
     }
     let brain_elec_channel = item.brain_elec_channel[parseChannel(typeChannel)];
-    for (let brainIndex = 0; brainIndex < item.eeg_data_num; brainIndex++) {
-      tempSliceData.push({
-        value: [
-          baseTime + brainIndex * EEGTimeGap,
-          brain_elec_channel[brainIndex],
-          item.time_stamp + brainIndex * EEGTimeGap,
-        ],
-        // 点演示
-        // itemStyle: {
-        //   color: item.color ? "red" : "#ffde33",
-        //   borderWidth: 1,
-        // },
-      });
+    if (item.isLosspkg && sliceIndex !== sliceData.length - 1) {
+      // 补包的情况下自己算间隔，因为丢包后的时间戳不太对
+      let TimeGap =
+        (sliceData[sliceIndex + 1].time_mark - item.time_mark) /
+        item.eeg_data_num;
+      for (let brainIndex = 0; brainIndex < item.eeg_data_num; brainIndex++) {
+        tempSliceData.push({
+          value: [
+            baseTime + brainIndex * TimeGap,
+            brain_elec_channel[brainIndex],
+            item.time_stamp + brainIndex * TimeGap,
+          ],
+        });
+      }
+    } else {
+      for (let brainIndex = 0; brainIndex < item.eeg_data_num; brainIndex++) {
+        tempSliceData.push({
+          value: [
+            baseTime + brainIndex * EEGTimeGap,
+            brain_elec_channel[brainIndex],
+            item.time_stamp + brainIndex * EEGTimeGap,
+          ],
+          // 点演示
+          // itemStyle: {
+          //   color: item.color ? "red" : "#ffde33",
+          //   borderWidth: 1,
+          // },
+        });
+      }
     }
   }
 

@@ -16,6 +16,10 @@ import {
   onBeforeUnmount,
   watch,
 } from "vue";
+import { useIndexStore } from "../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { configData } = storeToRefs(indexStore);
 const Heatmap = ref<HTMLElement | null>(null);
 const props = defineProps({
   numSeconds: String,
@@ -37,7 +41,7 @@ const rightPadding = 10;
 const topPadding = 10;
 const middlePadding = 30;
 const bottomPadding = 30;
-const EEGTimeGap = 4;
+const EEGTimeGap = 1000 / configData.value.eegFilter.sample_rate; // 采样间隔
 const maxValue = 300;
 const minValue = -300;
 const range = maxValue - minValue;
@@ -93,7 +97,7 @@ class ChannelBar {
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#787878");
     this.plot.getYAxis().setFontColor("#787878");
-      this.plot.getYAxis().setTickLabelOffset(2.8);
+    this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getYAxis().getAxisLabel().setText("Frequency (Hz)");
     this.plot.drawGridLines(window.GPlot.BOTH);
     this.xScalingFactor =
@@ -107,7 +111,10 @@ class ChannelBar {
     this.xNum = (1000 / EEGTimeGap) * parseInt(numSeconds!);
     offscreenCanvas.width = this.xNum;
     offscreenCanvas.height = this.offAutoscaleMax;
-    let bufferData = offscreenCtx.createImageData(this.xNum, this.offAutoscaleMax);
+    let bufferData = offscreenCtx.createImageData(
+      this.xNum,
+      this.offAutoscaleMax
+    );
     // let bufferData = offscreenCtx.createImageData(
     //   (parseInt(numSeconds!) * 1000) / 40,
     //   this.autoscaleMax
@@ -122,8 +129,8 @@ class ChannelBar {
   }
 
   updateSeries(series) {
-    if(!series || !series.length) {
-      return
+    if (!series || !series.length) {
+      return;
     }
     for (var i = 0; i < series.length; i++) {
       if (series[i][1] > this.autoscaleMax) {

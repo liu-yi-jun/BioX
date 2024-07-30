@@ -349,7 +349,7 @@ const exportCsv = async (record: DataItem) => {
   let valueArrayArrayForKey;
   // 转换数据到CSV格式
   // 转换数据时，需要将数据包数组与marker数组的数据进行融合写入文件里
-  mergedData.forEach((pkgData) => {
+  mergedData.forEach((pkgData,pkgIndex) => {
     // 数据是marker数组内的数据
     if (pkgData.source == "mergedMarkerData") {
       csvContent += pkgData.time_stamp + ",";
@@ -379,10 +379,24 @@ const exportCsv = async (record: DataItem) => {
         // 处理二维数组
         // console.log('Found array:', valueArrayArrayForKey);
         for (let col = 0; col < eegDataNum; col++) {
+          // 补包的情况下自己算间隔，因为丢包后的时间戳不太对
+          let TimeGap;
+          let mI = pkgIndex + 1
+          for (mI; mI < mergedData.length; mI++) {
+            if(mergedData[mI].pkg_type == 1) {
+              break;
+            }
+          }
+          if(pkgData.isLosspkg && mI < mergedData.length && mergedData[mI].pkg_type == 1) {
+            TimeGap = (mergedData[mI].time_mark - pkgData.time_mark) /
+            eegDataNum;
+          }else {
+            TimeGap = 1000 / configData.value.eegFilter.sample_rate;
+          }
           csvContent +=
             "" +
             (pkgData.time_utc +
-              col * (1000 / configData.value.eegFilter.sample_rate)) +
+              col * TimeGap) +
             ",";
           //增加eeg counter
           csvContent += "" + eegCounter + ",";

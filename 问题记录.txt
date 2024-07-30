@@ -23,3 +23,4 @@
 但是当Buffer中存储的是double类型数据时，double通常是8个字节长，而Buffer对象中的索引访问仍然是按字节进行的。因此，直接使用bufferl[0]去获取double数据可能会出现问题，因为double的每个值需要8个字节，而不是单个字节。
 如果您需要正确地提取double类型数据，您可以使用readDoubleLE或readDoubleBE方法来从Buffer中读取double类型数据。这样可以确保您正确地获取到double数据。
 18、主进程console不显示，有可能有错误的地方，比如main里面加了其他文件不能解析出来
+19、遗留问题，蓝牙状态下，丢包热力图可能出现补包，因为下位机给的时间不对，然后每包加4ms算出来的时间可能有交叉
