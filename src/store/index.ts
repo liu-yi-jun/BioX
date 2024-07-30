@@ -4,6 +4,8 @@ export const useIndexStore = defineStore({
   state: () => ({
     // 是否播放
     play: false,
+    // 是否在录制状态,
+    recordProgress: false,
     // 播放的id
     recordId: 0,
     // 是否连接
@@ -52,6 +54,7 @@ export const useIndexStore = defineStore({
         isMotion: true,
         isOutLet:false,
         isInlet:false,
+        streamName: "BioMulti Lite",
       }
     },
     socketConfig: {

@@ -320,7 +320,7 @@
             <p class="card-title">Wavelengths</p>
             <div class="view-setting">
               <div class="view-setting-radio">
-                <a-radio-group v-model:value="wavelengthsValue">
+                <a-radio-group :disabled="configData.lsl.isOutLet || recordProgress" v-model:value="wavelengthsValue">
                   <a-radio :style="radioStyle" :value="1">Two</a-radio>
                   <a-radio :style="radioStyle" :value="2">Three</a-radio>
                 </a-radio-group>
@@ -334,11 +334,13 @@
       v-model:open="baseLineLoadingOpen"
       title="tip"
       :closable="false"
-      :maskClosable="false" 
+      :maskClosable="false"
       :footer="null"
     >
       <div class="eig-baseline-loading-box">
-        <span style="margin-bottom: 20px;">Baseline calculation, please wait...</span>
+        <span style="margin-bottom: 20px"
+          >Baseline calculation, please wait...</span
+        >
         <a-spin />
       </div>
     </a-modal>
@@ -424,6 +426,7 @@ const {
   configData,
   isIrClear,
   playGap,
+  recordProgress,
   bluetoothATConfig,
 } = storeToRefs(indexStore);
 const db = new CustomDatabase();
@@ -696,10 +699,18 @@ onMounted(function () {
   indexStore.bluetoothATConfig.IRMODE.value = 0;
   configData.value.irFilter.plotType = 1;
   configData.value.irFilter.age = 25;
-  configData.value.irFilter.ir_sample_rate =
-    configData.value.irFilter.two_ir_sample_rate;
-  configData.value.irFilter.is2wave = true;
-  configData.value.irFilter.is3wave = false;
+  if (
+    configData.value.irFilter.ir_sample_rate ==
+    configData.value.irFilter.two_ir_sample_rate
+  ) {
+    wavelengthsValue.value = 1;
+  } else if (
+    configData.value.irFilter.ir_sample_rate ==
+    configData.value.irFilter.three_ir_sample_rate
+  ) {
+    wavelengthsValue.value = 2;
+  }
+
   ipcRenderer.send(
     "change-config-field",
     JSON.stringify({
@@ -784,14 +795,13 @@ const handlePkgList = (data) => {
     packetLossRate.value = data.loss_data_info_el.packetLossRate;
     packetLossNum.value = data.loss_data_info_el.packetLossNum;
     // 判断是否完成基线计算，完成关闭提示弹出框
-    
+
     if ((radioValue.value == 2 || radioValue.value == 3) && data.baseline_ok) {
-      baseLineLoadingSuccess()
+      baseLineLoadingSuccess();
     }
     // if(!baseLineLoadingOpen.value) {
-      pkgDataList.push(data);
+    pkgDataList.push(data);
     // }
-    
   }
 };
 
@@ -804,7 +814,8 @@ const joinPkgList = (isGap: boolean = false) => {
   for (let index = 0; index < pkgSourceData.length; index++) {
     const item = pkgSourceData[index];
     if (
-      item.time_mark - pkgSourceData[0].time_mark <= playIndex.value * playGap.value &&
+      item.time_mark - pkgSourceData[0].time_mark <=
+        playIndex.value * playGap.value &&
       item.pkg_type === 2
     ) {
       if (

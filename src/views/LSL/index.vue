@@ -15,8 +15,8 @@
         <a-tab-pane key="1" tab="Outlet">
           <div class="lsl-outlet">
             <div class="lsl-outlet-info">
-              <p>Stream name: BioMultiLiteDataStream</p>
-              <p>DeviceID: BioMultiLite Device 1-001</p>
+              <p>Stream name: {{configData.lsl.streamName }}</p>
+              <!-- <p>DeviceID: BioMultiLite Device 1-001</p> -->
               <p>Data stream info</p>
             </div>
             <div class="lsl-outlet-config">
@@ -43,7 +43,7 @@
                 <span>Number of stream: 32</span>
                 <span
                   >Sample rate:
-                  {{ configData.irFilter.two_ir_sample_rate }}Hz</span
+                  {{ configData.irFilter.ir_sample_rate }}Hz</span
                 >
                 <span>Data format: cf_float32</span>
               </div>

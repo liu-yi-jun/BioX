@@ -15,16 +15,16 @@
             class="start-record-icon"
           ></div>
           <div
-            @click="changeStatus"
+            @click="changeStatus('recordEnd')"
             v-if="isRecord && status === 1"
             class="progress-record-icon"
           ></div>
           <PlayCircleOutlined
-            @click="changeStatus"
+            @click="changeStatus('playStart')"
             v-if="!isRecord && status === 0"
           ></PlayCircleOutlined>
           <PauseCircleOutlined
-            @click="changeStatus"
+            @click="changeStatus('playEnd')"
             v-if="!isRecord && status === 1"
           ></PauseCircleOutlined>
         </div>
@@ -107,8 +107,16 @@ import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const app = getCurrentInstance();
 const indexStore = useIndexStore();
-const { play, recordId, playGap,playIndex, isDragSlider, isConnect, markerList } =
-  storeToRefs(indexStore);
+const {
+  play,
+  recordId,
+  playGap,
+  playIndex,
+  isDragSlider,
+  isConnect,
+  markerList,
+  recordProgress,
+} = storeToRefs(indexStore);
 const useForm = Form.useForm;
 const disabled = ref<boolean>(true);
 // 0:开始 1:进行中
@@ -147,7 +155,7 @@ const emit = defineEmits(["onRecord", "onStatus"]);
 
 watch(isConnect, (newValue) => {
   if (!newValue && status.value === 1) {
-    changeStatus();
+    changeStatus("recordEnd");
   }
 });
 
@@ -172,15 +180,12 @@ watch(isRecord, (newValue, oldValue) => {
 watch(status, (newValue, oldValue) => {
   emit("onStatus", newValue);
 });
-watch(
-  play,
-  (newValue) => {
-    if(!newValue) {
-      status.value = 0
-      timer && clearInterval(timer);
-    }
+watch(play, (newValue) => {
+  if (!newValue) {
+    status.value = 0;
+    timer && clearInterval(timer);
   }
-);
+});
 
 interface FormState {
   name: string;
@@ -202,7 +207,13 @@ onMounted(() => {
   db = new CustomDatabase();
 });
 
-const changeStatus = () => {
+const changeStatus = (process: string) => {
+  if (process == "recordStart") {
+    recordProgress.value = true;
+  }
+  if (process == "recordEnd") {
+    recordProgress.value = false;
+  }
   status.value = status.value === 0 ? 1 : 0;
 
   if (status.value === 1 && isRecord.value === false) {
@@ -286,7 +297,7 @@ const handleStartRecordModal = (e?: MouseEvent) => {
           ipcRenderer.send("start-store", { recordLastID: res });
         });
         openStartRecordModal.value = false;
-        changeStatus();
+        changeStatus("recordStart");
       })
       .catch((err) => {
         console.log("error", err);
@@ -357,12 +368,12 @@ const clearData = () => {
 };
 
 const changeTime = (value) => {
-  if(tempCurrentTime == value) {
-    return
+  if (tempCurrentTime == value) {
+    return;
   }
   indexStore.playIndex = parseInt(value / playGap.value + "");
   indexStore.isDragSlider = true;
-  tempCurrentTime = value
+  tempCurrentTime = value;
 };
 
 const playClose = () => {
