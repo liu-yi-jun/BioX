@@ -9,6 +9,7 @@ const readline = require("readline");
 let child: typeof child_process;
 let storeChild: typeof child_process;
 let replayChild: typeof child_process;
+let serialChild: typeof child_process;
 let isStartStore = false;
 let nodeServer: any;
 // 读取文件中的所有行数据
@@ -353,6 +354,18 @@ function createWindow() {
     replayChild && replayChild.connected && replayChild.kill();
   });
 
+  // 关闭串口进程
+  ipcMain.on("close-serialPort", (event) => {
+    if (serialChild && serialChild.connected) {
+      serialChild.send({ type: "close-serialPort" });
+      serialChild && serialChild.connected && serialChild.kill();
+      event.sender.send("receive-serialPort", {
+        msg: "串口已关闭",
+        type: 0,
+      });
+    }
+  });
+
   // Listen for a message from the renderer to get the response for the Bluetooth pairing.
   // ipcMain.on("bluetooth-pairing-response", (event, response) => {
   //   console.log("bluetooth-pairing-response");
@@ -367,6 +380,66 @@ function createWindow() {
   //     mainWindow.webContents.send("bluetooth-pairing-request", details);
   //   }
   // );
+
+  // 创建串口进程
+  ipcMain.on("create-serialPort", (event, data) => {
+    log.error("create-serialPort");
+    serialChild && serialChild.connected && serialChild.kill();
+    serialChild = child_process.fork(
+      join(__dirname, "./serialPort.js"),
+      [__static, _product_path, JSON.stringify(config)],
+      {
+        // 关闭子进程打印，开启ipc
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
+      },
+      function (err: any) {
+        log.error(err);
+        console.log(err);
+      }
+    );
+    // 初始化
+    serialChild.connected && serialChild.send({ type: "init-serialPort" });
+
+    serialChild.stdout.on("data", (data: any) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    serialChild.on("error", (err: any) => {
+      event.sender.send("receive-serialPort", {
+        msg: "子进程启动或执行过程中发生错误:" + err.toString(),
+        type: -1,
+      });
+    });
+
+    serialChild.on("exit", (code: number, signal: string) => {
+      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+    });
+    serialChild.on("message", ({ type, data }: { type: string; data: any }) => {
+      if (type === "serial-data-receive") {
+        console.log('data',data);
+        
+        if (data) {
+          child &&
+            child.connected &&
+            child.send({ type: "start-data-decode", data: Buffer.from(data) });
+        } else {
+        }
+      }
+      if (type === "serial-open-success") {
+        event.sender.send("receive-serialPort", {
+          msg: "串口打开成功",
+          type: 1,
+        });
+      }
+      if(type === "serial-no-ports"){
+        event.sender.send("receive-serialPort", {
+          msg: "没有可用的串口",
+          type: -1,
+        });
+      }
+    });
+  });
 
   // 创建回放进程
   ipcMain.on("create-replay", (event, data) => {

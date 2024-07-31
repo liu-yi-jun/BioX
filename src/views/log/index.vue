@@ -43,6 +43,19 @@
         </a-space>
       </a-form>
     </div>
+    <div style="margin-top: 20px">
+      <a-form size="small" layout="inline">
+        <a-form-item label="serialPort"> com3 </a-form-item>
+        <a-space>
+          <a-button
+            v-if="!configData.serialPort.isConnect"
+            @click="changeSerialPortState"
+            >连接</a-button
+          >
+          <a-button v-else @click="changeSerialPortState">取消连接</a-button>
+        </a-space>
+      </a-form>
+    </div>
   </div>
 </template>
 
@@ -106,6 +119,22 @@ const handleSocketReceiveData = (event: any, data: any) => {
   }
 };
 
+const handleSerialPortReceiveData = (event: any, data: any) => {
+  if (data.msg) {
+    if (data.type == 1) {
+      message.success(data.msg);
+       configData.value.serialPort.isConnect = true;
+    }
+    if (data.type == 0) {
+      message.success(data.msg);
+       configData.value.serialPort.isConnect = false;
+    }
+    if (data.type == -1) {
+      message.error(data.msg);
+    }
+  }
+};
+
 const changeSocket = () => {
   if (isConnectSocket.value) {
     ipcRenderer.send("cancel-socket");
@@ -113,6 +142,14 @@ const changeSocket = () => {
     ipcRenderer.send("connect-socket", {
       port: socketConfig.value.port,
     });
+  }
+};
+
+const changeSerialPortState = () => {
+  if (configData.value.serialPort.isConnect) {
+    ipcRenderer.send("close-serialPort");
+  } else {
+    ipcRenderer.send("create-serialPort");
   }
 };
 
@@ -132,9 +169,11 @@ const cancelSocket = () => {
 onMounted(() => {
   // 监听socket
   ipcRenderer.on("receive-socket", handleSocketReceiveData);
+  ipcRenderer.on("receive-serialPort", handleSerialPortReceiveData);
 });
 
 onBeforeUnmount(() => {
+   ipcRenderer.removeListener("receive-serialPort", handleSerialPortReceiveData);
   ipcRenderer.removeListener("receive-socket", handleSocketReceiveData);
 });
 </script>

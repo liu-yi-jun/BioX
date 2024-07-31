@@ -49,13 +49,17 @@ export const useIndexStore = defineStore({
         three_ir_sample_rate: 25,
       },
       lsl: {
-        isEeg:true,
-        isIr:true,
+        isEeg: true,
+        isIr: true,
         isMotion: true,
-        isOutLet:false,
-        isInlet:false,
+        isOutLet: false,
+        isInlet: false,
         streamName: "BioMulti Lite",
-      }
+      },
+      serialPort: {
+        isConnect: false,
+        portName: "COM3",
+      },
     },
     socketConfig: {
       port: 9000,

@@ -13,6 +13,8 @@ let handleNotifications = function (event) {
 };
 // 蓝牙通知函数
 const handleEndDataDecode = (event, data) => {
+
+  
   for (let i = 0; i < noticeList.length; i++) {
     noticeList[i]({
       ...data.pkg,

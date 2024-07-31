@@ -65,6 +65,7 @@
     "ref-array-napi": "^1.2.2",
     "ref-napi": "^3.0.3",
     "ref-struct-napi": "^1.1.1",
+    "serialport": "^12.0.0",
     "sqlite3": "5.1.6",
     "vue": "^3.2.25"
   },

@@ -126,6 +126,18 @@ process.on("message", async function ({ type, data }) {
 
       const pkg = ptrpkg.deref();
       let dataList = processing.processData(pkg);
+      let Usage = process.memoryUsage()
+      // console.log(
+      //   Usage.rss / 1024 / 1024,
+      //   "MB",
+      //   Usage.heapTotal / 1024 / 1024,
+      //   "MB",
+      //   Usage.heapUsed / 1024 / 1024,
+      //   "MB",
+      //   Usage.external / 1024 / 1024,
+      //   "MB"
+      // );
+
       dataList.forEach((item: any) => {
         process.send!({
           type: "end-data-decode",
