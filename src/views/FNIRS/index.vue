@@ -429,7 +429,7 @@ const {
   recordProgress,
   bluetoothATConfig,
 } = storeToRefs(indexStore);
-const db = new CustomDatabase();
+let db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
 let timerPlay, timer;
 interface showSeriesDataType {
@@ -739,6 +739,15 @@ onBeforeUnmount(() => {
   timerPlay && clearInterval(timerPlay);
   realTimer && clearInterval(realTimer);
   isRenderTimer && clearTimeout(isRenderTimer);
+  pkgDataList = [];
+  pkgSourceData = [];
+  db = null;
+  bluetooth = null;
+  timer = null;
+  timerPlay = null;
+  realTimer = null;
+  isRenderTimer = null;
+  showSeriesData = [];
 });
 
 // 获取元素高度

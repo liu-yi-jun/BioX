@@ -19,7 +19,7 @@ import {
 const AbsolutePower = ref<HTMLElement | null>(null);
 let numMax = 5;
 let canvasP5: any;
-let channelBars: ChannelBar;
+let channelBars: any;
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -106,8 +106,8 @@ class ChannelBar {
   }
 
   updateSeries(series) {
-    if(!series || !series.length) {
-      return
+    if (!series || !series.length) {
+      return;
     }
     if (series[0] == undefined) {
       return;
@@ -208,8 +208,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  canvasP5 = null;
+  channelBars = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

@@ -27,7 +27,7 @@
                   v-model:checked="configData.lsl.isEeg"
                   >EEG</a-checkbox
                 >
-                <span>Number of stream: 2</span>
+                <span>Number of stream: {{ configData.eegFilter.eeg_channel_count }}</span>
                 <span
                   >Sample rate: {{ configData.eegFilter.sample_rate }}Hz</span
                 >
@@ -40,7 +40,7 @@
                   v-model:checked="configData.lsl.isIr"
                   >FNIRS</a-checkbox
                 >
-                <span>Number of stream: 32</span>
+                <span>Number of stream: {{configData.irFilter.ir_channel_count}}</span>
                 <span
                   >Sample rate:
                   {{ configData.irFilter.ir_sample_rate }}Hz</span

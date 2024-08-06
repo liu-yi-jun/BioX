@@ -27,7 +27,7 @@ let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
 let channel = ["γ wave", "β wave", "α wave", "θ wave", "δ wave"];
-let channelBars: ChannelBar;
+let channelBars: any;
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -76,7 +76,7 @@ class ChannelBar {
     this.plot.getXAxis().setLineColor("#DDDDDD");
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#787878");
-     this.plot.getYAxis().setTickLabelOffset(2.8);
+    this.plot.getYAxis().setTickLabelOffset(2.8);
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().getAxisLabel().setText("Each Band Power Ratio (%)");
     this.plot.drawGridLines(window.GPlot.BOTH);
@@ -86,8 +86,8 @@ class ChannelBar {
   }
 
   updateSeries(name, series, allSeries, currentChannel) {
-    if(!series || !series.length) {
-      return
+    if (!series || !series.length) {
+      return;
     }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
@@ -267,8 +267,15 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  channelBars = null;
+  customCanvas = null;
+  customCtx = null;
+  canvasP5 = null
+  offscreenCanvas = null;
+  offscreenCtx = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

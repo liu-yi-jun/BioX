@@ -1,6 +1,6 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
-
+// console.log = () => {}; // 阻止打印, 内存泄漏可以有效避免
 import App from "./App.vue";
 import router from "./router";
 import Antd from "ant-design-vue";

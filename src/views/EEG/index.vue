@@ -296,7 +296,7 @@ const {
   configData,
 } = storeToRefs(indexStore);
 const EEGTimeGap = 1000 / configData.value.eegFilter.sample_rate; // 采样间隔
-const db = new CustomDatabase();
+let db = new CustomDatabase();
 let sourceData;
 let timerPlay, timer, realTimer;
 const MaxFrequency = 257;
@@ -495,6 +495,17 @@ onBeforeUnmount(() => {
   timerPlay && clearInterval(timerPlay);
   realTimer && clearInterval(realTimer);
   isRenderTimer && clearTimeout(isRenderTimer);
+  psdMapData = [];
+  pkgSourceData = [];
+  pkgDataList = [];
+  cachePkgSourceData = [];
+  drawPkgSourceData = [];
+  bluetooth = null;
+  db = null;
+  timerPlay = null;
+  timer = null;
+  realTimer = null;
+  isRenderTimer = null;
 });
 
 // 初始化

@@ -19,7 +19,7 @@ const Psd = ref<HTMLElement | null>(null);
 let maxFreq = 125;
 let canvasP5: any;
 let channel = ["Fp1", "Fp2"];
-let channelBars: ChannelBar;
+let channelBars: any;
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -218,8 +218,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  canvasP5 = null
+  channelBars = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

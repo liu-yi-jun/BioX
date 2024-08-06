@@ -35,7 +35,7 @@ let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
 let channel = ["Fp1", "Fp2"];
-let channelBars: ChannelBar[] = [];
+let channelBars: any = [];
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -366,14 +366,23 @@ const handleKeydown = (e) => {
 onMounted(() => {
   sketch && sketch.remove();
   sketch = new window.p5((p) => defaultPlotSketch(p), "TimeSeries");
+  console.log( window.p5.prototype._registeredMethods.remove);
+  
   window.addEventListener("resize", resizeing);
   window.addEventListener("keydown", handleKeydown);
 });
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  channelBars = null;
+  customCanvas = null;
+  customCtx = null;
+  offscreenCanvas = null;
+  offscreenCtx = null;
+  canvasP5 = null
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
   window.removeEventListener("keydown", handleKeydown);

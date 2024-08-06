@@ -31,7 +31,7 @@ let customCanvas: any;
 let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
-let channelBars: ChannelBar;
+let channelBars: any;
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -323,12 +323,20 @@ onMounted(() => {
   sketch && sketch.remove();
   sketch = new window.p5((p) => defaultPlotSketch(p), "Heatmap");
   window.addEventListener("resize", resizeing);
+ 
 });
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  channelBars = null;
+  customCanvas = null;
+  canvasP5 = null
+  customCtx = null;
+  offscreenCanvas = null;
+  offscreenCtx = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

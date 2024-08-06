@@ -32,7 +32,7 @@ let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
 let channel = ["EEG", "DELTA", "THETA", "ALPHA", "BETA", "GAMMA"];
-let channelBars: ChannelBar[] = [];
+let channelBars: any = [];
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -100,15 +100,15 @@ class ChannelBar {
   }
 
   updateSeries(series) {
-    if(!series || !series.length) {
-      return
+    if (!series || !series.length) {
+      return;
     }
     let points: any = [];
     if (this.yMin === undefined) {
       this.autoscaleMin = Number.MAX_VALUE;
     }
     if (this.yMax === undefined) {
-      this.autoscaleMax =  -Number.MAX_VALUE;
+      this.autoscaleMax = -Number.MAX_VALUE;
     }
     for (var i = 0; i < series.length; i++) {
       if (series[i].value[1] > this.autoscaleMax) {
@@ -145,8 +145,8 @@ class ChannelBar {
   setYLim() {
     let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
     let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
-    if(min == Number.MAX_VALUE || max == Number.MIN_VALUE){
-      return
+    if (min == Number.MAX_VALUE || max == Number.MIN_VALUE) {
+      return;
     }
     min = Number(min);
     max = Number(max);
@@ -288,12 +288,21 @@ onMounted(() => {
   sketch && sketch.remove();
   sketch = new window.p5((p) => defaultPlotSketch(p), "BarnsTime");
   window.addEventListener("resize", resizeing);
+ 
 });
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  customCanvas = null;
+  customCtx = null;
+  canvasP5 = null
+  offscreenCanvas = null;
+  offscreenCtx = null;
+  channel = [];
+  channelBars = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });

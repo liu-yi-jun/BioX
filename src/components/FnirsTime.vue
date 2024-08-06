@@ -27,7 +27,7 @@ let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
 let channel: any = [];
-let channelBars: ChannelBar[] = [];
+let channelBars: any = [];
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
@@ -203,7 +203,7 @@ class ChannelBar {
 
   customMarker() {
     let plot = this.plot;
-    if(!this.lineSeries[0]) return
+    if (!this.lineSeries[0]) return;
     let plotPoints = this.lineSeries[0].layer.plotPoints;
     if (!plotPoints[0]) return;
     offscreenCtx.save();
@@ -410,8 +410,16 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   sketch.remove();
+  sketch.remove = null;
   sketch = null;
-  channelBars = [];
+  window.p5.prototype._registeredMethods.remove = []
+  channelBars = null;
+  customCanvas = null;
+  customCtx = null;
+  offscreenCanvas = null;
+  offscreenCtx = null;
+  canvasP5 = null
+  channel = [];
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
   window.removeEventListener("keydown", handleKeydown);

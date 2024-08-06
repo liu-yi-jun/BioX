@@ -93,6 +93,20 @@ const handleSocketReceiveData = (data: any) => {
   console.log("handleSocketReceiveData", data);
 };
 
+const sendConfig = (action: string) => {
+  return {
+    pkg_type: 3,
+    open_eeg: config.lsl.isEeg,
+    open_ir: config.lsl.isIr,
+    eeg_rate: config.eegFilter.sample_rate,
+    eeg_channel_count: config.eegFilter.eeg_channel_count,
+    ir_rate: config.irFilter.ir_sample_rate,
+    ir_channel_count: config.irFilter.ir_channel_count,
+    stream_name: config.lsl.streamName,
+    action: action,
+  };
+};
+
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -109,57 +123,98 @@ function createWindow() {
 
   // 连接socket
   ipcMain.on("connect-socket", (event, data) => {
-    console.log("connect-socket", data);
+    console.log("connect-socket", data.port);
     client && client.removeListener("data", handleSocketReceiveData);
     client && client.end();
     nodeServer && nodeServer.kill();
-    nodeServer = child_process.spawn("node", [
-      join(_product_path, `/nodeServer/index.js`),
-    ]);
-
-    nodeServer.stdout.on("data", (serData: any) => {
-      console.log(`server stdout: ${serData}`);
-      // 服务器创建成功
-      if (serData.toString().indexOf("server suscess") > -1) {
-        client = net.createConnection(data, function () {
-          client && client.write && client.write(JSON.stringify(config.lsl));
-          event.sender.send("receive-socket", {
-            msg: "connect success",
-            type: 1,
-          });
-        });
-        client.on("error", function () {
-          console.log("client error");
-          event.sender.send("receive-socket", {
-            msg: "connect error,please open socket server",
-            type: -1,
-          });
-        });
-        client.on("close", () => {
-          console.log("client close");
-          //服务器关闭
-          if (serData.toString().indexOf("server end") > -1) {
-            nodeServer.kill();
-            nodeServer = null;
-          }
-        });
-        client.on("data", handleSocketReceiveData);
-      }
+    console.log('_product_path',_product_path);
+    
+    // nodeServer = child_process.exec(
+    //   join(_product_path, `/exe/server_socket.exe`),
+    //   (error: any, stdout: any, stderr: any) => {
+    //     if (error) {
+    //       console.log(`error: ${error.message}`);
+    //       return;
+    //     }
+    //     if (stderr) {
+    //       console.log(`stderr: ${stderr}`);
+    //       return;
+    //     }
+    //     console.log(`stdout: ${stdout}`);
+    //   }
+    // );
+    client = net.createConnection(data, function () {
+      client &&
+        client.write &&
+        client.write(JSON.stringify(sendConfig("start")));
+      event.sender.send("receive-socket", {
+        msg: "connect success",
+        type: 1,
+      });
     });
-
-    nodeServer.on("error", (err: any) => {
-      console.error("server error:", err);
+    client.on("error", function () {
+      console.log("client error");
+      event.sender.send("receive-socket", {
+        msg: "connect error,please open socket server",
+        type: -1,
+      });
     });
+    client.on("close", () => {
+      console.log("client close");
+      //服务器关闭
 
-    nodeServer.on("exit", (code: number, signal: string) => {
-      console.log(`server退出码: ${code}, 信号: ${signal}`);
+        // nodeServer.kill();
+        // nodeServer = null;
+    
     });
+    client.on("data", handleSocketReceiveData);
+// 111
+    // nodeServer.stdout.on("data", (serData: any) => {
+    //   console.log(`server stdout: ${serData}`);
+    //   // 服务器创建成功
+    //   if (serData.toString().indexOf("server suscess") > -1) {
+    //     client = net.createConnection(data, function () {
+    //       client &&
+    //         client.write &&
+    //         client.write(JSON.stringify(sendConfig("start")));
+    //       event.sender.send("receive-socket", {
+    //         msg: "connect success",
+    //         type: 1,
+    //       });
+    //     });
+    //     client.on("error", function () {
+    //       console.log("client error");
+    //       event.sender.send("receive-socket", {
+    //         msg: "connect error,please open socket server",
+    //         type: -1,
+    //       });
+    //     });
+    //     client.on("close", () => {
+    //       console.log("client close");
+    //       //服务器关闭
+    //       if (serData.toString().indexOf("server end") > -1) {
+    //         nodeServer.kill();
+    //         nodeServer = null;
+    //       }
+    //     });
+    //     client.on("data", handleSocketReceiveData);
+    //   }
+    // });
+// 111
+    // nodeServer.on("error", (err: any) => {
+    //   console.error("server error:", err);
+    // });
+
+    // nodeServer.on("exit", (code: number, signal: string) => {
+    //   console.log(`server退出码: ${code}, 信号: ${signal}`);
+    // });
   });
 
   // 取消socket连接
   ipcMain.on("cancel-socket", (event, data) => {
     console.log("cancel-socket", data);
     event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
+    client.write(JSON.stringify(sendConfig("stop")));
     client.end();
     client = null;
   });
@@ -417,8 +472,8 @@ function createWindow() {
     });
     serialChild.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "serial-data-receive") {
-        console.log('data',data);
-        
+        console.log("data", data);
+
         if (data) {
           child &&
             child.connected &&
@@ -432,7 +487,7 @@ function createWindow() {
           type: 1,
         });
       }
-      if(type === "serial-no-ports"){
+      if (type === "serial-no-ports") {
         event.sender.send("receive-serialPort", {
           msg: "没有可用的串口",
           type: -1,

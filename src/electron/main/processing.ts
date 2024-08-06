@@ -495,7 +495,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           this.ps_s[current_channel],
           this.psd_s[current_channel]
         );
-        // fft_ps_eegbands 用于EEG Bands视图
+        // // fft_ps_eegbands 用于EEG Bands视图
         this.signalProcess.fft_ps_eegbands(
           current_channel,
           sample_rate,

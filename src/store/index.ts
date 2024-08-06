@@ -33,6 +33,7 @@ export const useIndexStore = defineStore({
         fh: 100,
         bpType: 1,
         sample_rate: 250,
+        eeg_channel_count:2
       },
       irFilter: {
         isDCRemove: true,
@@ -47,6 +48,7 @@ export const useIndexStore = defineStore({
         ir_sample_rate: 50,
         two_ir_sample_rate: 50,
         three_ir_sample_rate: 25,
+        ir_channel_count:32
       },
       lsl: {
         isEeg: true,

@@ -103,7 +103,17 @@ process.on("message", async function ({ type, data }) {
   }
   if (type === "start-data-decode") {
     pkgDecode.pkg_recv();
-
+    //  let Usage = process.memoryUsage()
+    // console.log(
+    //   Usage.rss / 1024 / 1024,
+    //   "MB",
+    //   Usage.heapTotal / 1024 / 1024,
+    //   "MB",
+    //   Usage.heapUsed / 1024 / 1024,
+    //   "MB",
+    //   Usage.external / 1024 / 1024,
+    //   "MB"
+    // );
     let recvBuffer = Buffer.from(data.data);
 
     // if (isTestPkg) {
@@ -121,22 +131,11 @@ process.on("message", async function ({ type, data }) {
     if (pkgDecode.get_pkg_buffer_length()) {
       // 返回一个指针
 
-      const ptrpkg = pkgDecode.decode();
+      let ptrpkg = pkgDecode.decode();
       // 获取值
 
-      const pkg = ptrpkg.deref();
+      let pkg = ptrpkg.deref();
       let dataList = processing.processData(pkg);
-      let Usage = process.memoryUsage()
-      // console.log(
-      //   Usage.rss / 1024 / 1024,
-      //   "MB",
-      //   Usage.heapTotal / 1024 / 1024,
-      //   "MB",
-      //   Usage.heapUsed / 1024 / 1024,
-      //   "MB",
-      //   Usage.external / 1024 / 1024,
-      //   "MB"
-      // );
 
       dataList.forEach((item: any) => {
         process.send!({
@@ -145,6 +144,8 @@ process.on("message", async function ({ type, data }) {
         });
       });
       // 释放内存
+      ptrpkg = null;
+      pkg = null;
       pkgDecode.pkgbuffer_pop();
     }
   }

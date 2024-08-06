@@ -33,11 +33,11 @@ const routes = [
     name: "LSL",
     component: LSL,
   },
-  {
-    path: "/setting",
-    name: "Setting",
-    component: Setting,
-  },
+  // {
+  //   path: "/setting",
+  //   name: "Setting",
+  //   component: Setting,
+  // },
   {
     path: "/log",
     name: "Log",
