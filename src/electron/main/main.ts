@@ -127,96 +127,63 @@ function createWindow() {
     client && client.removeListener("data", handleSocketReceiveData);
     client && client.end();
     nodeServer && nodeServer.kill();
-    console.log('_product_path',_product_path);
-    
-    // nodeServer = child_process.exec(
-    //   join(_product_path, `/exe/server_socket.exe`),
-    //   (error: any, stdout: any, stderr: any) => {
-    //     if (error) {
-    //       console.log(`error: ${error.message}`);
-    //       return;
-    //     }
-    //     if (stderr) {
-    //       console.log(`stderr: ${stderr}`);
-    //       return;
-    //     }
-    //     console.log(`stdout: ${stdout}`);
-    //   }
-    // );
-    client = net.createConnection(data, function () {
-      client &&
+    nodeServer = child_process.exec(
+      join(_product_path, `/exe/main.exe`),
+      (error: any, stdout: any, stderr: any) => {
+        if (error) {
+          event.sender.send("receive-socket", {
+            msg: error.message,
+            type: -1,
+          });
+          return;
+        }
+        if (stderr) {
+          event.sender.send("receive-socket", {
+            msg: stderr,
+            type: -1,
+          });
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        // 服务器创建成功
+      }
+    );
+
+    setTimeout(() => {
+      client = net.createConnection(data, function () {
+        client &&
         client.write &&
         client.write(JSON.stringify(sendConfig("start")));
-      event.sender.send("receive-socket", {
-        msg: "connect success",
-        type: 1,
+        event.sender.send("receive-socket", {
+          msg: "connect success",
+          type: 1,
+        });
       });
-    });
-    client.on("error", function () {
-      console.log("client error");
-      event.sender.send("receive-socket", {
-        msg: "connect error,please open socket server",
-        type: -1,
+      client.on("error", function () {
+        console.log("client error");
+        event.sender.send("receive-socket", {
+          msg: "connect error,please open socket server",
+          type: -1,
+        });
       });
-    });
-    client.on("close", () => {
-      console.log("client close");
-      //服务器关闭
-
-        // nodeServer.kill();
-        // nodeServer = null;
-    
-    });
-    client.on("data", handleSocketReceiveData);
-// 111
-    // nodeServer.stdout.on("data", (serData: any) => {
-    //   console.log(`server stdout: ${serData}`);
-    //   // 服务器创建成功
-    //   if (serData.toString().indexOf("server suscess") > -1) {
-    //     client = net.createConnection(data, function () {
-    //       client &&
-    //         client.write &&
-    //         client.write(JSON.stringify(sendConfig("start")));
-    //       event.sender.send("receive-socket", {
-    //         msg: "connect success",
-    //         type: 1,
-    //       });
-    //     });
-    //     client.on("error", function () {
-    //       console.log("client error");
-    //       event.sender.send("receive-socket", {
-    //         msg: "connect error,please open socket server",
-    //         type: -1,
-    //       });
-    //     });
-    //     client.on("close", () => {
-    //       console.log("client close");
-    //       //服务器关闭
-    //       if (serData.toString().indexOf("server end") > -1) {
-    //         nodeServer.kill();
-    //         nodeServer = null;
-    //       }
-    //     });
-    //     client.on("data", handleSocketReceiveData);
-    //   }
-    // });
-// 111
-    // nodeServer.on("error", (err: any) => {
-    //   console.error("server error:", err);
-    // });
-
-    // nodeServer.on("exit", (code: number, signal: string) => {
-    //   console.log(`server退出码: ${code}, 信号: ${signal}`);
-    // });
+      client.on("close", () => {
+        console.log("client close");
+        //服务器关闭
+      });
+      client.on("data", handleSocketReceiveData);
+    }, 500);
   });
 
   // 取消socket连接
   ipcMain.on("cancel-socket", (event, data) => {
     console.log("cancel-socket", data);
     event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
-    client.write(JSON.stringify(sendConfig("stop")));
-    client.end();
+    client && client.write(JSON.stringify(sendConfig("stop")));
+    client && client.write(JSON.stringify(sendConfig("remove")));
+    client && client.end();
     client = null;
+    nodeServer && nodeServer.kill();
+    nodeServer = null;
   });
 
   // 读取txt文件并且将数据发送到socket
@@ -706,12 +673,45 @@ function createWindow() {
   // );
 }
 
+function createNodeServer() {
+  const server = net.createServer().listen(9000, () => {
+    // 服务器监听端口成功，端口未被占用
+    const address = server.address();
+    console.log(`服务器监听地址: ${address.address}:${address.port}`);
+    nodeServer && nodeServer.kill();
+    nodeServer = child_process.exec(
+      join(_product_path, `/exe/server_socket.exe`),
+      (error: any, stdout: any, stderr: any) => {
+        if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+      }
+    );
+  });
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.log("端口已被占用");
+    } else {
+      console.error(err);
+    }
+
+    server.close(); // 关闭服务器
+  });
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   ipcMain.handle("dialog:openFile", handleFileOpen);
   createWindow();
+  // createNodeServer();
   app.on("activate", function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -724,6 +724,8 @@ app.whenReady().then(() => {
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    // nodeServer && nodeServer.kill();
+    // nodeServer = null;
     app.quit();
   }
 });
