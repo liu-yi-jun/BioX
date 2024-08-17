@@ -178,12 +178,12 @@ function createWindow() {
   ipcMain.on("cancel-socket", (event, data) => {
     console.log("cancel-socket", data);
     event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
-    client && client.write(JSON.stringify(sendConfig("stop")));
+    // client && client.write(JSON.stringify(sendConfig("stop")));
     client && client.write(JSON.stringify(sendConfig("remove")));
-    client && client.end();
-    client = null;
-    nodeServer && nodeServer.kill();
-    nodeServer = null;
+    // client && client.end();
+    // client = null;
+    // nodeServer && nodeServer.kill();
+    // nodeServer = null;
   });
 
   // 读取txt文件并且将数据发送到socket
