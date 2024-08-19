@@ -1,7 +1,7 @@
 <template>
   <div class="header">
     <div>
-      BioMultiLite_1.1.18_240807_Alpha_Win
+      BioMultiLite_1.1.19_240818_Alpha_Win
       <a-button @click="openAtDebug">
         <template #icon>
           <BugOutlined />

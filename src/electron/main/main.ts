@@ -5,6 +5,7 @@ const net = require("net");
 let client: any = null;
 const fs = require("fs");
 let rl: any = null;
+let isConnect = false;
 const readline = require("readline");
 let child: typeof child_process;
 let storeChild: typeof child_process;
@@ -16,7 +17,7 @@ let nodeServer: any;
 const lines: string[] = [];
 // 定时器变量
 let socketTimer: any;
-const socketTimeGap = 40;
+const socketTimeGap = 10;
 import log from "electron-log/main";
 log.transports.file.level = "silly";
 log.transports.console.level = "silly";
@@ -89,10 +90,6 @@ const removZero = (list: any, channelNum: number, num: number) => {
   return newList;
 };
 
-const handleSocketReceiveData = (data: any) => {
-  console.log("handleSocketReceiveData", data);
-};
-
 const sendConfig = (action: string) => {
   return {
     pkg_type: 3,
@@ -124,27 +121,26 @@ function createWindow() {
   // 连接socket
   ipcMain.on("connect-socket", (event, data) => {
     console.log("connect-socket", data.port);
-    client && client.removeListener("data", handleSocketReceiveData);
-    client && client.end();
-    nodeServer && nodeServer.kill();
+    // client && client.destroy();
+    // client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
     nodeServer = child_process.exec(
-      join(_product_path, `/exe/main.exe`),
+      join(_product_path, `/exe/server_socket.exe`),
       (error: any, stdout: any, stderr: any) => {
-        if (error) {
-          event.sender.send("receive-socket", {
-            msg: error.message,
-            type: -1,
-          });
-          return;
-        }
-        if (stderr) {
-          event.sender.send("receive-socket", {
-            msg: stderr,
-            type: -1,
-          });
-          return;
-        }
-        console.log(`stdout: ${stdout}`);
+        // if (error) {
+        //   event.sender.send("receive-socket", {
+        //     msg: error.message,
+        //     type: -1,
+        //   });
+        //   return;
+        // }
+        // if (stderr) {
+        //   event.sender.send("receive-socket", {
+        //     msg: stderr,
+        //     type: -1,
+        //   });
+        //   return;
+        // }
+        // console.log(`stdout: ${stdout}`);
         // 服务器创建成功
       }
     );
@@ -152,37 +148,68 @@ function createWindow() {
     setTimeout(() => {
       client = net.createConnection(data, function () {
         client &&
-        client.write &&
-        client.write(JSON.stringify(sendConfig("start")));
+          client.write &&
+          client.write(JSON.stringify(sendConfig("start")) + "\n");
+        // 延迟发送数据，避免数据在开始之前就发送了
+        setTimeout(() => {
+          isConnect = true;
+        }, 500);
         event.sender.send("receive-socket", {
           msg: "connect success",
           type: 1,
         });
       });
-      client.on("error", function () {
-        console.log("client error");
-        event.sender.send("receive-socket", {
-          msg: "connect error,please open socket server",
-          type: -1,
-        });
+      client.on("error", function (err: any) {
+        console.log("client:error", err);
+        if (err.code !== "ECONNRESET") {
+          event.sender.send("receive-socket", {
+            msg: "connect error,please open socket server",
+            type: -1,
+          });
+        } else {
+          // event.sender.send("receive-socket", {
+          //   msg: "cancel success",
+          //   type: 0,
+          // });
+        }
       });
       client.on("close", () => {
         console.log("client close");
         //服务器关闭
+        // client = null;
+        // const client1 = net.createConnection(data, function () {
+        //   client1 && client1.write(JSON.stringify(sendConfig("remove"))+'\n');
+        //   event.sender.send("receive-socket", {
+        //     msg: "cancel success",
+        //     type: 0,
+        //   });
+        //   client1.on("error", function (err: any) {
+        //     console.log("client1:error", err);
+        //   });
+        // });
       });
-      client.on("data", handleSocketReceiveData);
+
+      client.on("end", (error: any) => {
+        console.log("client end", error);
+        if (!error) {
+        }
+      });
     }, 500);
   });
 
   // 取消socket连接
   ipcMain.on("cancel-socket", (event, data) => {
-    console.log("cancel-socket", data);
-    event.sender.send("receive-socket", { msg: "cancel success", type: 0 });
-    // client && client.write(JSON.stringify(sendConfig("stop")));
-    client && client.write(JSON.stringify(sendConfig("remove")));
+    console.log("cancel-socket");
+    isConnect = false;
+    client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
+    event.sender.send("receive-socket", {
+      msg: "cancel success",
+      type: 0,
+    });
     // client && client.end();
-    // client = null;
-    // nodeServer && nodeServer.kill();
+    // 使用end有可能关闭不了
+    // client && client.destroy();
+    // nodeServer && nodeServer.kill(); //杀不死
     // nodeServer = null;
   });
 
@@ -211,7 +238,7 @@ function createWindow() {
         if (lineIndex < lines.length) {
           // 发送一行数据
           const line = lines[lineIndex];
-          client && client.write && client.write(line);
+          client && client.write && client.write(line + "\n");
           lineIndex++;
         } else {
           lineIndex = 0;
@@ -633,7 +660,12 @@ function createWindow() {
             type: "end-data-decode",
             data: copyOrigin,
           });
-        client && client.write && client.write(JSON.stringify(copyOrigin));
+
+        client &&
+          client.write &&
+          isConnect &&
+          client.write(JSON.stringify(copyOrigin) + "\n");
+
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
         event.sender.send("end-data-decode", data);
@@ -711,7 +743,6 @@ function createNodeServer() {
 app.whenReady().then(() => {
   ipcMain.handle("dialog:openFile", handleFileOpen);
   createWindow();
-  // createNodeServer();
   app.on("activate", function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -722,10 +753,13 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+app.on("before-quit", () => {
+  client && client.destroy();
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    // nodeServer && nodeServer.kill();
-    // nodeServer = null;
+    client && client.destroy();
     app.quit();
   }
 });
