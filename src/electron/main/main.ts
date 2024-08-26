@@ -121,87 +121,67 @@ function createWindow() {
   // 连接socket
   ipcMain.on("connect-socket", (event, data) => {
     console.log("connect-socket", data.port);
-    // client && client.destroy();
-    // client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
-    nodeServer = child_process.exec(
-      join(_product_path, `/exe/server_socket.exe`),
-      (error: any, stdout: any, stderr: any) => {
-        // if (error) {
-        //   event.sender.send("receive-socket", {
-        //     msg: error.message,
-        //     type: -1,
-        //   });
-        //   return;
-        // }
-        // if (stderr) {
-        //   event.sender.send("receive-socket", {
-        //     msg: stderr,
-        //     type: -1,
-        //   });
-        //   return;
-        // }
-        // console.log(`stdout: ${stdout}`);
-        // 服务器创建成功
+    client = net.createConnection(data, function () {
+      client &&
+        client.write &&
+        client.write(JSON.stringify(sendConfig("start")) + "\n");
+      // 延迟发送数据，避免数据在开始之前就发送了
+      setTimeout(() => {
+        isConnect = true;
+      }, 800);
+      event.sender.send("receive-socket", {
+        msg: "connect success",
+        type: 1,
+      });
+    });
+    client.on("error", function (err: any) {
+      console.log("client:error", err);
+      event.sender.send("receive-socket", {
+        msg: err.message,
+        type: -1,
+      });
+      // if (err.code !== "ECONNRESET") {
+      //   event.sender.send("receive-socket", {
+      //     msg: "connect error,please open socket server",
+      //     type: -1,
+      //   });
+      // } else {
+      //   event.sender.send("receive-socket", {
+      //     msg: "cancel success",
+      //     type: 0,
+      //   });
+      // }
+    });
+    client.on("close", () => {
+      console.log("client close");
+      //服务器关闭
+      // client = null;
+      // const client1 = net.createConnection(data, function () {
+      //   client1 && client1.write(JSON.stringify(sendConfig("remove"))+'\n');
+      //   event.sender.send("receive-socket", {
+      //     msg: "cancel success",
+      //     type: 0,
+      //   });
+      //   client1.on("error", function (err: any) {
+      //     console.log("client1:error", err);
+      //   });
+      // });
+    });
+    client.on("end", (error: any) => {
+      console.log("client end", error);
+      if (!error) {
       }
-    );
-
-    setTimeout(() => {
-      client = net.createConnection(data, function () {
-        client &&
-          client.write &&
-          client.write(JSON.stringify(sendConfig("start")) + "\n");
-        // 延迟发送数据，避免数据在开始之前就发送了
-        setTimeout(() => {
-          isConnect = true;
-        }, 500);
-        event.sender.send("receive-socket", {
-          msg: "connect success",
-          type: 1,
-        });
-      });
-      client.on("error", function (err: any) {
-        console.log("client:error", err);
-        if (err.code !== "ECONNRESET") {
-          event.sender.send("receive-socket", {
-            msg: "connect error,please open socket server",
-            type: -1,
-          });
-        } else {
-          // event.sender.send("receive-socket", {
-          //   msg: "cancel success",
-          //   type: 0,
-          // });
-        }
-      });
-      client.on("close", () => {
-        console.log("client close");
-        //服务器关闭
-        // client = null;
-        // const client1 = net.createConnection(data, function () {
-        //   client1 && client1.write(JSON.stringify(sendConfig("remove"))+'\n');
-        //   event.sender.send("receive-socket", {
-        //     msg: "cancel success",
-        //     type: 0,
-        //   });
-        //   client1.on("error", function (err: any) {
-        //     console.log("client1:error", err);
-        //   });
-        // });
-      });
-
-      client.on("end", (error: any) => {
-        console.log("client end", error);
-        if (!error) {
-        }
-      });
-    }, 500);
+    });
   });
 
   // 取消socket连接
   ipcMain.on("cancel-socket", (event, data) => {
     console.log("cancel-socket");
     isConnect = false;
-    client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
+    client && client.end();
     event.sender.send("receive-socket", {
       msg: "cancel success",
       type: 0,
@@ -662,7 +642,7 @@ function createWindow() {
           });
 
         client &&
-          client.write &&
+          client.write && 
           isConnect &&
           client.write(JSON.stringify(copyOrigin) + "\n");
 
@@ -710,21 +690,20 @@ function createNodeServer() {
     // 服务器监听端口成功，端口未被占用
     const address = server.address();
     console.log(`服务器监听地址: ${address.address}:${address.port}`);
-    nodeServer && nodeServer.kill();
-    nodeServer = child_process.exec(
-      join(_product_path, `/exe/server_socket.exe`),
-      (error: any, stdout: any, stderr: any) => {
-        if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-        }
-        if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-        }
-        console.log(`stdout: ${stdout}`);
+    nodeServer = child_process.spawn(
+      join(_product_path, `/exe/server_socket.exe`), {
+        stdio: ['ignore', 'ignore', 'pipe'] //标准输入，标准输出，标准错误
       }
     );
+    nodeServer.stderr.on('data', (data: any) => {
+      console.error(`nodeServer stderr: ${data}`);
+    });
+    
+    // nodeServer.stdout.on('data', (data: any) => {
+    //   // Handle output in chunks
+    //   console.log(data.toString());
+      
+    // });
   });
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
@@ -737,12 +716,52 @@ function createNodeServer() {
   });
 }
 
+function closeNodeServer() {
+  try {
+    client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
+    client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
+    client && client.end();
+    const client1 = net.createConnection(9000, function () {
+      console.log("连接成功");
+      // client1 &&
+      //   client1.write(
+      //     JSON.stringify({
+      //       pkg_type: 3,
+      //       action: "remove",
+      //     }) + "\n"
+      //   );
+      client1 && client1.write(JSON.stringify(sendConfig("remove")) + "\n");
+      client1 && client1.end();
+    });
+    client1.on("data", (data: any) => {
+      console.log("client1 data", data);
+    });
+    client1.on("error", (err: any) => {
+      console.log("client1 error", err);
+    });
+    nodeServer && nodeServer.kill();
+    // client && client.destroy();
+    client = null;
+  } catch (err) {
+    console.log(err);
+  }
+
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   ipcMain.handle("dialog:openFile", handleFileOpen);
+
+  createNodeServer();
+  // setTimeout(() => {
+  //   closeNodeServer();
+  // }, 5000);
   createWindow();
+
   app.on("activate", function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -754,12 +773,12 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("before-quit", () => {
-  client && client.destroy();
+  closeNodeServer();
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    client && client.destroy();
+    closeNodeServer();
     app.quit();
   }
 });

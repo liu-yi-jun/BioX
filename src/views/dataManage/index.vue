@@ -311,8 +311,8 @@ const exportCsv = async (record: DataItem) => {
   });
   thirdRowList.value.push("MARKER")
   thirdRowList.value.push("IS_LOSS")
-  thirdRowList.value.push("PKG_NUM")
-  thirdRowList.value.push("TIME_MARK")
+  // thirdRowList.value.push("PKG_NUM")
+  // thirdRowList.value.push("TIME_MARK")
   csvContent += thirdRowList.value.join(",") + "\n";
 
   // 第三行值的长度，即记录的数据字段的个数
@@ -415,12 +415,12 @@ const exportCsv = async (record: DataItem) => {
             csvContent += ",";
           }
           if (pkgData.isLosspkg == true) {
-            csvContent += "1,"
+            csvContent += "1"
           } else {
-            csvContent += "0,"
+            csvContent += "0"
           }
-          csvContent += "" + pkgData.pkgnum + ",";
-          csvContent += "" + pkgData.time_mark + ",";
+          // csvContent += "" + pkgData.pkgnum + ",";
+          // csvContent += "" + pkgData.time_mark + ",";
           csvContent += "\n";
           
         }
@@ -464,12 +464,12 @@ const exportCsv = async (record: DataItem) => {
         // 2 是marker数据字段
         csvContent += "" + ",";
         if (pkgData.isLosspkg == true) {
-          csvContent += "1,"
+          csvContent += "1"
         } else {
-          csvContent += "0,"
+          csvContent += "0"
         }
-        csvContent += "" + pkgData.pkgnum + ",";
-        csvContent += "" + pkgData.time_mark + ",";
+        // csvContent += "" + pkgData.pkgnum + ",";
+        // csvContent += "" + pkgData.time_mark + ",";
         csvContent += "\n";
       } else {
         // 找不到数据，这行都是空的
