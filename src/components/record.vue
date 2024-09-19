@@ -125,8 +125,9 @@ const isRecord = ref<boolean>(true);
 const openStartRecordModal = ref<boolean>(false);
 // 进度条最小时间
 const minTime = ref<number>(0);
+const recordtotalTime = 60 * 60 * 1000
 // 进度条总时间
-const totalTime = ref<number>(8 * 60 * 1000);
+const totalTime = ref<number>(recordtotalTime);
 // 进度条当前时间
 const currentTime = ref<number>(0);
 // 记录创建时间
@@ -377,7 +378,7 @@ const changeTime = (value) => {
 };
 
 const playClose = () => {
-  totalTime.value = 8 * 60 * 1000;
+  totalTime.value = recordtotalTime;
   indexStore.playIndex = 0;
   indexStore.isDragSlider = false;
   indexStore.recordId = 0;

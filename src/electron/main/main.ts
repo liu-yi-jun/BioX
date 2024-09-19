@@ -136,10 +136,12 @@ function createWindow() {
     });
     client.on("error", function (err: any) {
       console.log("client:error", err);
-      event.sender.send("receive-socket", {
-        msg: err.message,
-        type: -1,
-      });
+      if (!mainWindow.isDestroyed()) {
+        event.sender.send("receive-socket", {
+          msg: err.message,
+          type: -1,
+        });
+      }
       // if (err.code !== "ECONNRESET") {
       //   event.sender.send("receive-socket", {
       //     msg: "connect error,please open socket server",
@@ -642,7 +644,7 @@ function createWindow() {
           });
 
         client &&
-          client.write && 
+          client.write &&
           isConnect &&
           client.write(JSON.stringify(copyOrigin) + "\n");
 
@@ -691,18 +693,19 @@ function createNodeServer() {
     const address = server.address();
     console.log(`服务器监听地址: ${address.address}:${address.port}`);
     nodeServer = child_process.spawn(
-      join(_product_path, `/exe/server_socket.exe`), {
-        stdio: ['ignore', 'ignore', 'pipe'] //标准输入，标准输出，标准错误
+      join(_product_path, `/exe/server_socket.exe`),
+      {
+        stdio: ["ignore", "ignore", "pipe"], //标准输入，标准输出，标准错误
       }
     );
-    nodeServer.stderr.on('data', (data: any) => {
+    nodeServer.stderr.on("data", (data: any) => {
       console.error(`nodeServer stderr: ${data}`);
     });
-    
+
     // nodeServer.stdout.on('data', (data: any) => {
     //   // Handle output in chunks
     //   console.log(data.toString());
-      
+
     // });
   });
   server.on("error", (err: any) => {
@@ -747,7 +750,6 @@ function closeNodeServer() {
   } catch (err) {
     console.log(err);
   }
-
 }
 
 // This method will be called when Electron has finished
