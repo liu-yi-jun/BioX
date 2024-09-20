@@ -2,7 +2,7 @@ import { join } from "path";
 const ReplayProcessing = require("./processing");
 let _product_path = process.argv[3];
 const processing: any = new ReplayProcessing(
-  join(_product_path, "/dll/signal_process.dll"),
+  _product_path,
   process.argv[4] // 加载配置项
 );
 
@@ -62,6 +62,9 @@ process.on("message", async function ({ type, data }) {
     let field = JSON.parse(data).field;
     if (field === "filterConfig" || field === "plotType" || field === "wave") {
       processing.setInit();
+    }
+    if (field === "heart") {
+      processing.setInitHeart
     }
 
     process.send!({

@@ -320,12 +320,41 @@
             <p class="card-title">Wavelengths</p>
             <div class="view-setting">
               <div class="view-setting-radio">
-                <a-radio-group :disabled="configData.lsl.isOutLet || recordProgress" v-model:value="wavelengthsValue">
+                <a-radio-group
+                  :disabled="configData.lsl.isOutLet || recordProgress"
+                  v-model:value="wavelengthsValue"
+                >
                   <a-radio :style="radioStyle" :value="1">Two</a-radio>
                   <a-radio :style="radioStyle" :value="2">Three</a-radio>
                 </a-radio-group>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div class="eig-card view-setting-card heart-card">
+        <p class="card-title">Metrics</p>
+        <div class="eig-card view-setting-box">
+          <div>
+            <p class="card-title">HeartRate：{{ heartRateValue }}</p>
+            <a-select
+              v-model:value="configData.hrv.current_channel"
+              style="width: 80px"
+              @change="changeHeartChannel"
+              aria-placeholder="Channels"
+              :options="ChannelOptions"
+              size="small"
+            ></a-select>
+          </div>
+          <div v-if="radioValue == 3">
+            <p class="card-title">SaO2：{{ saOValue }}%</p>
+            <a-select
+              v-model:value="saOChannel"
+              style="width: 80px"
+              aria-placeholder="Channels"
+              :options="ChannelOptions"
+              size="small"
+            ></a-select>
           </div>
         </div>
       </div>
@@ -362,6 +391,7 @@ const ipcRenderer = require("electron").ipcRenderer;
 import FnirsTime from "../../components/FnirsTime.vue";
 import * as echarts from "echarts";
 
+const saOChannel = ref<number>(0);
 const radioValue = ref<number>(1);
 const wavelengthsValue = ref<number>(1);
 const checkboxValue1 = ref(["1", "3"]);
@@ -405,16 +435,76 @@ const seriesForm = reactive({
   max: "",
 });
 const showTimeOptions = ref<SelectProps["options"]>(showTimeOptionsData);
+const ChannelOptions = ref<SelectProps["options"]>([
+  {
+    value: 0,
+    label: "S1-D1",
+  },
+  {
+    value: 1,
+    label: "S1-D2",
+  },
+  {
+    value: 2,
+    label: "S1-D3",
+  },
+  {
+    value: 3,
+    label: "S1-D4",
+  },
+  {
+    value: 4,
+    label: "S2-D5",
+  },
+  {
+    value: 5,
+    label: "S2-D6",
+  },
+  {
+    value: 6,
+    label: "S2-D7",
+  },
+  {
+    value: 7,
+    label: "S2-D8",
+  },
+]);
 let isRenderTimer, realTimer;
 const channels = ref([1, 2, 3, 4, 5, 6, 7, 8]);
 import { CustomDatabase } from "../../utils/db";
 import { useIndexStore } from "../../store/index";
 import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
+import _ from "lodash";
 let baseLineLoadingOpen = ref(false);
+const heartRateValue = ref(0);
+const saOValue = ref(0);
 let pkgDataList: any = [];
 let pkgSourceData: any = [];
+let proxyObj = {
+  heartRate: 0,
+  saO: 0,
+};
 
+const throttle =_.throttle(function (target: any, prop: string, value) {
+  switch (prop) {
+    case "heartRate":
+      heartRateValue.value = value;
+      break;
+    case "saO":
+      saOValue.value = value;
+      break;
+    default:
+      break;
+  }
+}, 600);
+const proxy = new Proxy(proxyObj, {
+  set: (target: any, prop: string, value:any) => {
+    throttle(target, prop, value)
+    target[prop] = value;
+    return true;
+  },
+});
 let pkgMaxTime = 35;
 const indexStore = useIndexStore();
 const {
@@ -711,6 +801,15 @@ onMounted(function () {
     wavelengthsValue.value = 2;
   }
 
+  configData.value.hrv.current_channel = 0;
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "heart",
+      config: configData.value,
+    })
+  );
+
   ipcRenderer.send(
     "change-config-field",
     JSON.stringify({
@@ -768,9 +867,18 @@ const rePlayNotice = (event, data) => {
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
+  // console.log("蓝牙数据通知", data);
+
   handlePkgList(data);
   // handleRealTimeData(blueToothdataMapping(data));
   isRender.value = true;
+  proxy.heartRate = parseInt(data.heart_rate);
+  if (data.concentration_date && data.concentration_date[saOChannel.value] && radioValue.value == 3 && data.concentration_date[saOChannel.value][2] != 0) {
+    proxy.saO =
+      (data.concentration_date[saOChannel.value][0] /
+      data.concentration_date[saOChannel.value][2] * 100).toFixed(2)
+  }
+
   isRenderTimer && clearTimeout(isRenderTimer);
   isRenderTimer = setTimeout(() => {
     isRender.value = false;
@@ -868,6 +976,17 @@ const initialize = () => {
   nextTick(() => {
     undateTimeSerie("channel");
   });
+};
+
+// 切换心率通道
+const changeHeartChannel = () => {
+  ipcRenderer.send(
+    "change-config-field",
+    JSON.stringify({
+      field: "heart",
+      config: configData.value,
+    })
+  );
 };
 
 // 配置改变

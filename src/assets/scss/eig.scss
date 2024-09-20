@@ -242,7 +242,7 @@ li {
   display: flex;
   flex-direction: column;
   .view-setting-box {
-    margin: 20px 20px;
+    margin: 20px 10px;
     display: flex;
     // flex: 1;
     .view-setting {
@@ -283,7 +283,7 @@ $roundRadius: 18px;
 .selection-box-wrap {
   margin: auto;
   height: 100%;
-  width: 600px;
+  width: 550px;
   position: relative;
 }
 .selection {
@@ -832,3 +832,22 @@ $roundRadius: 18px;
 //   transform: translate3d(0, 0, 0);
 //   will-change: transform;
 // }
+
+
+.heart-card{
+  display: flex;
+  flex-direction: column;
+  .view-setting-box {
+    flex: 1;
+    flex-direction: column;
+    & > div {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      &>p {
+        min-width: 130px;
+      }
+    }
+  }
+}

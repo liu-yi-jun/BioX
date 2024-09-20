@@ -2,6 +2,7 @@
 var ref = require("ref-napi");
 var ffi = require("ffi-napi");
 var ArrayType = require("ref-array-napi");
+import { join } from "path";
 // 定义类型
 const Float = ref.types.float;
 const Int = ref.types.int;
@@ -67,6 +68,8 @@ function Processing(this: any, path: string, config: any) {
   this.psd_relative_s_multiple = [];
   this.psd_relative_percent_s_multiple = [];
   this.baseline_ok = false;
+  // 心率
+  this.heart_rate = new DoubleArray(1);
 
   // 这部分不能乱改，dll里面控制着
   this.ps_s = [
@@ -80,7 +83,7 @@ function Processing(this: any, path: string, config: any) {
   this.psd_relative_s = [new DoubleArray(5), new DoubleArray(5)]; //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
   this.psd_relative_percent_s = [new DoubleArray(5), new DoubleArray(5)]; //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
   //流程网站https://backoqdkrcv.feishu.cn/docx/ChsEdEvc4ohGMYxdy7ccMCmTngd
-  this.signalProcess = ffi.Library(path, {
+  this.signalProcess = ffi.Library(join(path, "/dll/signal_process.dll"), {
     // 脑电部分
     // init_filter: ["void", [Int, Int]],
     // init_bp_filter: ["void", [Int, Int]],
@@ -138,6 +141,14 @@ function Processing(this: any, path: string, config: any) {
     //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
     calc_hb_3wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
   });
+
+  // 心率部分
+  this.hrvProcess = ffi.Library(join(path, "/dll/HRV_process.dll"), {
+    //计算心率前的初始化
+    init_heart_rate: ["void",[]],
+    //计算心率的函数，需要选择一个信号质量良好的通道
+    get_heart_rate: [Bool, [Int, Double, DoubleArray]],
+  });
 }
 Processing.prototype.init = function (this: any) {
   // this.signalProcess.init_filter(sample_rate, channel);
@@ -160,6 +171,9 @@ Processing.prototype.init = function (this: any) {
     this.config.irFilter.fl,
     this.config.irFilter.fh
   );
+
+  // 心率初始化
+  this.hrvProcess.init_heart_rate();
 };
 Processing.prototype.setInit = function (this: any) {
   console.log("setInit", this.config.irFilter.ir_sample_rate);
@@ -178,6 +192,13 @@ Processing.prototype.setInit = function (this: any) {
     this.config.eegFilter.fh
   );
   this.baseline_ok = false;
+    // 心率初始化
+    this.hrvProcess.init_heart_rate();
+};
+
+Processing.prototype.setInitHeart = function (this: any) {
+  // 心率初始化
+  this.hrvProcess.init_heart_rate();
 };
 Processing.prototype.processData = function (this: any, pkg: any) {
   let dataList: any = [];
@@ -544,6 +565,17 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
   }
   // 有IR数据标志位
   if (pkg.pkg_type === 2) {
+    // 获取心率数据
+    
+    let flag = this.hrvProcess.get_heart_rate(
+      this.config.irFilter.ir_sample_rate,
+      pkg.near_infrared[this.config.hrv.current_channel][0], //先取原始数据的第一波长
+      this.heart_rate
+    );
+
+    
+
+    // 其他部分
     for (
       let current_channel = 0;
       current_channel < pkg.ir_channel;
@@ -681,6 +713,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     copy_near_infrared: pkg.pkg_type == 2 ? copy_near_infrared : [],
     time_stamp: time_stamp,
     time_utc: time_utc,
+    heart_rate: this.heart_rate[0],
   };
 }
 

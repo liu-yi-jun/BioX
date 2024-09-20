@@ -25,6 +25,7 @@ export const useIndexStore = defineStore({
     },
     // 配置数据
     configData: {
+      // 脑电配置
       eegFilter: {
         isDCRemove: true,
         isNotch: true,
@@ -33,8 +34,9 @@ export const useIndexStore = defineStore({
         fh: 100,
         bpType: 1,
         sample_rate: 250,
-        eeg_channel_count:2
+        eeg_channel_count: 2,
       },
+      // 经红外配置
       irFilter: {
         isDCRemove: true,
         isBandPass: true,
@@ -48,8 +50,13 @@ export const useIndexStore = defineStore({
         ir_sample_rate: 50,
         two_ir_sample_rate: 50,
         three_ir_sample_rate: 25,
-        ir_channel_count:32
+        ir_channel_count: 32,
       },
+      // 心率配置
+      hrv: {
+        current_channel: 0,
+      },
+      // 实验数据流配置
       lsl: {
         isEeg: true,
         isIr: true,
@@ -58,6 +65,7 @@ export const useIndexStore = defineStore({
         isInlet: false,
         streamName: "BioMulti Lite",
       },
+      // 串口配置
       serialPort: {
         isConnect: false,
         portName: "COM3",

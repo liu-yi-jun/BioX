@@ -1,10 +1,10 @@
 {
   "name": "BioMultiLite",
   "private": true,
-  "version": "1.1.22",
+  "version": "1.1.23",
   "author": "Your Name",
   "main": "dist/electron/main/main.js",
-  "scripts": { 
+  "scripts": {
     "vite:dev": "vite",
     "vite:build": "vue-tsc --noEmit && vite build",
     "vite:preview": "vite preview",
@@ -62,6 +62,7 @@
     "echarts": "^5.5.0",
     "electron-log": "^5.1.2",
     "ffi-napi": "^4.0.3",
+    "lodash": "^4.17.21",
     "ref-array-napi": "^1.2.2",
     "ref-napi": "^3.0.3",
     "ref-struct-napi": "^1.1.1",
@@ -71,6 +72,7 @@
   },
   "devDependencies": {
     "@types/highcharts": "^7.0.0",
+    "@types/lodash": "^4.17.7",
     "@vitejs/plugin-vue": "^2.3.3",
     "concurrently": "^7.2.2",
     "electron": "19.1.9",
