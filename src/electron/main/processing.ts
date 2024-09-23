@@ -587,7 +587,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       let ir_od_filter = new DoubleArray(4);
       let ir_conc_filter = new DoubleArray(4);
       let ir_date_remove = new DoubleArray(4);
-      let ir_conc = new DoubleArray(3); ///顺序为hbo,hb,hbt
+      let ir_conc = new DoubleArray(4); ///顺序为hbo,hb,hbt,SaO2
       // 将float数组转换为double数组,float数组直接传不行
 
       ir_data = new DoubleArray(arrayToJs(pkg.near_infrared[current_channel]));
@@ -660,9 +660,12 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           this.signalProcess.run_irbp_filter(
             this.config.irFilter.bpType,
             current_channel,
-            ir_conc,
+            new DoubleArray([ir_conc[0], ir_conc[1], ir_conc[2]]),
             ir_conc_filter
           );
+          // 血氧饱和度不经过滤波
+          ir_conc_filter[3] =  ir_conc[3]
+          
           ir_conc = arrayToJs(ir_conc_filter);
         }
       }

@@ -193,6 +193,25 @@ li {
   }
 }
 
+.heart-card.view-setting-card {
+  white-space:normal !important;
+}
+
+.card-metrics-title {
+  display: flex;
+  color: #7c7a7a;
+  font-weight: bold;
+  & > span:first-child {
+    flex-shrink: 0;
+  }
+  & > span:last-child {
+    word-break: break-all;
+    white-space: normal;
+    flex: 1;
+    padding-right: 5px;
+  }
+}
+
 .time-series,
 .spectrum,
 .eeg-bands {

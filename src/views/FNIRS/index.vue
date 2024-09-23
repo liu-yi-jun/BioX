@@ -347,10 +347,13 @@
             ></a-select>
           </div>
           <div v-if="radioValue == 3">
-            <p class="card-title">SaO2：{{ saOValue }}%</p>
+            <p class="card-metrics-title">
+              <span> SaO2： </span>
+              <span>{{ saOValue }}%</span>
+            </p>
             <a-select
               v-model:value="saOChannel"
-              style="width: 80px"
+              style="width: 80px;flex-shrink: 0;"
               aria-placeholder="Channels"
               :options="ChannelOptions"
               size="small"
@@ -486,7 +489,7 @@ let proxyObj = {
   saO: 0,
 };
 
-const throttle =_.throttle(function (target: any, prop: string, value) {
+const throttle = _.throttle(function (target: any, prop: string, value) {
   switch (prop) {
     case "heartRate":
       heartRateValue.value = value;
@@ -499,8 +502,8 @@ const throttle =_.throttle(function (target: any, prop: string, value) {
   }
 }, 600);
 const proxy = new Proxy(proxyObj, {
-  set: (target: any, prop: string, value:any) => {
-    throttle(target, prop, value)
+  set: (target: any, prop: string, value: any) => {
+    throttle(target, prop, value);
     target[prop] = value;
     return true;
   },
@@ -873,10 +876,13 @@ const bluetoothNotice = (data) => {
   // handleRealTimeData(blueToothdataMapping(data));
   isRender.value = true;
   proxy.heartRate = parseInt(data.heart_rate);
-  if (data.concentration_date && data.concentration_date[saOChannel.value] && radioValue.value == 3 && data.concentration_date[saOChannel.value][2] != 0) {
-    proxy.saO =
-      (data.concentration_date[saOChannel.value][0] /
-      data.concentration_date[saOChannel.value][2] * 100).toFixed(2)
+  if (
+    data.concentration_date &&
+    data.concentration_date[saOChannel.value] &&
+    radioValue.value == 3 &&
+    data.concentration_date[saOChannel.value][2] != 0
+  ) {
+    proxy.saO = data.concentration_date[saOChannel.value][3].toFixed(2);
   }
 
   isRenderTimer && clearTimeout(isRenderTimer);

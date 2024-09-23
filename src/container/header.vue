@@ -46,7 +46,7 @@
         <div class="header-center">
           <span>BIO X</span>
           <div class="electricity">
-            <span>100</span>
+            <span>{{batteryState}}</span>
           </div>
         </div>
         <template #overlay>
@@ -373,7 +373,7 @@ let ResetConfigData: any = {
     fh: 5,
     bpType: 1,
     plotType: 1,
-    ir_sample_rate: 12.5,
+    ir_sample_rate: 50,
   },
 };
 const ipcRenderer = require("electron").ipcRenderer;
@@ -399,6 +399,7 @@ const { isConnect, bluetoothATConfig, configData, isMarker,markerList } =
   storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
+const batteryState = ref(0);
 const ATValue = ref("");
 import { message } from "ant-design-vue";
 const bluetooth = new CustomBluetooth();
@@ -664,7 +665,19 @@ const initMarketOptions = () => {
   }
 };
 
+const initialize = () => {
+     bluetooth.addNotice(bluetoothNotice);
+}
+
+// 蓝牙数据通知
+const bluetoothNotice = ({pkg_type,Battery_State}:{pkg_type:number,Battery_State:number}) => {
+ if(pkg_type == 0) {
+    batteryState.value = Battery_State
+  }
+};
+
 onMounted(() => {
+  initialize();
   // 初始化A-Z Market选项
   initMarketOptions();
   // 蓝牙扫描出来的设备
@@ -732,7 +745,7 @@ onBeforeUnmount(() => {
   );
 
   bluetooth.removeATNotice(atNotice);
-
+  bluetooth.removeNotice(bluetoothNotice);
   timer_uuid && clearTimeout(timer_uuid);
 });
 
@@ -851,5 +864,6 @@ const handleStopMarker = () => {
   indexStore.isMarker = false;
   // message.success("结束标记!");
 };
+
 </script>
 <style scoped></style>
