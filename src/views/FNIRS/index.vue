@@ -391,7 +391,7 @@ const ipcRenderer = require("electron").ipcRenderer;
 import FnirsTime from "../../components/FnirsTime.vue";
 import * as echarts from "echarts";
 
-const saOChannel = ref<number>(0);
+const saOChannel = ref<number>(1);
 const radioValue = ref<number>(1);
 const wavelengthsValue = ref<number>(1);
 const checkboxValue1 = ref(["1", "3"]);
@@ -801,7 +801,7 @@ onMounted(function () {
     wavelengthsValue.value = 2;
   }
 
-  configData.value.hrv.current_channel = 0;
+  configData.value.hrv.current_channel = 1;
   ipcRenderer.send(
     "change-config-field",
     JSON.stringify({
