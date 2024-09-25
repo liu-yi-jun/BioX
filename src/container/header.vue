@@ -1,7 +1,7 @@
 <template>
   <div class="header">
     <div>
-      BioMultiLite_1.2.0_240923_Alpha_Win
+      BioMultiLite_1.2.0_240924_Alpha_Win
       <a-button @click="openAtDebug">
         <template #icon>
           <BugOutlined />
@@ -45,8 +45,11 @@
       <a-dropdown placement="bottom" trigger="click" arrow>
         <div class="header-center">
           <span>BIO X</span>
-          <div class="electricity">
-            <span>{{batteryState}}</span>
+          <div class="electricity" :class="{
+            green: batteryState >= 20,
+            red: batteryState < 20
+          }">
+            <span>{{batteryState}}<span style="font-size: 7px">%</span></span>
           </div>
         </div>
         <template #overlay>
@@ -672,7 +675,7 @@ const initialize = () => {
 // 蓝牙数据通知
 const bluetoothNotice = ({pkg_type,Battery_State}:{pkg_type:number,Battery_State:number}) => {
  if(pkg_type == 0) {
-    batteryState.value = Battery_State
+    batteryState.value = parseInt(Battery_State + '')
   }
 };
 

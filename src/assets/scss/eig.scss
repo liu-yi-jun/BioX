@@ -90,6 +90,14 @@ li {
       color: #02c940;
       font-weight: bold;
       border: 2px solid #02c940;
+      &.red {
+        color: #ed2a2a;
+        border-color: #ed2a2a;
+      }
+      &.yellow {
+        color: #ff9900;
+        border-color: #ff9900;
+      }
     }
   }
 }
