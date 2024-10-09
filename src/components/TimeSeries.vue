@@ -366,8 +366,6 @@ const handleKeydown = (e) => {
 onMounted(() => {
   sketch && sketch.remove();
   sketch = new window.p5((p) => defaultPlotSketch(p), "TimeSeries");
-  console.log( window.p5.prototype._registeredMethods.remove);
-  
   window.addEventListener("resize", resizeing);
   window.addEventListener("keydown", handleKeydown);
 });

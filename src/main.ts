@@ -10,9 +10,10 @@ const app = createApp(App);
 import Highcharts from "highcharts";
 import { CustomDatabase } from "./utils/db";
 import { HighchartsKey } from "./types";
-
+import log from 'electron-log/renderer';
+console.log = log.log
+console.error = log.error
 import Loading from "./plugin/loading";
-
 
 interface loadingType {
   show(text?:string):null

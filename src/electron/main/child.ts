@@ -102,51 +102,55 @@ process.on("message", async function ({ type, data }) {
     processing.init();
   }
   if (type === "start-data-decode") {
-    pkgDecode.pkg_recv();
-    //  let Usage = process.memoryUsage()
-    // console.log(
-    //   Usage.rss / 1024 / 1024,
-    //   "MB",
-    //   Usage.heapTotal / 1024 / 1024,
-    //   "MB",
-    //   Usage.heapUsed / 1024 / 1024,
-    //   "MB",
-    //   Usage.external / 1024 / 1024,
-    //   "MB"
-    // );
-    let recvBuffer = Buffer.from(data.data);
+    try {
+      pkgDecode.pkg_recv();
+      //  let Usage = process.memoryUsage()
+      // console.log(
+      //   Usage.rss / 1024 / 1024,
+      //   "MB",
+      //   Usage.heapTotal / 1024 / 1024,
+      //   "MB",
+      //   Usage.heapUsed / 1024 / 1024,
+      //   "MB",
+      //   Usage.external / 1024 / 1024,
+      //   "MB"
+      // );
+      let recvBuffer = Buffer.from(data.data);
 
-    // if (isTestPkg) {
-    //   // 测试数据包
-    //   if (buffers.length < 178) {
-    //     return;
-    //   }
-    //   recvBuffer = Buffer.from(buffers[test_i % 178]);
-    // }
+      // if (isTestPkg) {
+      //   // 测试数据包
+      //   if (buffers.length < 178) {
+      //     return;
+      //   }
+      //   recvBuffer = Buffer.from(buffers[test_i % 178]);
+      // }
 
-    for (let i = 0; i < recvBuffer.length; i++) {
-      pkgDecode.push_to_databuffer(recvBuffer[i]);
-    }
+      for (let i = 0; i < recvBuffer.length; i++) {
+        pkgDecode.push_to_databuffer(recvBuffer[i]);
+      }
 
-    if (pkgDecode.get_pkg_buffer_length()) {
-      // 返回一个指针
+      if (pkgDecode.get_pkg_buffer_length()) {
+        // 返回一个指针
 
-      let ptrpkg = pkgDecode.decode();
-      // 获取值
+        let ptrpkg = pkgDecode.decode();
+        // 获取值
 
-      let pkg = ptrpkg.deref();
-      let dataList = processing.processData(pkg);
+        let pkg = ptrpkg.deref();
+        let dataList = processing.processData(pkg);
 
-      dataList.forEach((item: any) => {
-        process.send!({
-          type: "end-data-decode",
-          data: item,
+        dataList.forEach((item: any) => {
+          process.send!({
+            type: "end-data-decode",
+            data: item,
+          });
         });
-      });
-      // 释放内存
-      ptrpkg = null;
-      pkg = null;
-      pkgDecode.pkgbuffer_pop();
+        // 释放内存
+        ptrpkg = null;
+        pkg = null;
+        pkgDecode.pkgbuffer_pop();
+      }
+    } catch (error) {
+      console.error("start-data-decode", error);
     }
   }
 
@@ -154,6 +158,7 @@ process.on("message", async function ({ type, data }) {
     console.log("bluetooth-scan");
   }
   if (type === "change-config") {
+    console.log("change-config");
     processing.setConfig(JSON.parse(data));
     process.send!({
       type: "change-config-success",
@@ -161,13 +166,14 @@ process.on("message", async function ({ type, data }) {
     });
   }
   if (type === "change-config-field") {
+    console.log(type, data);
     processing.setConfig(JSON.parse(data).config);
     let field = JSON.parse(data).field;
     if (field === "filterConfig" || field === "plotType" || field === "wave") {
       processing.setInit();
     }
     if (field === "heart") {
-      processing.setInitHeart()
+      processing.setInitHeart();
     }
 
     process.send!({

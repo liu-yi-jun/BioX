@@ -1,7 +1,7 @@
 <template>
   <div class="header">
     <div>
-      BioMultiLite_1.2.0_240924_Alpha_Win
+      BioMultiLite_1.2.1_241004_Alpha_Win
       <a-button @click="openAtDebug">
         <template #icon>
           <BugOutlined />
@@ -537,6 +537,7 @@ const findDevice = () => {
       app?.proxy?.loading.hide();
       if (msg !== "User cancelled the requestDevice() chooser.") {
         message.error(msg);
+        console.error(msg)
       }
     }
   }, selectDeviceItem?.deviceId);
@@ -725,7 +726,7 @@ onMounted(() => {
         });
       })
       .catch((err) => {
-        console.log("error", err);
+        console.error("error", err);
       });
   });
   //

@@ -1085,7 +1085,7 @@ const generateShowSeriesData = () => {
       checkboxValue.includes(item.radioIndex + "")
     );
   });
-  console.log("showSeriesData", showSeriesData);
+  // console.log("showSeriesData", showSeriesData);
 };
 
 // 生成X轴

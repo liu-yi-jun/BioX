@@ -633,6 +633,7 @@ const handleChangeSpectrumType = () => {
   nextTick(() => {
     if (spectrumType.value === "PSD") {
       undatePsd("series");
+      undatePsd("xAxis");
     }
     if (spectrumType.value === "Heatmap") {
       undateHeatmap("series");

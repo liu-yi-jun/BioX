@@ -19,12 +19,10 @@ const show = (text: string | undefined) => {
     tip.value = "加载中...";
   }
   loading.value = true;
-  console.log("show方法执行了");
 };
 
 const hide = () => {
   loading.value = false;
-  console.log("hide方法执行了");
 };
 
 defineExpose({

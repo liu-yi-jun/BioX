@@ -272,8 +272,6 @@ class ChannelBar {
 
 // 获取高度
 const getWH = () => {
-  console.log("FnirsTime.value", FnirsTime.value);
-
   if (FnirsTime.value) {
     canvasWidth = FnirsTime.value.clientWidth;
     canvasHeight = FnirsTime.value.clientHeight;

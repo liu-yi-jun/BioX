@@ -154,8 +154,6 @@ const exportCsv = async (record: DataItem) => {
   let eegInputMarkerList = JSON.parse(record.eegInputMarkerList);
   let irInputMarkerList = JSON.parse(record.irInputMarkerList);
   let markerList = JSON.parse(record.markerList);
-  console.log(eegInputMarkerList, irInputMarkerList, markerList);
-
   let csvContent = "";
   let eegChannel = 1;
   let irChannel = 1;
@@ -203,14 +201,12 @@ const exportCsv = async (record: DataItem) => {
   const res = await db.all(
     `select * from source where recordId = ${record.id}`
   );
-  console.log(res);
 
   let sourceData = res
     .map((item) => {
       return JSON.parse(item.data);
     })
     .flat();
-  console.log(sourceData.length);
 
   // 检查sourceData是否是数组以及是否有数据
   if (!Array.isArray(sourceData) || sourceData.length === 0) {
@@ -291,7 +287,7 @@ const exportCsv = async (record: DataItem) => {
   if (valueForKey != undefined) {
     eegDataNum = valueForKey;
   } else {
-    console.log("未获取到eeg_data_num");
+    console.error("未获取到eeg_data_num");
   }
 
   // 第三行的值
@@ -432,7 +428,7 @@ const exportCsv = async (record: DataItem) => {
           csvContent += ",";
         }
         csvContent += "\n";
-        console.log("Key not found or value is not an array.");
+        console.error("Key not found or value is not an array.");
       }
     } else if (valueForKey == 2) {
       // 近红外数据

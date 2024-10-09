@@ -14,7 +14,6 @@
 重新跑一下
 11、终端中文乱码 输入chcp 65001
 12、npm ERR! 'C:\Program' is not recognized as an internal or external command, 解决：更换node地址，不要放在有空格的文件
-13、electron-log为error才会被生产环境记录
 14、不打包成asar，package.json设置 "asar": false,
 15、C:\Users\Administrator\AppData\Roaming\vite-vue3-electron-ts-template\logs
 16、主进程查看console，使用黑窗口运行程序
@@ -24,3 +23,4 @@
 如果您需要正确地提取double类型数据，您可以使用readDoubleLE或readDoubleBE方法来从Buffer中读取double类型数据。这样可以确保您正确地获取到double数据。
 18、主进程console不显示，有可能有错误的地方，比如main里面加了其他文件不能解析出来
 19、遗留问题，蓝牙状态下，丢包热力图可能出现补包，因为下位机给的时间不对，然后每包加4ms算出来的时间可能有交叉
+20,log打印转成日志https://www.npmjs.com/package/electron-log 在 Windows 上： %USERPROFILE%\AppData\Roaming\{app name}\logs\main.log 在 macOS 上： ~/Library/Logs/{app name}/main.log

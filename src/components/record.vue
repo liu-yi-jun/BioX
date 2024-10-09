@@ -301,7 +301,7 @@ const handleStartRecordModal = (e?: MouseEvent) => {
         changeStatus("recordStart");
       })
       .catch((err) => {
-        console.log("error", err);
+        console.error("error", err);
       });
   } else if (status.value === 0 && modelStatus.value === 1) {
     app?.proxy?.loading.show("保存中...");
@@ -342,7 +342,7 @@ const handleStartRecordModal = (e?: MouseEvent) => {
       .catch((err) => {
         app?.proxy?.loading.hide();
         message.error("保存失败,请重试!");
-        console.log("error", err);
+        console.error("error", err);
       });
     // saveRecord((sourceData) => {
     //   // timerRecord && clearInterval(timerRecord);

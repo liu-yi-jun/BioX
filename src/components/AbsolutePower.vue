@@ -49,7 +49,7 @@ class ChannelBar {
   plot: any;
 
   autoscaleMax: number = 100;
-  autoscaleMin: number = 0.1;
+  autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
 
@@ -65,7 +65,7 @@ class ChannelBar {
     this.plot = new window.GPlot(canvasP5);
     this.plot.setPos(this.x, this.y);
     this.plot.setDim(this.w, this.h);
-    this.plot.setLogScale("y");
+    // this.plot.setLogScale("y");
     this.plot.setXLim(0, numMax);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);

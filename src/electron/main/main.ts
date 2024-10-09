@@ -1,5 +1,6 @@
 import { join, resolve } from "path";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import _ from "lodash";
 var child_process = require("child_process");
 const net = require("net");
 let client: any = null;
@@ -19,8 +20,10 @@ const lines: string[] = [];
 let socketTimer: any;
 const socketTimeGap = 10;
 import log from "electron-log/main";
-log.transports.file.level = "silly";
-log.transports.console.level = "silly";
+log.initialize(); //这里初始化后，渲染进程才能用
+log.transports.file.maxSize  = 10 * 1024 * 1024;
+console.log = log.log;
+console.error = log.error
 const max__wave_channel = 4;
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
@@ -33,9 +36,6 @@ if (isDev) {
   __static = require("path").join(__dirname, "/static").replace(/\\/g, "\\\\");
   _product_path = join(__dirname, "../../../product");
 }
-
-log.error("process.env.NODE_ENV:" + process.env.NODE_ENV);
-log.error("main:path:" + _product_path);
 
 // 定义child配置项
 let config: any = {};
@@ -77,6 +77,11 @@ async function handleFileOpen() {
 //   pkg.near_infrared = near_infrared;
 //   pkg.copy_near_infrared = copy_near_infrared;
 // };
+
+// 打印输出节流
+const logHrottle = _.throttle(function (str: string) {
+  console.log(str);
+}, 10000);
 
 // 去除多余的0
 const removZero = (list: any, channelNum: number, num: number) => {
@@ -120,7 +125,7 @@ function createWindow() {
 
   // 连接socket
   ipcMain.on("connect-socket", (event, data) => {
-    console.log("connect-socket", data.port);
+    console.log("connect socket", data.port);
     client = net.createConnection(data, function () {
       client &&
         client.write &&
@@ -135,7 +140,7 @@ function createWindow() {
       });
     });
     client.on("error", function (err: any) {
-      console.log("client:error", err);
+      console.error("socket client error", err);
       if (!mainWindow.isDestroyed()) {
         event.sender.send("receive-socket", {
           msg: err.message,
@@ -155,7 +160,7 @@ function createWindow() {
       // }
     });
     client.on("close", () => {
-      console.log("client close");
+      console.log("socket client close");
       //服务器关闭
       // client = null;
       // const client1 = net.createConnection(data, function () {
@@ -170,7 +175,7 @@ function createWindow() {
       // });
     });
     client.on("end", (error: any) => {
-      console.log("client end", error);
+      console.log("socket client end", error);
       if (!error) {
       }
     });
@@ -178,7 +183,7 @@ function createWindow() {
 
   // 取消socket连接
   ipcMain.on("cancel-socket", (event, data) => {
-    console.log("cancel-socket");
+    console.log("cancel socket");
     isConnect = false;
     client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
     client && client.write(JSON.stringify(sendConfig("stop")) + "\n");
@@ -284,13 +289,6 @@ function createWindow() {
 
   // python生成蓝牙uuid
   ipcMain.on("python-uuid", (event, deviceId) => {
-    log.error(
-      "python-uuid:" +
-        join(
-          _product_path,
-          `/exe/bluetooth_scanner.exe device-info --address ${deviceId}`
-        )
-    );
     child_process.exec(
       join(
         _product_path,
@@ -298,14 +296,14 @@ function createWindow() {
       ),
       (error: any, stdout: any, stderr: any) => {
         if (error) {
-          console.log(`error: ${error.message}`);
+          console.error(`python-uuid error: ${error.message}`);
           return;
         }
         if (stderr) {
-          console.log(`stderr: ${stderr}`);
+          console.error(`python-uuid stderr: ${stderr}`);
           return;
         }
-        console.log(`stdout: ${stdout}`);
+        console.log(`python-uuid stdout: ${stdout}`);
         mainWindow.webContents.send("python-uuid-response", stdout);
       }
     );
@@ -356,19 +354,21 @@ function createWindow() {
 
   // 开始存储
   ipcMain.on("start-store", (event, data) => {
-    log.error("start-store", data);
+    console.log("start-store", data);
     isStartStore = true;
     storeChild && storeChild.send({ type: "start-store", data: data });
   });
 
   // 停止存储
   ipcMain.on("stop-store", (event, data) => {
+    console.log("stop-store", data);
     isStartStore = false;
     storeChild && storeChild.send({ type: "stop-store", data: data });
   });
 
   // 关闭储进程
   ipcMain.on("close-store", (event) => {
+    console.log("close-store");
     storeChild && storeChild.connected && storeChild.kill();
     storeChild = null;
   });
@@ -414,7 +414,6 @@ function createWindow() {
 
   // 创建串口进程
   ipcMain.on("create-serialPort", (event, data) => {
-    log.error("create-serialPort");
     serialChild && serialChild.connected && serialChild.kill();
     serialChild = child_process.fork(
       join(__dirname, "./serialPort.js"),
@@ -424,8 +423,7 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
-        log.error(err);
-        console.log(err);
+        console.error(err);
       }
     );
     // 初始化
@@ -443,13 +441,10 @@ function createWindow() {
     });
 
     serialChild.on("exit", (code: number, signal: string) => {
-      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
-      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`serialChild 子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     serialChild.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "serial-data-receive") {
-        console.log("data", data);
-
         if (data) {
           child &&
             child.connected &&
@@ -474,7 +469,7 @@ function createWindow() {
 
   // 创建回放进程
   ipcMain.on("create-replay", (event, data) => {
-    log.error("create-replay");
+    console.log("create replay");
     replayChild && replayChild.connected && replayChild.kill();
     replayChild = child_process.fork(
       join(__dirname, "./replay.js"),
@@ -484,29 +479,26 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
-        log.error(err);
-        console.log(err);
+        console.error(err);
       }
     );
     // 初始化
     replayChild.connected && replayChild.send({ type: "filter-init" });
 
     replayChild.stderr.on("data", (data: any) => {
-      console.error(`stderr: ${data}`);
+      console.log(`replayChild stderr: ${data}`);
     });
 
     replayChild.stdout.on("data", (data: any) => {
-      console.log(`stdout: ${data}`);
+      console.log(`replayChild stdout: ${data}`);
     });
 
     replayChild.on("error", (err: any) => {
-      log.error("子进程启动或执行过程中发生错误:", err);
-      console.error("子进程启动或执行过程中发生错误:", err);
+      console.error("replayChild 子进程启动或执行过程中发生错误:", err);
     });
 
     replayChild.on("exit", (code: number, signal: string) => {
-      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
-      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`replayChild 子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     replayChild.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-replay") {
@@ -522,7 +514,7 @@ function createWindow() {
   });
   // 创建存储进程
   ipcMain.on("create-store", (event, data) => {
-    log.error("create-store");
+    console.log("create-store");
     storeChild && storeChild.connected && storeChild.kill();
 
     storeChild = child_process.fork(
@@ -533,26 +525,23 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
-        log.error(err);
-        console.log(err);
+        console.error("create-store", err);
       }
     );
     storeChild.stderr.on("data", (data: any) => {
-      console.error(`stderr: ${data}`);
+      console.error(`store stderr: ${data}`);
     });
 
     storeChild.stdout.on("data", (data: any) => {
-      console.log(`stdout: ${data}`);
+      console.log(`store stdout: ${data}`);
     });
 
     storeChild.on("error", (err: any) => {
-      log.error("子进程启动或执行过程中发生错误:", err);
-      console.error("子进程启动或执行过程中发生错误:", err);
+      console.error("storeChild 子进程启动或执行过程中发生错误:", err);
     });
 
     storeChild.on("exit", (code: number, signal: string) => {
-      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
-      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.info(`storeChild 子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     storeChild.on(
       "message",
@@ -562,7 +551,7 @@ function createWindow() {
 
   // 创建子进程
   ipcMain.on("create-child", (event, data) => {
-    log.error("create-child", join(__dirname, "./child.js"));
+    console.log("create-child", join(__dirname, "./child.js"));
     child = child_process.fork(
       join(__dirname, "./child.js"),
       [__static, _product_path, JSON.stringify(config)],
@@ -571,8 +560,7 @@ function createWindow() {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
       function (err: any) {
-        log.error(err);
-        console.log(err);
+        console.error(err);
       }
     );
 
@@ -580,21 +568,19 @@ function createWindow() {
     child.connected && child.send({ type: "filter-init" });
 
     child.stderr.on("data", (data: any) => {
-      console.error(`stderr: ${data}`);
+      console.error(`child stderr: ${data}`);
     });
 
     child.stdout.on("data", (data: any) => {
-      console.log(`stdout: ${data}`);
+      console.log(`child stdout: ${data}`);
     });
 
     child.on("error", (err: any) => {
-      log.error("子进程启动或执行过程中发生错误:", err);
-      console.error("子进程启动或执行过程中发生错误:", err);
+      console.error("child 子进程启动或执行过程中发生错误:", err);
     });
 
     child.on("exit", (code: number, signal: string) => {
-      log.error(`子进程退出，退出码: ${code}, 信号: ${signal}`);
-      console.log(`子进程退出，退出码: ${code}, 信号: ${signal}`);
+      console.log(`child 子进程退出，退出码: ${code}, 信号: ${signal}`);
     });
     child.on("message", ({ type, data }: { type: string; data: any }) => {
       if (type === "end-data-decode") {
@@ -636,6 +622,7 @@ function createWindow() {
           near_infrared: data.copy_near_infrared,
           isLosspkg: data.isLosspkg,
         };
+        logHrottle(`code:${data.pkg.time_mark},${data.pkg.pkglen},${data.pkg.pkgnum},${data.pkg.pkg_type},${data.pkg.brain_elec_channel.length?data.pkg.brain_elec_channel[0][0]:'null'},${data.pkg.near_infrared.length?data.pkg.near_infrared[0][0]:'null'}`); // 脑电第一个通道第一个数据，红外第一个通道第一个波形数据
         isStartStore &&
           storeChild &&
           storeChild.send({
@@ -650,6 +637,7 @@ function createWindow() {
 
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
+ 
         event.sender.send("end-data-decode", data);
       }
       if (type === "change-config-success") {
@@ -727,7 +715,7 @@ function closeNodeServer() {
     client && client.write(JSON.stringify(sendConfig("remove")) + "\n");
     client && client.end();
     const client1 = net.createConnection(9000, function () {
-      console.log("连接成功");
+      console.log("closeNodeServer connect success");
       // client1 &&
       //   client1.write(
       //     JSON.stringify({
@@ -742,13 +730,13 @@ function closeNodeServer() {
       console.log("client1 data", data);
     });
     client1.on("error", (err: any) => {
-      console.log("client1 error", err);
+      console.error("client1 error", err);
     });
     nodeServer && nodeServer.kill();
     // client && client.destroy();
     client = null;
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 }
 

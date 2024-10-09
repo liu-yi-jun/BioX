@@ -44,7 +44,6 @@ const atNotice = (event) => {
   console.log('回复',event.target.value);
   
   for (let i = 0; i < atNoticeList.length; i++) {
-    console.log(event.target.value);
     let uint8Data = new Uint8Array(event.target.value.buffer);
     // 搜索 0x0D (回车符) 的位置
     let carriageReturnIndex = -1;
@@ -149,8 +148,6 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     // 发送写请求
     characteristic1.writeValue(commandBuffer);
 
-    console.log("create-child");
-
     // 创建子进程
     ipcRenderer.send("create-child");
     // 解码后的蓝牙数据
@@ -158,6 +155,7 @@ CustomBluetooth.prototype.init = async function (cb, deviceId) {
     cb(true, "hide");
     cb(true, "success");
   } catch (err) {
+    console.error('bluetooth:', err);
     if (server) {
       clearBluetooth();
     }
