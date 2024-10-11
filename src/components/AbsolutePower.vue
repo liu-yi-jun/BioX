@@ -48,7 +48,7 @@ class ChannelBar {
   channelIndex: number;
   plot: any;
 
-  autoscaleMax: number = 100;
+  autoscaleMax: number = 50000;
   autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
@@ -73,7 +73,7 @@ class ChannelBar {
     this.plot.getYAxis().setLineColor("#6E7079");
     this.plot.getXAxis().setFontColor("#787878");
     this.plot.getYAxis().setFontColor("#787878");
-    this.plot.getYAxis().getAxisLabel().setText("μV^2");
+    this.plot.getYAxis().getAxisLabel().setText("uV^2/Hz");
     this.plot.getXAxis().setNTicks(0);
     this.plot.getYAxis().setTickLabelOffset(4);
     this.plot.getXAxis().setAxisLabelText("EEG Power Bands");

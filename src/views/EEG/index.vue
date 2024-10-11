@@ -550,6 +550,7 @@ const rePlayNotice = (event, data) => {
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
+  
   handlePkgList(data);
   isRender.value = true;
   isRenderTimer && clearTimeout(isRenderTimer);

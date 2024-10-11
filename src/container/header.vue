@@ -521,26 +521,21 @@ const findDevice = () => {
         case "initComplete":
           connectBluetooth();
           break;
-        case "loading":
-          app?.proxy?.loading.show("连接设备中...");
-          break;
-        case "hide":
-          app?.proxy?.loading.hide();
-          break;
+        // case "loading":
+        //   app?.proxy?.loading.show("连接设备中...");
+        //   break;
+        // case "hide":
+        //   app?.proxy?.loading.hide();
+        //   break;
         case "success":
           selectDeviceItem = null;
-          isConnect.value = true;
-          message.success("连接成功");
-          setAtConfig();
+          setTimeout(() => {
+            // 延迟发送，不然会报错
+            setAtConfig();
+          }, 600);
       }
-    } else {
-      app?.proxy?.loading.hide();
-      if (msg !== "User cancelled the requestDevice() chooser.") {
-        message.error(msg);
-        console.error(msg)
-      }
-    }
-  }, selectDeviceItem?.deviceId);
+    } 
+  }, selectDeviceItem?.deviceId, app?.proxy?.loading);
 };
 
 // 关闭应用
