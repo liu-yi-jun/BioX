@@ -878,3 +878,28 @@ $roundRadius: 18px;
     }
   }
 }
+
+.related-power-toolbox {
+  display: flex;
+  margin-top: 5px;
+  justify-content: center;
+  li {
+    list-style-type: none;
+    display: flex;
+    align-items: center;
+    &>span:first-child {
+      border-radius: 3px;
+      width: 20px;
+      display: inline-block;
+      height: 10px;
+      background-color: #00bfff;
+    }
+    &>span:last-child {
+      font-size: 12px;
+      margin-left: 3px;
+    }
+    &+li {
+      margin-left: 10px;
+    }
+  }
+}

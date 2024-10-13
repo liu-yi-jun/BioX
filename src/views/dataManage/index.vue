@@ -92,6 +92,7 @@ interface DataItem {
   eegInputMarkerList: string;
   irInputMarkerList: string;
   markerList: string;
+  waveLength: number;
 }
 const recordList = ref<DataItem[]>([]);
 
@@ -124,7 +125,7 @@ onMounted(() => {
 
 const getDate = async () => {
   recordList.value = await db.all(
-    `select id,instanceID,name,recoredCreateTime,recoredTotalTime,recoredEndTime,describe,eegInputMarkerList,irInputMarkerList,markerList from record where  '${searchValue.value}' = '' or name Like '%${searchValue.value}%'  or instanceID Like '%${searchValue.value}%'`
+    `select id,instanceID,name,recoredCreateTime,recoredTotalTime,recoredEndTime,describe,waveLength,eegInputMarkerList,irInputMarkerList,markerList from record where  '${searchValue.value}' = '' or name Like '%${searchValue.value}%'  or instanceID Like '%${searchValue.value}%'`
   );
 };
 
@@ -154,6 +155,8 @@ const exportCsv = async (record: DataItem) => {
   let eegInputMarkerList = JSON.parse(record.eegInputMarkerList);
   let irInputMarkerList = JSON.parse(record.irInputMarkerList);
   let markerList = JSON.parse(record.markerList);
+  console.log('waveLength', record.waveLength);
+  
   let csvContent = "";
   let eegChannel = 1;
   let irChannel = 1;

@@ -29,6 +29,7 @@ const rightPadding = 10;
 const topPadding = 20;
 const middlePadding = 30;
 const bottomPadding = 50;
+const minGap = 0.001;
 const labelNmae = [
   "DELTA\n0.5-4Hz",
   "THETA\n4-8Hz",
@@ -48,7 +49,7 @@ class ChannelBar {
   channelIndex: number;
   plot: any;
 
-  autoscaleMax: number = 50000;
+  autoscaleMax: number = 1;
   autoscaleMin: number = 0;
   yMax: number | undefined;
   yMin: number | undefined;
@@ -100,7 +101,7 @@ class ChannelBar {
       ]);
     let points: any = [];
     for (var i = 0; i < 5; i++) {
-      points[i] = new window.GPoint(i + 0.5, 0.1, labelNmae[i]);
+      points[i] = new window.GPoint(i + 0.5, 0, labelNmae[i]);
     }
     this.plot.setPoints(points);
   }
@@ -112,21 +113,27 @@ class ChannelBar {
     if (series[0] == undefined) {
       return;
     }
+    if (this.yMin === undefined) {
+      this.autoscaleMin = Number.MAX_VALUE;
+    }
+    if (this.yMax === undefined) {
+      this.autoscaleMax = -Number.MAX_VALUE;
+    }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
-      points[i] = new window.GPoint(i + 0.5, series[i] || 0.1, labelNmae[i]);
+      if (series[i] > this.autoscaleMax) {
+        this.autoscaleMax = series[i];
+      }
+      if (series[i] < this.autoscaleMin) {
+        this.autoscaleMin = series[i];
+      }
+      points[i] = new window.GPoint(i + 0.5, series[i] || 0, labelNmae[i]);
     }
-
+    this.setYLim();
     this.plot.setPoints(points);
   }
 
   updateYAxis(min?, max?) {
-    if (min > 0) {
-      min = 0;
-    }
-    if (max < 0) {
-      max = 0;
-    }
     this.yMin = min;
     this.yMax = max;
     this.setYLim();
@@ -138,10 +145,18 @@ class ChannelBar {
   }
 
   setYLim() {
-    this.plot.setYLim(
-      this.yMin === undefined ? this.autoscaleMin : this.yMin,
-      this.yMax === undefined ? this.autoscaleMax : this.yMax
-    );
+    let min = this.yMin === undefined ? this.autoscaleMin : this.yMin;
+    let max = this.yMax === undefined ? this.autoscaleMax : this.yMax;
+    if (min == Number.MAX_VALUE || max == Number.MIN_VALUE) {
+      return;
+    }
+    min = Number(min);
+    max = Number(max);
+
+    if (min == max) {
+      max += minGap;
+    }
+    this.plot.setYLim(min, max);
   }
 
   draw() {
@@ -210,7 +225,7 @@ onBeforeUnmount(() => {
   sketch.remove();
   sketch.remove = null;
   sketch = null;
-  window.p5.prototype._registeredMethods.remove = []
+  window.p5.prototype._registeredMethods.remove = [];
   canvasP5 = null;
   channelBars = null;
   timer && clearInterval(timer);

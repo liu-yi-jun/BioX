@@ -13,7 +13,6 @@ import { getCurrentInstance } from "vue";
 
 let Loading: any;
 let connectNum = 3;
-let isNormalClose = false;
 
 import _, { reject, set } from "lodash";
 let handleNotifications = function (event) {
@@ -23,14 +22,22 @@ let handleNotifications = function (event) {
 
 // 监测蓝牙是否断开防抖
 const bluetoothMonitor = _.debounce(function () {
-  if (!isNormalClose) {
+  const indexStore = useIndexStore();
+  const {
+    isConnect,
+    bluetoothATConfig,
+    isNormalClose,
+    isManyReconnect,
+    isDeviceClose,
+  } = storeToRefs(indexStore);
+  if (!isNormalClose.value && !isDeviceClose.value) {
     message.error("蓝牙异常断开!");
-    const indexStore = useIndexStore();
-    const { isConnect, bluetoothATConfig } = storeToRefs(indexStore);
     isConnect.value = false;
     startConnect("重新连接...")
       .then(() => {
-        isNormalClose = false;
+        isNormalClose.value = false;
+        isDeviceClose.value = false;
+        isManyReconnect.value = false;
         message.success("连接成功!");
         setTimeout(() => {
           // 延迟发送，不然会报错
@@ -43,6 +50,7 @@ const bluetoothMonitor = _.debounce(function () {
         }, 600);
       })
       .catch((error) => {
+        isManyReconnect.value = true;
         message.error("连接失败:" + error.message);
         if (server) {
           clearBluetooth();
@@ -81,6 +89,12 @@ const handleEndDataDecode = (event, data) => {
 // at通知函数
 const atNotice = (event) => {
   console.log("回复", event.target.value);
+  if (event.target.value === "正常关机断连") {
+    const indexStore = useIndexStore();
+    const { isDeviceClose,isConnect } = storeToRefs(indexStore);
+    isDeviceClose.value = true;
+    isConnect.value = false;
+  }
 
   for (let i = 0; i < atNoticeList.length; i++) {
     let uint8Data = new Uint8Array(event.target.value.buffer);
@@ -157,33 +171,42 @@ const startConnect = function (tip) {
           await characteristic2.startNotifications();
           await characteristic1.startNotifications();
 
-          // AT指令
-          const atCommand = "AT+START_ALL\r";
+          // 时间校准指令
+          // const timeCommand = "AT+TIME\r";
+          // // 将时间校准指令转换为Uint8Array
+          // const timeCommandBuffer = new TextEncoder().encode(timeCommand);
+          // // 发送写请求
+          // characteristic1.writeValue(timeCommandBuffer);
 
-          // 将AT指令转换为Uint8Array
-          const commandBuffer = new TextEncoder().encode(atCommand);
+          setTimeout(() => {
+            // AT指令
+            const atCommand = "AT+START_ALL\r";
 
-          // 发送写请求
-          characteristic1.writeValue(commandBuffer);
+            // 将AT指令转换为Uint8Array
+            const commandBuffer = new TextEncoder().encode(atCommand);
 
-          // 创建子进程
-          ipcRenderer.send("create-child");
-          // 解码后的蓝牙数据
-          ipcRenderer.on("end-data-decode", handleEndDataDecode);
-          const indexStore = useIndexStore();
-          const { isConnect } = storeToRefs(indexStore);
-          isConnect.value = true;
-          Loading.hide();
+            // 发送写请求
+            characteristic1.writeValue(commandBuffer);
 
-          connectNum = 3;
-          resolve(true);
+            // 创建子进程
+            ipcRenderer.send("create-child");
+            // 解码后的蓝牙数据
+            ipcRenderer.on("end-data-decode", handleEndDataDecode);
+            const indexStore = useIndexStore();
+            const { isConnect } = storeToRefs(indexStore);
+            isConnect.value = true;
+            Loading.hide();
+
+            connectNum = 3;
+            resolve(true);
+          }, 300);
         } catch (error) {
           connectNum--;
           if (connectNum <= 0) {
             reject(error);
             Loading.hide();
             console.error("连接失败", error.message);
-            return
+            return;
           }
           setTimeout(() => {
             startConnect("重新连接...")
@@ -297,9 +320,14 @@ CustomBluetooth.prototype.init = async function (cb, deviceId, loading) {
     // ipcRenderer.on("end-data-decode", handleEndDataDecode);
     // cb(true, "hide");
     // cb(true, "success");
+    const indexStore = useIndexStore();
+    const { isNormalClose, isDeviceClose, isManyReconnect } =
+      storeToRefs(indexStore);
     startConnect("连接中...")
       .then(() => {
-        isNormalClose = false;
+        isNormalClose.value = false;
+        isDeviceClose.value = false;
+        isManyReconnect.value = false;
         cb(true, "success");
         message.success("连接成功!");
       })
@@ -328,7 +356,9 @@ CustomBluetooth.prototype.removeNotice = function (cb: Function) {
 };
 
 CustomBluetooth.prototype.close = function (cb: Function) {
-  isNormalClose = true;
+  const indexStore = useIndexStore();
+  const { isNormalClose } = storeToRefs(indexStore);
+  isNormalClose.value = true;
   if (server) {
     clearBluetooth();
     cb(true, "设备连接已断开！");

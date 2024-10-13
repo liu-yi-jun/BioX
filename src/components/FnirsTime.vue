@@ -13,6 +13,7 @@ import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
 const { isMarker, markerList } = storeToRefs(indexStore);
+const ipcRenderer = require("electron").ipcRenderer;
 const props = defineProps({
   numSeconds: String,
 });
@@ -394,6 +395,11 @@ const handleKeydown = (e) => {
       irInputMarkerList.push({
         time_stamp: new Date().getTime(),
         type: findItem.type,
+      });
+       ipcRenderer.send("marker-lsl", {
+        time_stamp: new Date().getTime(),
+        type: findItem.type,
+        description: findItem.description,
       });
     }
   }

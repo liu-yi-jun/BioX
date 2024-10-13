@@ -1,4 +1,28 @@
 <template>
+  <div>
+    <ul class="related-power-toolbox">
+        <li>
+        <span :style="{background: colors['δ wave']}"></span>
+        <span>DELTA</span>
+      </li>
+       <li>
+        <span :style="{background: colors['θ wave']}"></span>
+        <span>THETA</span>
+      </li>
+       <li>
+        <span :style="{background: colors['α wave']}"></span>
+        <span>ALPHA</span>
+      </li>
+       <li>
+        <span :style="{background: colors['β wave']}"></span>
+        <span>BETA</span>
+      </li>
+      <li>
+        <span :style="{background: colors['γ wave']}"></span>
+        <span>GAMMA</span>
+      </li>
+    </ul>
+  </div>
   <div
     style="width: 100%; height: 100%; font-size: 0px"
     ref="RelatedPower"
@@ -37,13 +61,16 @@ const rightPadding = 10;
 const topPadding = 10;
 const middlePadding = 30;
 const bottomPadding = 30;
-const colors = {
+const colors = reactive(
+  {
   "γ wave": "rgba(7, 33, 230, 0.8)",
   "β wave": "rgba(76, 104, 255, 0.6)",
   "α wave": "rgba(122, 131, 255, 0.6)",
   "θ wave": "rgba(161, 156, 255, 0.6)",
   "δ wave": "rgba(228, 205, 255, 0.6",
-};
+}
+);
+
 
 // 实例
 class ChannelBar {
@@ -269,11 +296,11 @@ onBeforeUnmount(() => {
   sketch.remove();
   sketch.remove = null;
   sketch = null;
-  window.p5.prototype._registeredMethods.remove = []
+  window.p5.prototype._registeredMethods.remove = [];
   channelBars = null;
   customCanvas = null;
   customCtx = null;
-  canvasP5 = null
+  canvasP5 = null;
   offscreenCanvas = null;
   offscreenCtx = null;
   timer && clearInterval(timer);

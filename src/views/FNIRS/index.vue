@@ -346,7 +346,7 @@
               size="small"
             ></a-select>
           </div>
-          <div v-if="radioValue == 3">
+          <!-- <div v-if="radioValue == 3">
             <p class="card-metrics-title">
               <span> SaO2： </span>
               <span>{{ saOValue }}%</span>
@@ -358,7 +358,7 @@
               :options="ChannelOptions"
               size="small"
             ></a-select>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -638,6 +638,7 @@ watch(wavelengthsValue, (newValue) => {
   if (newValue == 1) {
     configData.value.irFilter.is2wave = true;
     configData.value.irFilter.is3wave = false;
+    configData.value.irFilter.ir_channel_count = 2 * 8;
     configData.value.irFilter.ir_sample_rate =
       configData.value.irFilter.two_ir_sample_rate;
     ipcRenderer.send(
@@ -651,6 +652,7 @@ watch(wavelengthsValue, (newValue) => {
   if (newValue == 2) {
     configData.value.irFilter.is2wave = false;
     configData.value.irFilter.is3wave = true;
+    configData.value.irFilter.ir_channel_count = 3 * 8;
     configData.value.irFilter.ir_sample_rate =
       configData.value.irFilter.three_ir_sample_rate;
     ipcRenderer.send(

@@ -116,6 +116,10 @@ const {
   isConnect,
   markerList,
   recordProgress,
+  isNormalClose,
+  isDeviceClose,
+  isManyReconnect,
+  configData,
 } = storeToRefs(indexStore);
 const useForm = Form.useForm;
 const disabled = ref<boolean>(true);
@@ -125,7 +129,7 @@ const isRecord = ref<boolean>(true);
 const openStartRecordModal = ref<boolean>(false);
 // 进度条最小时间
 const minTime = ref<number>(0);
-const recordtotalTime = 60 * 60 * 1000
+const recordtotalTime = 60 * 60 * 1000;
 // 进度条总时间
 const totalTime = ref<number>(recordtotalTime);
 // 进度条当前时间
@@ -155,7 +159,18 @@ let db;
 const emit = defineEmits(["onRecord", "onStatus"]);
 
 watch(isConnect, (newValue) => {
-  if (!newValue && status.value === 1) {
+  if (
+    !newValue &&
+    status.value === 1 &&
+    (isNormalClose.value || isDeviceClose.value)
+  ) {
+    changeStatus("recordEnd");
+  }
+});
+
+// 多次重连失败，停止录制
+watch(isManyReconnect, (newValue) => {
+  if (newValue && status.value === 1) {
     changeStatus("recordEnd");
   }
 });
@@ -289,6 +304,11 @@ const handleStartRecordModal = (e?: MouseEvent) => {
         db.insert("record", {
           instanceID: generateUniqueId(),
           ...toRaw(formData),
+          waveLength: configData.value.irFilter.is2wave
+            ? 2
+            : configData.value.irFilter.is3wave
+            ? 3
+            : 4,
           recoredCreateTime: recoredCreateTime.value,
         }).then((res) => {
           // 创建存储进程

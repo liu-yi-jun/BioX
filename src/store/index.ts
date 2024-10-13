@@ -50,7 +50,11 @@ export const useIndexStore = defineStore({
         ir_sample_rate: 50,
         two_ir_sample_rate: 50,
         three_ir_sample_rate: 25,
-        ir_channel_count: 32,
+        ir_channel_count: 16,
+      },
+      // Marker配置
+      markerFilter: {
+        mk_channel_count: 1,
       },
       // 心率配置
       hrv: {
@@ -62,7 +66,9 @@ export const useIndexStore = defineStore({
         isIr: true,
         isMotion: true,
         isOutLet: false,
+        handOutLet:false, //手动启动lsl
         isInlet: false,
+        isMarker: true, //lsl的开启标记
         streamName: "BioMulti Lite",
       },
       // 串口配置
@@ -76,7 +82,7 @@ export const useIndexStore = defineStore({
     },
     isEegClear: false,
     isIrClear: false,
-    // 是否开始标记
+    // 是否开始标记（软件）
     isMarker: false,
     markerList: [
       {
@@ -84,6 +90,12 @@ export const useIndexStore = defineStore({
         description: "",
       },
     ],
+    // 是否软件正常断开蓝牙连接
+    isNormalClose:false,
+    // 是否设备正常断开连接
+    isDeviceClose: false,
+    // 是否超过3次重连失败
+    isManyReconnect: false,
   }),
   actions: {},
 });

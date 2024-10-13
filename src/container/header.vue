@@ -45,17 +45,23 @@
       <a-dropdown placement="bottom" trigger="click" arrow>
         <div class="header-center">
           <span>BIO X</span>
-          <div class="electricity" :class="{
-            green: batteryState >= 20,
-            red: batteryState < 20
-          }">
-            <span>{{batteryState}}<span style="font-size: 7px">%</span></span>
+          <div
+            class="electricity"
+            :class="{
+              green: batteryState >= 20,
+              red: batteryState < 20,
+            }"
+          >
+            <span>{{ batteryState }}<span style="font-size: 7px">%</span></span>
           </div>
         </div>
         <template #overlay>
           <a-menu>
             <a-menu-item>
-              <div @click="closeDevice" style="text-align: center; color: #666;padding: 6px 12px;">
+              <div
+                @click="closeDevice"
+                style="text-align: center; color: #666; padding: 6px 12px"
+              >
                 断开连接
               </div>
             </a-menu-item>
@@ -65,7 +71,7 @@
     </div>
     <div>
       <a-space size="middle">
-        <a-dropdown placement="bottom" >
+        <a-dropdown placement="bottom">
           <a-button>
             <template #icon>
               <SettingOutlined />
@@ -331,7 +337,7 @@
           v-if="isMarker"
           type="text"
           ><CheckCircleOutlined style="color: #67c23a" />
-          <span style="margin-left: 6px;color: #67c23a">Started</span></span
+          <span style="margin-left: 6px; color: #67c23a">Started</span></span
         >
         <a-button v-else type="primary" @click="handleStartMarker"
           >Start</a-button
@@ -398,8 +404,16 @@ import {
 import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
-const { isConnect, bluetoothATConfig, configData, isMarker,markerList } =
-  storeToRefs(indexStore);
+const {
+  isConnect,
+  bluetoothATConfig,
+  configData,
+  isMarker,
+  markerList,
+  isDeviceClose,
+  isNormalClose,
+  isManyReconnect,
+} = storeToRefs(indexStore);
 import { createVNode } from "vue";
 const connectVisible = ref<boolean>(false);
 const batteryState = ref(0);
@@ -446,8 +460,6 @@ let selectDeviceItem: DeviceItem | null = null;
 const deviceList = ref<DeviceItem[]>([]);
 const atNoticeList = reactive<NoticeItem[]>([]);
 
-
-
 const openConnectVisible = () => {
   connectVisible.value = true;
   bluetooth.scan();
@@ -462,6 +474,25 @@ const openConnectVisible = () => {
 //     debugger;
 //   }
 // });
+
+watch(isConnect, (newValue) => {
+  if (newValue && configData.value.lsl.handOutLet) {
+    indexStore.configData.lsl.isOutLet = configData.value.lsl.handOutLet;
+  }
+  if (
+    !newValue &&
+    (isNormalClose.value || isDeviceClose.value)
+  ) {
+    indexStore.configData.lsl.isOutLet = false;
+  }
+});
+
+// 多次重连失败，lsl关闭
+watch(isManyReconnect, (newValue) => {
+  if (newValue) {
+    indexStore.configData.lsl.isOutLet = false;
+  }
+});
 
 watch(
   () => router.currentRoute.value,
@@ -515,27 +546,31 @@ const setAtConfig = () => {
 
 // 蓝牙扫描和连接
 const findDevice = () => {
-  bluetooth.init((value, msg) => {
-    if (value) {
-      switch (msg) {
-        case "initComplete":
-          connectBluetooth();
-          break;
-        // case "loading":
-        //   app?.proxy?.loading.show("连接设备中...");
-        //   break;
-        // case "hide":
-        //   app?.proxy?.loading.hide();
-        //   break;
-        case "success":
-          selectDeviceItem = null;
-          setTimeout(() => {
-            // 延迟发送，不然会报错
-            setAtConfig();
-          }, 600);
+  bluetooth.init(
+    (value, msg) => {
+      if (value) {
+        switch (msg) {
+          case "initComplete":
+            connectBluetooth();
+            break;
+          // case "loading":
+          //   app?.proxy?.loading.show("连接设备中...");
+          //   break;
+          // case "hide":
+          //   app?.proxy?.loading.hide();
+          //   break;
+          case "success":
+            selectDeviceItem = null;
+            setTimeout(() => {
+              // 延迟发送，不然会报错
+              setAtConfig();
+            }, 600);
+        }
       }
-    } 
-  }, selectDeviceItem?.deviceId, app?.proxy?.loading);
+    },
+    selectDeviceItem?.deviceId,
+    app?.proxy?.loading
+  );
 };
 
 // 关闭应用
@@ -665,13 +700,19 @@ const initMarketOptions = () => {
 };
 
 const initialize = () => {
-     bluetooth.addNotice(bluetoothNotice);
-}
+  bluetooth.addNotice(bluetoothNotice);
+};
 
 // 蓝牙数据通知
-const bluetoothNotice = ({pkg_type,Battery_State}:{pkg_type:number,Battery_State:number}) => {
- if(pkg_type == 0) {
-    batteryState.value = parseInt(Battery_State + '')
+const bluetoothNotice = ({
+  pkg_type,
+  Battery_State,
+}: {
+  pkg_type: number;
+  Battery_State: number;
+}) => {
+  if (pkg_type == 0) {
+    batteryState.value = parseInt(Battery_State + "");
   }
 };
 
@@ -863,6 +904,5 @@ const handleStopMarker = () => {
   indexStore.isMarker = false;
   // message.success("结束标记!");
 };
-
 </script>
 <style scoped></style>

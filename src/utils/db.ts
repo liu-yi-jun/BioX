@@ -22,6 +22,7 @@ CustomDatabase.prototype.init = function (isMain = true) {
           recoredCreateTime INTEGER NOT NULL default(0),
           recoredTotalTime INTEGER NOT NULL default(0),
           recoredEndTime INTEGER NOT NULL default(0),
+          waveLength INTEGER NOT NULL default(0),
           eegInputMarkerList BLOB,
           irInputMarkerList BLOB,
           markerList TEXT

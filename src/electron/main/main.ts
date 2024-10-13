@@ -21,9 +21,9 @@ let socketTimer: any;
 const socketTimeGap = 10;
 import log from "electron-log/main";
 log.initialize(); //这里初始化后，渲染进程才能用
-log.transports.file.maxSize  = 10 * 1024 * 1024;
+log.transports.file.maxSize = 10 * 1024 * 1024;
 console.log = log.log;
-console.error = log.error
+console.error = log.error;
 const max__wave_channel = 4;
 
 const isDev = process.env.npm_lifecycle_event === "app:dev" ? true : false;
@@ -95,15 +95,32 @@ const removZero = (list: any, channelNum: number, num: number) => {
   return newList;
 };
 
+// 根据选择的双波长，三波长修改数组
+const removWave = (list: any, channelNum: number, num: number) => {
+  if (config.irFilter.is2wave) {
+    return list.map((i: Array<number>) => {
+      return [i[0], i[2]];
+    });
+  }
+  if (config.irFilter.is3wave) {
+    return list.map((i: Array<number>) => {
+      return [i[0], i[1], i[2]];
+    });
+  }
+};
+
+//pkg_type: 1 - EEG, 2 - IR, 3 - 配置， 4 - marker
 const sendConfig = (action: string) => {
   return {
     pkg_type: 3,
     open_eeg: config.lsl.isEeg,
     open_ir: config.lsl.isIr,
+    open_marker: config.lsl.isMarker,
     eeg_rate: config.eegFilter.sample_rate,
     eeg_channel_count: config.eegFilter.eeg_channel_count,
     ir_rate: config.irFilter.ir_sample_rate,
     ir_channel_count: config.irFilter.ir_channel_count,
+    mk_channel_count: config.markerFilter.mk_channel_count,
     stream_name: config.lsl.streamName,
     action: action,
   };
@@ -122,6 +139,16 @@ function createWindow() {
     },
   });
   mainWindow.setFullScreen(true);
+
+  ipcMain.on("marker-lsl", (event, data) => {
+    let mk =
+      JSON.stringify({
+        pkg_type: 4,
+        ...data,
+      }) + "\n";
+    console.log("marker-lsl", mk);
+    client && client.write && client.write(mk);
+  });
 
   // 连接socket
   ipcMain.on("connect-socket", (event, data) => {
@@ -614,30 +641,56 @@ function createWindow() {
           );
           data.pkg.brain_elec_channel = [];
         }
-
-        let copyOrigin = {
-          ...data.pkg,
-          time_utc: data.time_utc,
-          brain_elec_channel: data.copy_brain_elec_channel,
-          near_infrared: data.copy_near_infrared,
-          isLosspkg: data.isLosspkg,
-        };
-        logHrottle(`code:${data.pkg.time_mark},${data.pkg.pkglen},${data.pkg.pkgnum},${data.pkg.pkg_type},${data.pkg.brain_elec_channel.length?data.pkg.brain_elec_channel[0][0]:'null'},${data.pkg.near_infrared.length?data.pkg.near_infrared[0][0]:'null'}`); // 脑电第一个通道第一个数据，红外第一个通道第一个波形数据
+        
+        logHrottle(
+          `code:${data.pkg.time_mark},${data.pkg.pkglen},${data.pkg.pkgnum},${
+            data.pkg.pkg_type
+          },${
+            data.pkg.brain_elec_channel.length
+              ? data.pkg.brain_elec_channel[0][0]
+              : "null"
+          },${
+            data.pkg.near_infrared.length
+              ? data.pkg.near_infrared[0][0]
+              : "null"
+          }`
+        ); // 脑电第一个通道第一个数据，红外第一个通道第一个波形数据
         isStartStore &&
           storeChild &&
           storeChild.send({
             type: "end-data-decode",
-            data: copyOrigin,
+            data: {
+              ...data.pkg,
+              time_utc: data.time_utc,
+              brain_elec_channel: data.copy_brain_elec_channel,
+              near_infrared: data.copy_near_infrared,
+              isLosspkg: data.isLosspkg,
+            },
           });
 
         client &&
           client.write &&
           isConnect &&
-          client.write(JSON.stringify(copyOrigin) + "\n");
+          client.write(JSON.stringify({
+            ...data.pkg,
+            time_utc: data.time_utc,
+            brain_elec_channel: data.copy_brain_elec_channel,
+            ir_data_num: config.irFilter.is2wave
+              ? 2
+              : config.irFilter.is3wave
+              ? 3
+              : 4,
+            near_infrared: removWave(
+              data.copy_near_infrared,
+              data.pkg.ir_channel,
+              max__wave_channel
+            ),
+            isLosspkg: data.isLosspkg,
+          }) + "\n");
 
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
- 
+
         event.sender.send("end-data-decode", data);
       }
       if (type === "change-config-success") {

@@ -47,7 +47,7 @@
                 >
                 <span>Data format: cf_float32</span>
               </div>
-              <div class="lsl-outlet-config-item">
+              <!-- <div class="lsl-outlet-config-item">
                 <a-checkbox
                   :disabled="configData.lsl.isOutLet"
                   @change="changeLslStatus"
@@ -56,6 +56,17 @@
                 >
                 <span>Number of stream: 10</span>
                 <span>Sample rate: 12.5Hz</span>
+                <span>Data format: cf_float32</span>
+              </div> -->
+              <div class="lsl-outlet-config-item">
+                <a-checkbox
+                  :disabled="configData.lsl.isOutLet"
+                  @change="changeLslStatus"
+                  v-model:checked="configData.lsl.isMarker"
+                  >Marker</a-checkbox
+                >
+                <span>Number of stream: 1</span>
+                <span>Sample rate: auto</span>
                 <span>Data format: cf_float32</span>
               </div>
             </div>
@@ -159,6 +170,7 @@ const changeLslStatus = () => {
 };
 const handleChangeOutLet = () => {
   indexStore.configData.lsl.isOutLet = !configData.value.lsl.isOutLet;
+  indexStore.configData.lsl.handOutLet = indexStore.configData.lsl.isOutLet;
   ipcRenderer.send(
     "change-config-field",
     JSON.stringify({

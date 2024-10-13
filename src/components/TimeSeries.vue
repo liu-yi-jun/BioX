@@ -12,6 +12,7 @@ import { useIndexStore } from "../store/index";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
 const { isMarker, markerList } = storeToRefs(indexStore);
+const ipcRenderer = require("electron").ipcRenderer;
 import {
   onMounted,
   ref,
@@ -358,6 +359,11 @@ const handleKeydown = (e) => {
         time_stamp: new Date().getTime(),
         type: findItem.type,
       });
+      ipcRenderer.send("marker-lsl", {
+        time_stamp: new Date().getTime(),
+        type: findItem.type,
+        description: findItem.description,
+      });
       return;
     }
   }
@@ -374,13 +380,13 @@ onBeforeUnmount(() => {
   sketch.remove();
   sketch.remove = null;
   sketch = null;
-  window.p5.prototype._registeredMethods.remove = []
+  window.p5.prototype._registeredMethods.remove = [];
   channelBars = null;
   customCanvas = null;
   customCtx = null;
   offscreenCanvas = null;
   offscreenCtx = null;
-  canvasP5 = null
+  canvasP5 = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
   window.removeEventListener("keydown", handleKeydown);
