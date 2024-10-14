@@ -156,31 +156,22 @@ const exportCsv = async (record: DataItem) => {
   let irInputMarkerList = JSON.parse(record.irInputMarkerList);
   let markerList = JSON.parse(record.markerList);
   console.log('waveLength', record.waveLength);
-  
+
   let csvContent = "";
   let eegChannel = 1;
   let irChannel = 1;
   let eegDataNum = 1;
   app?.proxy?.loading.show("导出中...");
   // 第一行的值
-  const metaDataKeys = ref([
-    "ID",
-    "NAME",
-    "DESCRIPTION",
-    "RECORDCREATETIME",
-    "RECORDTOTALTIME",
-    "DEVICE TYPE",
-    "DEVICE SERIAL",
-    "DEVICE FIRMWARE",
-    "EEG CHANNELS",
-    "EEG SAMPLING RATE",
-    "IR CHANNELS",
-    "IR WAVELENGTHS",
-    "IR SAMPLING RATE",
-    "MARKER DESCRIPTION",
-    "LOSS NUM",
-  ]);
-  csvContent = csvContent + metaDataKeys.value.join(",") + "\n";
+  const metaDataKeys = [
+    "ID", "NAME", "DESCRIPTION", "RECORDCREATETIME", "RECORDTOTALTIME",
+    "DEVICE TYPE", "DEVICE SERIAL", "DEVICE FIRMWARE", "EEG CHANNELS",
+    "EEG SAMPLING RATE", "IR CHANNELS", "IR WAVELENGTHS", "IR SAMPLING RATE",
+    "MARKER DESCRIPTION", "LOSS NUM",
+  ];
+  csvContent += metaDataKeys.join(",") + "\n";
+
+  // 第二行的值
   // 保存record的信息
   csvContent +=
     record.id +
@@ -302,12 +293,40 @@ const exportCsv = async (record: DataItem) => {
 
   thirdRowList.value.push("FNIRS.COUNTER");
 
-  const str =
-    "FNIRS.S1D1.735 FNIRS.S1D1.805 FNIRS.S1D1.850 FNIRS.S1D1.805 FNIRS.S1D2.735 FNIRS.S1D2.805 FNIRS.S1D2.850 FNIRS.S1D2.805 FNIRS.S1D3.735 FNIRS.S1D3.805 FNIRS.S1D3.850 FNIRS.S1D3.805 FNIRS.S1D4.735 FNIRS.S1D4.805 FNIRS.S1D4.850 FNIRS.S1D4.805 FNIRS.S2D1.735 FNIRS.S2D1.805 FNIRS.S2D1.850 FNIRS.S2D1.805 FNIRS.S2D2.735 FNIRS.S2D2.805 FNIRS.S2D2.850 FNIRS.S2D2.805 FNIRS.S2D3.735 FNIRS.S2D3.805 FNIRS.S2D3.850 FNIRS.S2D3.805 FNIRS.S2D4.735 FNIRS.S2D4.805 FNIRS.S2D4.850 FNIRS.S2D4.805";
-  const items = str.split(" "); // 假设字段是由制表符分隔的
-  items.forEach((item) => {
-    thirdRowList.value.push(item);
-  });
+  // 构造IR数据的列名，可能为双波长或者三波长
+  // 表示IR Channel的数量
+  let irChannelCount = 0;
+  const waveLengthNamePrefixes = [
+    "FNIRS.S1D1",
+    "FNIRS.S1D2",
+    "FNIRS.S1D3",
+    "FNIRS.S1D4",
+    "FNIRS.S2D1",
+    "FNIRS.S2D2",
+    "FNIRS.S2D3",
+    "FNIRS.S2D4"
+  ];
+  const twoWaveLengths = ['735', '850'];
+  const threeWaveLengths = ['735', '805', '850'];
+  if (record.waveLength == 2) {
+    for (let i = 0; i < waveLengthNamePrefixes.length; i++) {
+      for (let j = 0; j < twoWaveLengths.length; j++) {
+        irChannelCount += 1
+        thirdRowList.value.push(waveLengthNamePrefixes[i] + "." + twoWaveLengths[j]);
+      }
+    }
+  } else if (record.waveLength == 3) {
+    for (let i = 0; i < waveLengthNamePrefixes.length; i++) {
+      for (let j = 0; j < threeWaveLengths.length; j++) {
+        irChannelCount += 1
+        thirdRowList.value.push(waveLengthNamePrefixes[i] + "." + threeWaveLengths[j]);
+      }
+    }
+  } else {
+    alert("记录数据的波长选择错误！");
+    app?.proxy?.loading.hide();
+  }
+
   thirdRowList.value.push("MARKER")
   thirdRowList.value.push("IS_LOSS")
   // thirdRowList.value.push("PKG_NUM")
@@ -318,8 +337,6 @@ const exportCsv = async (record: DataItem) => {
   let thirdRowListLength = thirdRowList.value.length
 
   // 第三行以后的值
-
-
   // 处理marker数组
   // 合并两个marker数组
   let mergedMarkerData = [...eegInputMarkerList, ...irInputMarkerList];
@@ -343,12 +360,14 @@ const exportCsv = async (record: DataItem) => {
     return timeA - timeB;
   });
 
+  // 用来表示eeg数据的序列号
   let eegCounter = 0;
+  // 用来表示ir数据的序列号
   let fnirsCounter = 0;
   let valueArrayArrayForKey;
   // 转换数据到CSV格式
   // 转换数据时，需要将数据包数组与marker数组的数据进行融合写入文件里
-  mergedData.forEach((pkgData,pkgIndex) => {
+  mergedData.forEach((pkgData, pkgIndex) => {
     // 数据是marker数组内的数据
     if (pkgData.source == "mergedMarkerData") {
       csvContent += pkgData.time_stamp + ",";
@@ -382,14 +401,14 @@ const exportCsv = async (record: DataItem) => {
           let TimeGap;
           let mI = pkgIndex + 1
           for (mI; mI < mergedData.length; mI++) {
-            if(mergedData[mI].pkg_type == 1) {
+            if (mergedData[mI].pkg_type == 1) {
               break;
             }
           }
-          if(pkgData.isLosspkg && mI < mergedData.length && mergedData[mI].pkg_type == 1) {
+          if (pkgData.isLosspkg && mI < mergedData.length && mergedData[mI].pkg_type == 1) {
             TimeGap = (mergedData[mI].time_mark - pkgData.time_mark) /
-            eegDataNum;
-          }else {
+              eegDataNum;
+          } else {
             TimeGap = 1000 / configData.value.eegFilter.sample_rate;
           }
           csvContent +=
@@ -409,7 +428,7 @@ const exportCsv = async (record: DataItem) => {
           }
           // 之后的近红外数据和marker数据应该都是空的
           // remainFieldNumber: 余下的还没赋值的字段数量
-          let remainFieldNumber = items.length + 2
+          let remainFieldNumber = irChannelCount + 2
           for (let index = 0; index < remainFieldNumber; index++) {
             csvContent += ",";
           }
@@ -421,13 +440,13 @@ const exportCsv = async (record: DataItem) => {
           // csvContent += "" + pkgData.pkgnum + ",";
           // csvContent += "" + pkgData.time_mark + ",";
           csvContent += "\n";
-          
+
         }
-       
+
       } else {
         // 找不到数据，这行都是空的
         // 2是marker数据字段的长度
-        for (let index = 0; index < eegChannel + items.length + 2 + 1; index++) {
+        for (let index = 0; index < eegChannel + irChannelCount + 2 + 1; index++) {
           csvContent += ",";
         }
         csvContent += "\n";
@@ -454,11 +473,21 @@ const exportCsv = async (record: DataItem) => {
       )?.[1];
 
       // 余下的还没赋值的字段数量
-      let remainFieldNumber = items.length + 2
+      let remainFieldNumber = irChannelCount + 2
       if (Array.isArray(valueArrayArrayForKey)) {
         let neadInfrared = valueArrayArrayForKey?.flat();
-        for (let index = 0; index < items.length; index++) {
-          csvContent += "" + neadInfrared[index] + ",";
+        if (record.waveLength == 2) {
+          for (let index = 0; index < neadInfrared.length; index++) {
+            if (index % 2 == 0) {
+              csvContent += "" + neadInfrared[index] + ",";
+            }
+          }
+        } else if (record.waveLength == 3) {
+          for (let index = 0; index < neadInfrared.length; index++) {
+            if (index % 4 != 3) {
+              csvContent += "" + neadInfrared[index] + ",";
+            }
+          }
         }
         // 2 是marker数据字段
         csvContent += "" + ",";
