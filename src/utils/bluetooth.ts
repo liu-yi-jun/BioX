@@ -14,7 +14,7 @@ import { getCurrentInstance } from "vue";
 let Loading: any;
 let connectNum = 3;
 
-import _, { reject, set } from "lodash";
+import _ from "lodash";
 let handleNotifications = function (event) {
   let data = event.target.value;
   ipcRenderer.send("start-data-decode", new Uint8Array(data.buffer));
@@ -75,6 +75,8 @@ const handleEndDataDecode = (event, data) => {
       psd_s_multiple: data.psd_s_multiple,
       psd_relative_s_multiple: data.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
+      mindfulness_restfulness_s_multiple:
+        data.mindfulness_restfulness_s_multiple,
       time_e_s_multiple: data.time_e_s_multiple,
       loss_data_info_el: data.loss_data_info_el,
       ir_od_date: data.ir_od_date,
@@ -88,31 +90,34 @@ const handleEndDataDecode = (event, data) => {
 
 // at通知函数
 const atNotice = (event) => {
-  console.log("回复", event.target.value);
-  if (event.target.value === "正常关机断连") {
+  let uint8Data = new Uint8Array(event.target.value.buffer);
+  // 搜索 0x0D (回车符) 的位置
+  let carriageReturnIndex = -1;
+  for (let i = 0; i < uint8Data.length; i++) {
+    if (uint8Data[i] === 0x0d) {
+      carriageReturnIndex = i;
+      break;
+    }
+  }
+  let relevantData = uint8Data;
+  if (carriageReturnIndex !== -1) {
+    // 截取到回车符之前的数据
+    relevantData = uint8Data.slice(0, carriageReturnIndex);
+  }
+  let decoder = new TextDecoder("utf-8");
+  let decodedString = decoder.decode(relevantData);
+  console.log("回复", decodedString);
+
+  // 按键关机
+  if (decodedString.includes("EVT_PWROFF")) {
     const indexStore = useIndexStore();
-    const { isDeviceClose,isConnect } = storeToRefs(indexStore);
+    const { isDeviceClose, isConnect } = storeToRefs(indexStore);
     isDeviceClose.value = true;
     isConnect.value = false;
+    message.error("硬件已关机！");
   }
 
   for (let i = 0; i < atNoticeList.length; i++) {
-    let uint8Data = new Uint8Array(event.target.value.buffer);
-    // 搜索 0x0D (回车符) 的位置
-    let carriageReturnIndex = -1;
-    for (let i = 0; i < uint8Data.length; i++) {
-      if (uint8Data[i] === 0x0d) {
-        carriageReturnIndex = i;
-        break;
-      }
-    }
-    let relevantData = uint8Data;
-    if (carriageReturnIndex !== -1) {
-      // 截取到回车符之前的数据
-      relevantData = uint8Data.slice(0, carriageReturnIndex);
-    }
-    let decoder = new TextDecoder("utf-8");
-    let decodedString = decoder.decode(relevantData);
     atNoticeList[i](decodedString);
   }
 };
@@ -391,7 +396,10 @@ CustomBluetooth.prototype.addATNotice = function (cb: Function) {
   if (!characteristic1) {
     return message.error("请先连接设备!");
   }
-  atNoticeList.push(cb);
+  let findIndex = atNoticeList.findIndex((i) => i == cb);
+  if(findIndex == -1) {
+    atNoticeList.push(cb);
+  }
 };
 // 移除AT通知事件
 CustomBluetooth.prototype.removeATNotice = function (cb: Function) {

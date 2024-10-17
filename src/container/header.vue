@@ -1,12 +1,14 @@
 <template>
   <div class="header">
     <div>
-      BioMultiLite_1.2.1_241004_Alpha_Win
-      <a-button @click="openAtDebug">
-        <template #icon>
-          <BugOutlined />
-        </template>
-      </a-button>
+      BioMultiLite_1.2.2_241015_Alpha_Win
+      <a-space wrap>
+        <a-button @click="openAtDebug">
+          <template #icon>
+            <BugOutlined />
+          </template>
+        </a-button>
+      </a-space>
     </div>
     <a-popover
       v-if="!isConnect"
@@ -40,10 +42,12 @@
         <span>Connect device</span>
       </div>
     </a-popover>
-
+ 
     <div v-else>
       <a-dropdown placement="bottom" trigger="click" arrow>
         <div class="header-center">
+          <SmileOutlined v-if="!isSignalBad" style="fontsize: 18px; color: #02c940" />
+          <FrownOutlined v-else style="fontSize:18px;color:#ed2a2a"  />
           <span>BIO X</span>
           <div
             class="electricity"
@@ -396,9 +400,12 @@ import { CustomBluetooth } from "../utils/bluetooth";
 import { CustomDatabase } from "../utils/db";
 import { formatTimestamp } from "../utils/common";
 import { useRoute, useRouter } from "vue-router";
+import _ from "lodash";
 import {
   CloseCircleOutlined,
   BugOutlined,
+  SmileOutlined,
+  FrownOutlined,
   SettingOutlined,
 } from "@ant-design/icons-vue";
 import { useIndexStore } from "../store/index";
@@ -425,6 +432,7 @@ const db = new CustomDatabase();
 const openATModal = ref(false);
 const openSetting = ref(false);
 const openMarker = ref(false);
+const isSignalBad = ref(false);
 const router = useRouter();
 const activeKey = ref("1");
 import { Modal, SelectProps } from "ant-design-vue";
@@ -479,10 +487,7 @@ watch(isConnect, (newValue) => {
   if (newValue && configData.value.lsl.handOutLet) {
     indexStore.configData.lsl.isOutLet = configData.value.lsl.handOutLet;
   }
-  if (
-    !newValue &&
-    (isNormalClose.value || isDeviceClose.value)
-  ) {
+  if (!newValue && (isNormalClose.value || isDeviceClose.value)) {
     indexStore.configData.lsl.isOutLet = false;
   }
 });
@@ -558,9 +563,10 @@ const findDevice = () => {
           //   break;
           // case "hide":
           //   app?.proxy?.loading.hide();
-          //   break;
+          //   break; 
           case "success":
             selectDeviceItem = null;
+              bluetooth.addATNotice(signalNotice);
             setTimeout(() => {
               // 延迟发送，不然会报错
               setAtConfig();
@@ -653,6 +659,19 @@ const atNotice = (value: string) => {
   scrollToBottom();
 };
 
+
+const signalDebounce = _.debounce(function () {
+    isSignalBad.value = false
+}, 5000);
+
+// 信号强弱通知
+const signalNotice = (value: string) => {
+  if (value.includes("EVT_SIGWEAK")) {
+    isSignalBad.value = true
+    signalDebounce()
+  }
+};
+
 // 打开AT调试
 const openAtDebug = () => {
   ATValue.value = "";
@@ -718,6 +737,8 @@ const bluetoothNotice = ({
 
 onMounted(() => {
   initialize();
+  // 信号强弱通知
+
   // 初始化A-Z Market选项
   initMarketOptions();
   // 蓝牙扫描出来的设备
@@ -783,7 +804,7 @@ onBeforeUnmount(() => {
     "change-config-field-success",
     changeConfigSuccess
   );
-
+  bluetooth.removeATNotice(signalNotice);
   bluetooth.removeATNotice(atNotice);
   bluetooth.removeNotice(bluetoothNotice);
   timer_uuid && clearTimeout(timer_uuid);

@@ -67,6 +67,7 @@ function Processing(this: any, path: string, config: any) {
   this.psd_s_multiple = [];
   this.psd_relative_s_multiple = [];
   this.psd_relative_percent_s_multiple = [];
+  this.mindfulness_restfulness_s_multiple = [];
   this.baseline_ok = false;
   // 心率
   this.heart_rate = new DoubleArray(1);
@@ -82,6 +83,8 @@ function Processing(this: any, path: string, config: any) {
   ]; //频谱密度数组，长度为window/2+1，存储每个频率，能量单位为dB
   this.psd_relative_s = [new DoubleArray(5), new DoubleArray(5)]; //频段频谱密度数组，长度为5，存储每个频段能量，单位为dB
   this.psd_relative_percent_s = [new DoubleArray(5), new DoubleArray(5)]; //相对频谱密度数组，长度为5，存储每个频段能量百分比，单位为%
+  // 计算mindfulness,restfulness
+  this.mindfulness_restfulness_s = [new DoubleArray(2), new DoubleArray(2)];
   //流程网站https://backoqdkrcv.feishu.cn/docx/ChsEdEvc4ohGMYxdy7ccMCmTngd
   this.signalProcess = ffi.Library(join(path, "/dll/signal_process.dll"), {
     // 脑电部分
@@ -140,6 +143,8 @@ function Processing(this: any, path: string, config: any) {
     calc_hb_2wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
     //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
     calc_hb_3wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
+    //data：5个脑电节律的psd数组，output:输出数组[mindfulness,restfulness];
+    Mindfulness_Restfulness: [Bool, [DoubleArray, DoubleArray]],
   });
 
   // 心率部分
@@ -177,21 +182,23 @@ Processing.prototype.init = function (this: any) {
 };
 Processing.prototype.setInit = function (this: any) {
   console.log("setInit", this.config.irFilter.ir_sample_rate);
-
-  this.signalProcess.init_irbp_filter(
-    this.config.irFilter.ir_sample_rate,
-    ir_channel,
-    this.config.irFilter.fl,
-    this.config.irFilter.fh
-  );
-  this.signalProcess.clear_baseline();
   this.signalProcess.init_eegbp_filter_draw(
     sample_rate,
     channel,
     this.config.eegFilter.fl,
     this.config.eegFilter.fh
   );
+  
+  this.signalProcess.clear_baseline();
   this.baseline_ok = false;
+  this.signalProcess.init_irbp_filter(
+    this.config.irFilter.ir_sample_rate,
+    ir_channel,
+    this.config.irFilter.fl,
+    this.config.irFilter.fh
+  );
+
+
   // 心率初始化
   this.hrvProcess.init_heart_rate();
 };
@@ -525,6 +532,11 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
             this.psd_relative_s[current_channel],
             this.psd_relative_percent_s[current_channel]
           );
+          // 计算mindfulness,restfulness    
+          this.signalProcess.Mindfulness_Restfulness(
+            this.psd_relative_s[current_channel],
+            this.mindfulness_restfulness_s[current_channel]
+          );
         }
 
         // 开启DC Remove（去基线），或者开启Notch 或者开启BP
@@ -549,6 +561,9 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         );
         this.psd_relative_percent_s_multiple[i] = JSON.parse(
           JSON.stringify(this.psd_relative_percent_s)
+        );
+        this.mindfulness_restfulness_s_multiple[i] = JSON.parse(
+          JSON.stringify(this.mindfulness_restfulness_s)
         );
         brain_data = null;
         remove_output = null;
@@ -704,6 +719,8 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       psd_s_multiple: this.psd_s_multiple,
       psd_relative_s_multiple: this.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: this.psd_relative_percent_s_multiple,
+      mindfulness_restfulness_s_multiple:
+        this.mindfulness_restfulness_s_multiple,
       time_e_s_multiple: this.time_e_s_multiple,
       ir_od_date: this.ir_od_date,
       baseline_ok: this.baseline_ok,

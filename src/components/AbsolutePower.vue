@@ -24,7 +24,7 @@ let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
-const leftPadding = 60;
+const leftPadding = 80;
 const rightPadding = 10;
 const topPadding = 20;
 const middlePadding = 30;
@@ -75,6 +75,7 @@ class ChannelBar {
     this.plot.getXAxis().setFontColor("#787878");
     this.plot.getYAxis().setFontColor("#787878");
     this.plot.getYAxis().getAxisLabel().setText("uV^2/Hz");
+     this.plot.getYAxis().getAxisLabel().setOffset(60);
     this.plot.getXAxis().setNTicks(0);
     this.plot.getYAxis().setTickLabelOffset(4);
     this.plot.getXAxis().setAxisLabelText("EEG Power Bands");

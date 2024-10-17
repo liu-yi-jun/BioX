@@ -157,6 +157,7 @@ const ipcRenderer = require("electron").ipcRenderer;
 import { SelectProps } from "ant-design-vue";
 import { message } from "ant-design-vue";
 const streamOptions = ref<SelectProps["options"]>([]);
+
 const stream = ref();
 const activeKey = ref("1");
 const changeLslStatus = () => {
@@ -210,12 +211,18 @@ const handleSocketReceiveData = (event: any, data: any) => {
     }
   }
 };
+
+
+
+
+
 onMounted(() => {
   // 监听socket
   ipcRenderer.on("receive-socket", handleSocketReceiveData);
 });
 
 onBeforeUnmount(() => {
+
   ipcRenderer.removeListener("receive-socket", handleSocketReceiveData);
 });
 </script>

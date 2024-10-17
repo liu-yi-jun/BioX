@@ -56,12 +56,27 @@
         </a-space>
       </a-form>
     </div>
+    <div style="margin-top: 20px">
+      <a-form size="small">
+        <a-form-item label="mindfulness">
+          <span style="margin-right:20px" v-for="(item, index) in mindfulness_restfulness" :key="index">
+            {{ item[0][0] }}---{{ item[1][0] }}
+          </span>
+        </a-form-item>
+        <a-form-item label="restfulness">
+          <span style="margin-right:20px" v-for="(item, index) in mindfulness_restfulness" :key="index">
+         {{ item[0][1] }}---{{ item[1][1] }}
+          </span>
+        </a-form-item>
+      </a-form>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount } from "vue";
 import { useIndexStore } from "../../store/index";
+import { CustomBluetooth } from "../../utils/bluetooth";
 import { storeToRefs } from "pinia";
 const indexStore = useIndexStore();
 const { isConnect, bluetoothATConfig, configData, socketConfig } =
@@ -70,6 +85,9 @@ const ipcRenderer = require("electron").ipcRenderer;
 import { CustomDatabase } from "../../utils/db";
 import { message } from "ant-design-vue";
 const db = new CustomDatabase();
+let bluetooth = new CustomBluetooth();
+const mindfulness_restfulness = ref();
+import _ from "lodash";
 const isConnectSocket = ref<boolean>(false);
 const isSendSocket = ref<boolean>(false);
 const isCreateSocketServer = ref<boolean>(false);
@@ -123,11 +141,11 @@ const handleSerialPortReceiveData = (event: any, data: any) => {
   if (data.msg) {
     if (data.type == 1) {
       message.success(data.msg);
-       configData.value.serialPort.isConnect = true;
+      configData.value.serialPort.isConnect = true;
     }
     if (data.type == 0) {
       message.success(data.msg);
-       configData.value.serialPort.isConnect = false;
+      configData.value.serialPort.isConnect = false;
     }
     if (data.type == -1) {
       message.error(data.msg);
@@ -166,14 +184,28 @@ const cancelSocket = () => {
   isSendSocket.value = false;
 };
 
+// 蓝牙数据通知
+const bluetoothNotice = (data) => {
+  mindRestThrottle(data.mindfulness_restfulness_s_multiple);
+};
+
+const mindRestThrottle = _.throttle(function (
+  mindfulness_restfulness_s_multiple
+) {
+  mindfulness_restfulness.value = mindfulness_restfulness_s_multiple;
+},
+60);
+
 onMounted(() => {
+  bluetooth.addNotice(bluetoothNotice);
   // 监听socket
   ipcRenderer.on("receive-socket", handleSocketReceiveData);
   ipcRenderer.on("receive-serialPort", handleSerialPortReceiveData);
 });
 
 onBeforeUnmount(() => {
-   ipcRenderer.removeListener("receive-serialPort", handleSerialPortReceiveData);
+  bluetooth.removeNotice(bluetoothNotice);
+  ipcRenderer.removeListener("receive-serialPort", handleSerialPortReceiveData);
   ipcRenderer.removeListener("receive-socket", handleSocketReceiveData);
 });
 </script>

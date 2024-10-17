@@ -791,7 +791,6 @@ watch(
 );
 
 onMounted(function () {
-  indexStore.bluetoothATConfig.IRMODE.value = 0;
   configData.value.irFilter.plotType = 1;
   configData.value.irFilter.age = 25;
   if (
