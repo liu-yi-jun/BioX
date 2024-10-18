@@ -383,20 +383,20 @@ const spectrumTypeOptions = ref<SelectProps["options"]>([
     value: "PSD",
     label: "PSD",
   },
-  {
-    value: "Heatmap",
-    label: "Heatmap",
-  },
+  // {
+  //   value: "Heatmap",
+  //   label: "Heatmap",
+  // },
 ]);
 const bandsTypeOptions = ref<SelectProps["options"]>([
   {
     value: "Absolute Power",
     label: "Absolute Power",
   },
-  {
-    value: "Related Power",
-    label: "Related Power",
-  },
+  // {
+  //   value: "Related Power",
+  //   label: "Related Power",
+  // },
   {
     value: "Time Series",
     label: "Time Series",
