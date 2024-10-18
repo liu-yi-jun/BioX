@@ -59,13 +59,13 @@
     <div style="margin-top: 20px">
       <a-form size="small">
         <a-form-item label="mindfulness">
-          <span style="margin-right:20px" v-for="(item, index) in mindfulness_restfulness" :key="index">
-            {{ item[0][0] }}---{{ item[1][0] }}
+          <span style="margin-right:20px" >
+           {{mindfulness_restfulness[0][0]}}--{{mindfulness_restfulness[1][0]}}
           </span>
         </a-form-item>
         <a-form-item label="restfulness">
-          <span style="margin-right:20px" v-for="(item, index) in mindfulness_restfulness" :key="index">
-         {{ item[0][1] }}---{{ item[1][1] }}
+          <span style="margin-right:20px"  >
+            {{mindfulness_restfulness[0][1]}}--{{mindfulness_restfulness[1][1]}}
           </span>
         </a-form-item>
       </a-form>
@@ -86,7 +86,7 @@ import { CustomDatabase } from "../../utils/db";
 import { message } from "ant-design-vue";
 const db = new CustomDatabase();
 let bluetooth = new CustomBluetooth();
-const mindfulness_restfulness = ref();
+const mindfulness_restfulness = ref([[],[]]);
 import _ from "lodash";
 const isConnectSocket = ref<boolean>(false);
 const isSendSocket = ref<boolean>(false);
@@ -186,15 +186,10 @@ const cancelSocket = () => {
 
 // 蓝牙数据通知
 const bluetoothNotice = (data) => {
-  mindRestThrottle(data.mindfulness_restfulness_s_multiple);
+   mindfulness_restfulness.value = data.mindfulness_restfulness_s;
 };
 
-const mindRestThrottle = _.throttle(function (
-  mindfulness_restfulness_s_multiple
-) {
-  mindfulness_restfulness.value = mindfulness_restfulness_s_multiple;
-},
-60);
+
 
 onMounted(() => {
   bluetooth.addNotice(bluetoothNotice);

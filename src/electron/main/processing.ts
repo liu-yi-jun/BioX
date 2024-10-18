@@ -12,7 +12,7 @@ const DoubleArray = ArrayType(Double);
 const FloatArray = ArrayType(Float);
 // 初始化参数
 const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
-const step = 10; //fft 步长
+const step = 250; //fft 步长
 let sample_rate = 250;
 const channel = 2;
 // 近红外部分
@@ -67,7 +67,6 @@ function Processing(this: any, path: string, config: any) {
   this.psd_s_multiple = [];
   this.psd_relative_s_multiple = [];
   this.psd_relative_percent_s_multiple = [];
-  this.mindfulness_restfulness_s_multiple = [];
   this.baseline_ok = false;
   // 心率
   this.heart_rate = new DoubleArray(1);
@@ -188,7 +187,7 @@ Processing.prototype.setInit = function (this: any) {
     this.config.eegFilter.fl,
     this.config.eegFilter.fh
   );
-  
+
   this.signalProcess.clear_baseline();
   this.baseline_ok = false;
   this.signalProcess.init_irbp_filter(
@@ -197,7 +196,6 @@ Processing.prototype.setInit = function (this: any) {
     this.config.irFilter.fl,
     this.config.irFilter.fh
   );
-
 
   // 心率初始化
   this.hrvProcess.init_heart_rate();
@@ -523,7 +521,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
             this.psd_s[current_channel]
           );
           // // fft_ps_eegbands 用于EEG Bands视图
-          this.signalProcess.fft_ps_eegbands(
+          let flag = this.signalProcess.fft_ps_eegbands(
             current_channel,
             sample_rate,
             remove_output[current_channel],
@@ -532,11 +530,12 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
             this.psd_relative_s[current_channel],
             this.psd_relative_percent_s[current_channel]
           );
-          // 计算mindfulness,restfulness    
+          // 计算mindfulness,restfulness
           this.signalProcess.Mindfulness_Restfulness(
             this.psd_relative_s[current_channel],
             this.mindfulness_restfulness_s[current_channel]
           );
+
         }
 
         // 开启DC Remove（去基线），或者开启Notch 或者开启BP
@@ -561,9 +560,6 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         );
         this.psd_relative_percent_s_multiple[i] = JSON.parse(
           JSON.stringify(this.psd_relative_percent_s)
-        );
-        this.mindfulness_restfulness_s_multiple[i] = JSON.parse(
-          JSON.stringify(this.mindfulness_restfulness_s)
         );
         brain_data = null;
         remove_output = null;
@@ -719,8 +715,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
       psd_s_multiple: this.psd_s_multiple,
       psd_relative_s_multiple: this.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: this.psd_relative_percent_s_multiple,
-      mindfulness_restfulness_s_multiple:
-        this.mindfulness_restfulness_s_multiple,
+      mindfulness_restfulness_s: this.mindfulness_restfulness_s,
       time_e_s_multiple: this.time_e_s_multiple,
       ir_od_date: this.ir_od_date,
       baseline_ok: this.baseline_ok,

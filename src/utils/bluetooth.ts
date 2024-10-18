@@ -75,8 +75,8 @@ const handleEndDataDecode = (event, data) => {
       psd_s_multiple: data.psd_s_multiple,
       psd_relative_s_multiple: data.psd_relative_s_multiple,
       psd_relative_percent_s_multiple: data.psd_relative_percent_s_multiple,
-      mindfulness_restfulness_s_multiple:
-        data.mindfulness_restfulness_s_multiple,
+      mindfulness_restfulness_s:
+        data.mindfulness_restfulness_s,
       time_e_s_multiple: data.time_e_s_multiple,
       loss_data_info_el: data.loss_data_info_el,
       ir_od_date: data.ir_od_date,
