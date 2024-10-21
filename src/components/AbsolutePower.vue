@@ -49,8 +49,8 @@ class ChannelBar {
   channelIndex: number;
   plot: any;
 
-  autoscaleMax: number = 1;
-  autoscaleMin: number = 0;
+  autoscaleMax: number = 1000000;
+  autoscaleMin: number = 0.1;
   yMax: number | undefined;
   yMin: number | undefined;
 
@@ -66,7 +66,7 @@ class ChannelBar {
     this.plot = new window.GPlot(canvasP5);
     this.plot.setPos(this.x, this.y);
     this.plot.setDim(this.w, this.h);
-    // this.plot.setLogScale("y");
+    this.plot.setLogScale("y");
     this.plot.setXLim(0, numMax);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
@@ -102,7 +102,7 @@ class ChannelBar {
       ]);
     let points: any = [];
     for (var i = 0; i < 5; i++) {
-      points[i] = new window.GPoint(i + 0.5, 0, labelNmae[i]);
+      points[i] = new window.GPoint(i + 0.5, 0.1, labelNmae[i]);
     }
     this.plot.setPoints(points);
   }
@@ -114,23 +114,23 @@ class ChannelBar {
     if (series[0] == undefined) {
       return;
     }
-    if (this.yMin === undefined) {
-      this.autoscaleMin = Number.MAX_VALUE;
-    }
-    if (this.yMax === undefined) {
-      this.autoscaleMax = -Number.MAX_VALUE;
-    }
+    // if (this.yMin === undefined) {
+    //   this.autoscaleMin = Number.MAX_VALUE;
+    // }
+    // if (this.yMax === undefined) {
+    //   this.autoscaleMax = -Number.MAX_VALUE;
+    // }
     let points: any = [];
     for (var i = 0; i < series.length; i++) {
-      if (series[i] > this.autoscaleMax) {
-        this.autoscaleMax = series[i];
-      }
-      if (series[i] < this.autoscaleMin) {
-        this.autoscaleMin = series[i];
-      }
-      points[i] = new window.GPoint(i + 0.5, series[i] || 0, labelNmae[i]);
+      // if (series[i] > this.autoscaleMax) {
+      //   this.autoscaleMax = series[i];
+      // }
+      // if (series[i] < this.autoscaleMin) {
+      //   this.autoscaleMin = series[i];
+      // }
+      points[i] = new window.GPoint(i + 0.5, series[i] || 0.1, labelNmae[i]);
     }
-    this.setYLim();
+    // this.setYLim();
     this.plot.setPoints(points);
   }
 
