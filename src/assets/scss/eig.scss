@@ -202,7 +202,7 @@ li {
 }
 
 .heart-card.view-setting-card {
-  white-space:normal !important;
+  white-space: normal !important;
 }
 
 .card-metrics-title {
@@ -797,10 +797,9 @@ $roundRadius: 18px;
     font-size: 16px;
   }
   .eig-lsl-tab {
-
     font-size: 16px;
     .ant-tabs-tab {
-      font-size: 16px; 
+      font-size: 16px;
     }
   }
   .lsl-outlet-info {
@@ -860,8 +859,7 @@ $roundRadius: 18px;
 //   will-change: transform;
 // }
 
-
-.heart-card{
+.heart-card {
   display: flex;
   flex-direction: column;
   .view-setting-box {
@@ -872,7 +870,7 @@ $roundRadius: 18px;
       margin-bottom: 10px;
       display: flex;
       align-items: center;
-      &>p {
+      & > p {
         min-width: 130px;
       }
     }
@@ -887,19 +885,35 @@ $roundRadius: 18px;
     list-style-type: none;
     display: flex;
     align-items: center;
-    &>span:first-child {
+    & > span:first-child {
       border-radius: 3px;
       width: 20px;
       display: inline-block;
       height: 10px;
       background-color: #00bfff;
     }
-    &>span:last-child {
+    & > span:last-child {
       font-size: 12px;
       margin-left: 3px;
     }
-    &+li {
+    & + li {
       margin-left: 10px;
     }
+  }
+}
+
+.eeg-bands-box {
+  padding: 0 20px;
+  li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    &>div:first-child {
+     width: 120px;
+    }
+    .ant-input-number  {
+      margin-right: 80px;
+    }
+
   }
 }

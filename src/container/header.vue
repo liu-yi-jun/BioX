@@ -42,12 +42,15 @@
         <span>Connect device</span>
       </div>
     </a-popover>
- 
+
     <div v-else>
       <a-dropdown placement="bottom" trigger="click" arrow>
         <div class="header-center">
-          <SmileOutlined v-if="!isSignalBad" style="fontsize: 18px; color: #02c940" />
-          <FrownOutlined v-else style="fontSize:18px;color:#ed2a2a"  />
+          <SmileOutlined
+            v-if="!isSignalBad"
+            style="fontsize: 18px; color: #02c940"
+          />
+          <FrownOutlined v-else style="fontsize: 18px; color: #ed2a2a" />
           <span>BIO X</span>
           <div
             class="electricity"
@@ -170,7 +173,7 @@
           >
         </div>
         <a-divider />
-        <div class="BP-wrap">
+        <div class="BP-wrap" style="margin-bottom: 20px">
           <a-checkbox
             @change="changeEegBandPass"
             v-model:checked="configData.eegFilter.isBandPass"
@@ -211,6 +214,104 @@
             </div>
           </div>
         </div>
+        <a-divider>EEG Bands</a-divider>
+        <ul class="eeg-bands-box">
+          <li>
+            <div>
+              <span>DELTA</span>
+            </div>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.delta.min"
+              :min="configData.eegFilter.eegBands.min"
+              :max="configData.eegFilter.eegBands.delta.max"
+              :step="0.1"
+            ></a-input-number>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.delta.max"
+              :min="configData.eegFilter.eegBands.delta.min"
+              :max="configData.eegFilter.eegBands.theta.min"
+              :step="0.1"
+            ></a-input-number>
+          </li>
+          <li>
+            <div>
+              <span>THETA</span>
+            </div>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.theta.min"
+              :min="configData.eegFilter.eegBands.delta.max"
+              :max="configData.eegFilter.eegBands.theta.max"
+              :step="0.1"
+            ></a-input-number>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.theta.max"
+              :min="configData.eegFilter.eegBands.theta.min"
+              :max="configData.eegFilter.eegBands.alpha.min"
+              :step="0.1"
+            ></a-input-number>
+          </li>
+          <li>
+            <div>
+              <span>ALPHA</span>
+            </div>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.alpha.min"
+              :min="configData.eegFilter.eegBands.theta.max"
+              :max="configData.eegFilter.eegBands.alpha.max"
+              :step="0.1"
+            ></a-input-number>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.alpha.max"
+              :min="configData.eegFilter.eegBands.alpha.min"
+              :max="configData.eegFilter.eegBands.beta.min"
+              :step="0.1"
+            ></a-input-number>
+          </li>
+          <li>
+            <div>
+              <span>BETA</span>
+            </div>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.beta.min"
+              :min="configData.eegFilter.eegBands.alpha.max"
+              :max="configData.eegFilter.eegBands.beta.max"
+              :step="0.1"
+            ></a-input-number>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.beta.max"
+              :min="configData.eegFilter.eegBands.beta.min"
+              :max="configData.eegFilter.eegBands.gamma.min"
+              :step="0.1"
+            ></a-input-number>
+          </li>
+          <li>
+            <div>
+              <span>GAMMA</span>
+            </div>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.gamma.min"
+              :min="configData.eegFilter.eegBands.beta.max"
+              :max="configData.eegFilter.eegBands.gamma.max"
+              :step="0.1"
+            ></a-input-number>
+            <a-input-number
+              size="small"
+              v-model:value="configData.eegFilter.eegBands.gamma.max"
+              :min="configData.eegFilter.eegBands.gamma.min"
+              :max="configData.eegFilter.eegBands.max"
+              :step="0.1"
+            ></a-input-number>
+          </li>
+        </ul>
       </a-tab-pane>
       <a-tab-pane key="2" tab="FNIRS" force-render
         ><div class="DC-Notch">
@@ -375,6 +476,30 @@ let ResetConfigData: any = {
     fh: 100,
     bpType: 1,
     sample_rate: 250,
+    eegBands: {
+      delta: {
+        min: 0.5,
+        max: 4,
+      },
+      theta: {
+        min: 4,
+        max: 8,
+      },
+      alpha: {
+        min: 8,
+        max: 13,
+      },
+      beta: {
+        min: 13,
+        max: 32,
+      },
+      gamma: {
+        min: 32,
+        max: 100,
+      },
+      min: 0,
+      max: 100,
+    },
   },
   irFilter: {
     isDCRemove: true,
@@ -563,10 +688,10 @@ const findDevice = () => {
           //   break;
           // case "hide":
           //   app?.proxy?.loading.hide();
-          //   break; 
+          //   break;
           case "success":
             selectDeviceItem = null;
-              bluetooth.addATNotice(signalNotice);
+            bluetooth.addATNotice(signalNotice);
             setTimeout(() => {
               // 延迟发送，不然会报错
               setAtConfig();
@@ -659,16 +784,15 @@ const atNotice = (value: string) => {
   scrollToBottom();
 };
 
-
 const signalDebounce = _.debounce(function () {
-    isSignalBad.value = false
+  isSignalBad.value = false;
 }, 5000);
 
 // 信号强弱通知
 const signalNotice = (value: string) => {
   if (value.includes("EVT_SIGWEAK")) {
-    isSignalBad.value = true
-    signalDebounce()
+    isSignalBad.value = true;
+    signalDebounce();
   }
 };
 
@@ -820,7 +944,7 @@ const handleEndSettingModal = () => {
 };
 
 const handleResetSetting = () => {
-  configData.value = JSON.parse(JSON.stringify(ResetConfigData));
+  configData.value = JSON.parse(JSON.stringify(Object.assign(configData.value, ResetConfigData)));
 };
 
 const handleSaveSetting = () => {

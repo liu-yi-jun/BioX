@@ -35,6 +35,30 @@ export const useIndexStore = defineStore({
         bpType: 1,
         sample_rate: 250,
         eeg_channel_count: 2,
+        eegBands: {
+          delta: {
+            min: 0.5,
+            max: 4,
+          },
+          theta: {
+            min: 4,
+            max: 8,
+          },
+          alpha: {
+            min: 8,
+            max: 13,
+          },
+          beta: {
+            min: 13,
+            max: 32,
+          },
+          gamma: {
+            min: 32,
+            max: 100,
+          },
+          min: 0,
+          max: 100,
+        },
       },
       // 经红外配置
       irFilter: {
@@ -66,7 +90,7 @@ export const useIndexStore = defineStore({
         isIr: true,
         isMotion: true,
         isOutLet: false,
-        handOutLet:false, //手动启动lsl
+        handOutLet: false, //手动启动lsl
         isInlet: false,
         isMarker: true, //lsl的开启标记
         streamName: "BioMulti Lite",
@@ -91,7 +115,7 @@ export const useIndexStore = defineStore({
       },
     ],
     // 是否软件正常断开蓝牙连接
-    isNormalClose:false,
+    isNormalClose: false,
     // 是否设备正常断开连接
     isDeviceClose: false,
     // 是否超过3次重连失败
