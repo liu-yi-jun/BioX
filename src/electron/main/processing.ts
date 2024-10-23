@@ -12,7 +12,7 @@ const DoubleArray = ArrayType(Double);
 const FloatArray = ArrayType(Float);
 // 初始化参数
 const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
-const step = 250; //fft 步长
+const step = 10; //fft 步长
 let sample_rate = 250;
 const channel = 2;
 // 近红外部分
@@ -21,6 +21,9 @@ const ir_channel = 8;
 const ir_step = 2;
 const fl = 0.01; //fl 下截至频率
 const fh = 0.5; //fh 上截止频率
+
+// minndfulness,restfulness步长
+const mindRestStep = sample_rate *1;     //mindRestStep=step_time*sample_rate 等于1秒更新一次
 
 const L = [3.182, 2.515, 2.515, 0.795, 3.182, 2.515, 2.515, 0.795];
 
@@ -142,8 +145,8 @@ function Processing(this: any, path: string, config: any) {
     calc_hb_2wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
     //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
     calc_hb_3wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
-    //data：5个脑电节律的psd数组，output:输出数组[mindfulness,restfulness];
-    Mindfulness_Restfulness: [Bool, [DoubleArray, DoubleArray]],
+  //channel：当前通道，sample_rate：采样率；x:当前通道的输入数据，step:步长，单位为点数，window：fft窗长，需要为2的幂次，推荐512；output:输出数组[mindfulness,restfulness];
+    Mindfulness_Restfulness: [Bool, [Int, Int, Double, Int, Int,DoubleArray]],
   });
 
   // 心率部分
@@ -532,7 +535,11 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           );
           // 计算mindfulness,restfulness
           this.signalProcess.Mindfulness_Restfulness(
-            this.psd_relative_s[current_channel],
+            current_channel,
+            sample_rate,
+            remove_output[current_channel],
+            mindRestStep,
+            fftWindow,
             this.mindfulness_restfulness_s[current_channel]
           );
 
