@@ -142,9 +142,13 @@ li {
   .eig-filter {
     flex-shrink: 0;
   }
-  .eig-table {
+  .eig-table,
+  .eig-flex {
     height: 0;
     flex: 1;
+  }
+  .eig-shrink {
+    flex-shrink: 0;
   }
 }
 
@@ -908,12 +912,42 @@ $roundRadius: 18px;
     display: flex;
     align-items: center;
     margin-bottom: 10px;
-    &>div:first-child {
-     width: 120px;
+    & > div:first-child {
+      width: 120px;
     }
-    .ant-input-number  {
+    .ant-input-number {
       margin-right: 80px;
     }
-
   }
+}
+
+.analysis {
+  &-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+}
+
+.analysis {
+  .eig-filter {
+    background-color: transparent
+  }
+  .analysis-container {
+    padding: 10px;
+  }
+  .analysis-footer {
+    display: flex;
+    .card-title {
+      color: #7c7a7a;
+      font-weight: bold;
+    }
+    & > div {
+      flex: 1;
+      margin: 10px;
+      padding: 10px;
+    }
+  }
+  
 }

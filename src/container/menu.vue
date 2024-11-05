@@ -14,6 +14,7 @@ import { ref, reactive, watch, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 const router = useRouter();
 const route = useRoute();
+import { VNode } from "vue";
 
 const selectedKeys = ref<string[]>([route.path]);
 
@@ -24,6 +25,9 @@ import {
   FileTextOutlined,
   PartitionOutlined,
   SettingOutlined,
+  PieChartOutlined,
+  DotChartOutlined,
+  FileDoneOutlined 
 } from "@ant-design/icons-vue";
 const state = reactive({
   collapsed: true,
@@ -48,6 +52,26 @@ const items = reactive([
     icon: () => h(AppstoreOutlined),
     label: "数据管理",
     title: "数据管理",
+  },
+  {
+    key: "/reportingManager",
+    icon: () => h(PieChartOutlined) as VNode,
+    label: "报告管理",
+    title: "报告管理",
+    children: [
+      {
+        key: "/reportingManager/analysis",
+        icon: () => h(DotChartOutlined ),
+        label: "报告分析",
+        title: "报告分析",
+      },
+      {
+        key: "/reportingManager/record",
+        icon: () => h(FileDoneOutlined),
+        label: "报告记录",
+        title: "报告记录",
+      },
+    ],
   },
   {
     key: "/LSL",

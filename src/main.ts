@@ -10,21 +10,14 @@ const app = createApp(App);
 import Highcharts from "highcharts";
 import { CustomDatabase } from "./utils/db";
 import { HighchartsKey } from "./types";
+import permission from './mixins/permission';
 import log from 'electron-log/renderer';
 console.log = log.log
 console.error = log.error
 import Loading from "./plugin/loading";
 
-interface loadingType {
-  show(text?:string):null
-  hide():null
-}
+app.use(permission)
 
-declare module "@vue/runtime-core" {
-  interface ComponentCustomProperties {
-    loading: loadingType;
-  }
-}
 // 初始化数据库
 const db = new CustomDatabase();
 db.init().then(() => {

@@ -230,5 +230,6 @@ onBeforeUnmount(() => {
 defineExpose({
   setOption,
 });
+
 </script>
 <style scoped></style>

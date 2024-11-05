@@ -15,7 +15,10 @@ const indexStore = useIndexStore();
 const { isMarker, markerList } = storeToRefs(indexStore);
 const ipcRenderer = require("electron").ipcRenderer;
 const props = defineProps({
-  numSeconds: String,
+  numSeconds: {
+    type: Number,
+    required: true
+  }
 });
 
 let numSeconds = props.numSeconds;
@@ -46,6 +49,7 @@ const colors = {
 };
 
 import { irInputMarkerList } from "../global";
+import { number } from "echarts";
 
 // 实例
 class ChannelBar {

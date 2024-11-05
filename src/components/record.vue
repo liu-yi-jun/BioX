@@ -215,7 +215,7 @@ const formData = reactive<FormState>({
 
 const rulesRef = reactive({
   name: [{ required: true, message: "请输入名称" }],
-  describe: [{ required: true, message: "请输入描述" }],
+  // describe: [{ required: true, message: "请输入描述" }],
 });
 const { resetFields, validate, validateInfos } = useForm(formData, rulesRef);
 

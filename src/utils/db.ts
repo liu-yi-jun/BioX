@@ -47,7 +47,27 @@ CustomDatabase.prototype.init = function (isMain = true) {
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             configData text
             )`);
-
+        // 录制数据表
+        await this.run(`CREATE TABLE if not exists reportRecord(
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          instanceID VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          describe VARCHAR(255) NOT NULL,
+          age VARCHAR(255) NOT NULL,
+          recoredCreateTime INTEGER NOT NULL default(0),
+          recoredTotalTime INTEGER NOT NULL default(0),
+          recoredEndTime INTEGER NOT NULL default(0),
+          waveLength INTEGER NOT NULL default(0),
+          eegInputMarkerList BLOB,
+          irInputMarkerList BLOB,
+          markerList TEXT
+          )`);
+        // 报告源数据表
+        await this.run(`CREATE TABLE if not exists reportSource(
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          reportRecordId INTEGER NOT NULL,
+          data BLOB
+          )`);
         resolve(true);
       } catch (err) {
         // log.error(err);

@@ -29,6 +29,24 @@ const routes = [
     component: DataManage,
   },
   {
+    path: "/reportingManager",
+    name: "ReportingManager",
+    children: [
+      {
+        path: "analysis",
+        name: "Analysis",
+        component: () =>
+          import("@/views/reportingManager/analysis/index.vue"),
+      },
+      {
+        path: "record",
+        name: "Record",
+        component: () =>
+          import("@/views/reportingManager/record/index.vue"),
+      },
+    ]
+  },
+  {
     path: "/LSL",
     name: "LSL",
     component: LSL,
