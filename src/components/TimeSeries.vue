@@ -23,7 +23,10 @@ import {
 } from "vue";
 const TimeSeries = ref<HTMLElement | null>(null);
 const props = defineProps({
-  numSeconds: String,
+  numSeconds: {
+    type: Number,
+    required: true
+  },
 });
 
 let numSeconds = props.numSeconds;

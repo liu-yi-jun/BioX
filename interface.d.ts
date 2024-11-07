@@ -41,3 +41,4 @@ declare module '@vue/runtime-core' {
     loading: loadingType;
   }
 }
+ 

@@ -41,7 +41,10 @@ import {
 } from "vue";
 const RelatedPower = ref<HTMLElement | null>(null);
 const props = defineProps({
-  numSeconds: String,
+  numSeconds: {
+    type: Number,
+    required: true
+  },
 });
 let numSeconds = props.numSeconds;
 let canvasP5: any;

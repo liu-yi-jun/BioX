@@ -22,7 +22,10 @@ const indexStore = useIndexStore();
 const { configData } = storeToRefs(indexStore);
 const Heatmap = ref<HTMLElement | null>(null);
 const props = defineProps({
-  numSeconds: String,
+  numSeconds: {
+    type: Number,
+    required: true
+  },
 });
 let numSeconds = props.numSeconds;
 let canvasP5: any;
@@ -108,7 +111,7 @@ class ChannelBar {
   }
 
   setBufferData() {
-    this.xNum = (1000 / EEGTimeGap) * parseInt(numSeconds!);
+    this.xNum = (1000 / EEGTimeGap) * (numSeconds!);
     offscreenCanvas.width = this.xNum;
     offscreenCanvas.height = this.offAutoscaleMax;
     let bufferData = offscreenCtx.createImageData(

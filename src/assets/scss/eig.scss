@@ -922,6 +922,8 @@ $roundRadius: 18px;
 }
 
 .analysis {
+  overflow: auto;
+  height: 100%;
   &-header {
     display: flex;
     align-items: center;
@@ -932,7 +934,7 @@ $roundRadius: 18px;
 
 .analysis {
   .eig-filter {
-    background-color: transparent
+    background-color: transparent;
   }
   .analysis-container {
     padding: 10px;
@@ -945,9 +947,87 @@ $roundRadius: 18px;
     }
     & > div {
       flex: 1;
-      margin: 10px;
+      // margin: 10px;
       padding: 10px;
     }
   }
-  
+}
+
+.pdf-page-box {
+  margin: auto;
+  width: 285mm; //190 * 1.5实际内容区域
+  color: #282828;
+  .pdf-page {
+  //  margin-bottom: 200px;
+    width: 100%;
+    height: 415.5mm; //277 * 1.5 实际内容区域
+  }
+  .pdf-title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 22px;
+    text-align: center;
+  }
+  .pdf-subtitle {
+    font-size: 18px;
+    font-weight: bold;
+    padding-left: 10px;
+    position: relative;
+    margin-bottom: 20px;
+    &::before {
+      content: "";
+      position: absolute;
+      display: block;
+      left: 0px;
+      top: 6%;
+      height: 80%;
+      width: 0.5mm;
+      background-color: #282828;
+    }
+  }
+  .pdf-base-info {
+    display: flex;
+    font-size: 16px;
+    align-items: center;
+
+    justify-content: space-between;
+
+    li {
+      list-style-type: none;
+      & > span:first-child {
+        font-weight: 600;
+      }
+    }
+  }
+  .pdf-line {
+    margin: 18px 0;
+    width: 100%;
+    border-bottom: 1px solid #282828;
+  }
+
+  .pdf-label{
+    color: #FFFFFF;
+    background-color: #545454;
+    font-size: 16px;
+    padding: 6px 18px;
+    display: inline-block;
+    border-radius: 2px;
+    margin-bottom: 18px;
+  }
+
+  .pdf-section {
+    padding-bottom: 15px;
+    &:last-child {
+      padding-bottom: 0px;
+    }
+  }
+  .pdf-section-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .pdf-chart-box {
+    border: 1px solid #000000;
+    margin-bottom: 15px;
+  }
 }

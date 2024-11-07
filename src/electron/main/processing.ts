@@ -13,7 +13,6 @@ const FloatArray = ArrayType(Float);
 // 初始化参数
 const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
 const step = 10; //fft 步长
-let sample_rate = 250;
 const channel = 2;
 // 近红外部分
 const baseline_time = 10;
@@ -21,9 +20,6 @@ const ir_channel = 8;
 const ir_step = 2;
 const fl = 0.01; //fl 下截至频率
 const fh = 0.5; //fh 上截止频率
-
-// minndfulness,restfulness步长
-const mindRestStep = sample_rate *1;     //mindRestStep=step_time*sample_rate 等于1秒更新一次
 
 const L = [3.182, 2.515, 2.515, 0.795, 3.182, 2.515, 2.515, 0.795];
 
@@ -160,10 +156,10 @@ function Processing(this: any, path: string, config: any) {
 Processing.prototype.init = function (this: any) {
   // this.signalProcess.init_filter(sample_rate, channel);
   // 脑电初始化
-  this.signalProcess.init_notch_filter(sample_rate, channel);
-  this.signalProcess.init_eegbp_filter_eegbands(sample_rate, channel);
+  this.signalProcess.init_notch_filter(this.config.eegFilter.sample_rate, channel);
+  this.signalProcess.init_eegbp_filter_eegbands(this.config.eegFilter.sample_rate, channel);
   this.signalProcess.init_eegbp_filter_draw(
-    sample_rate,
+    this.config.eegFilter.sample_rate,
     channel,
     this.config.eegFilter.fl,
     this.config.eegFilter.fh
@@ -185,7 +181,7 @@ Processing.prototype.init = function (this: any) {
 Processing.prototype.setInit = function (this: any) {
   console.log("setInit", this.config.irFilter.ir_sample_rate);
   this.signalProcess.init_eegbp_filter_draw(
-    sample_rate,
+    this.config.eegFilter.sample_rate,
     channel,
     this.config.eegFilter.fl,
     this.config.eegFilter.fh
@@ -322,7 +318,7 @@ function calcTimeStamp(this: any, pkg: any) {
     // 自己计算硬件时间戳
     // pkg.time_mark = this.eegTimeStampInfo.correct_mark;
     // this.eegTimeStampInfo.correct_mark +=
-    //   pkg.eeg_data_num * (1000 / sample_rate);
+    //   pkg.eeg_data_num * (1000 / this.config.eegFilter.sample_rate);
 
     return {
       // 软件时间戳
@@ -516,7 +512,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           // 计算fft_ps 用于Spectrum视图
           this.signalProcess.fft_ps(
             current_channel,
-            sample_rate,
+            this.config.eegFilter.sample_rate,
             brain_data[current_channel],
             step,
             fftWindow,
@@ -526,7 +522,7 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           // // fft_ps_eegbands 用于EEG Bands视图
           let flag = this.signalProcess.fft_ps_eegbands(
             current_channel,
-            sample_rate,
+            this.config.eegFilter.sample_rate,
             remove_output[current_channel],
             step,
             fftWindow,
@@ -536,9 +532,9 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
           // 计算mindfulness,restfulness
           this.signalProcess.Mindfulness_Restfulness(
             current_channel,
-            sample_rate,
+            this.config.eegFilter.sample_rate,
             remove_output[current_channel],
-            mindRestStep,
+            this.config.eegFilter.mindRestStep,
             fftWindow,
             this.mindfulness_restfulness_s[current_channel]
           );

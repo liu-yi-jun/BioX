@@ -1,13 +1,18 @@
 <template>
   <div
     style="width: 100%; height: 100%; font-size: 0px"
-    ref="BarnsTime"
-    id="BarnsTime"
+    ref="LineChart"
+    :id="id"
   ></div>
 </template>
 
 <script setup lang="ts">
 import { CustomBluetooth } from "../utils/bluetooth";
+import { useIndexStore } from "../store/index";
+import { storeToRefs } from "pinia";
+const indexStore = useIndexStore();
+const { isMarker, markerList } = storeToRefs(indexStore);
+const ipcRenderer = require("electron").ipcRenderer;
 import {
   onMounted,
   ref,
@@ -16,44 +21,98 @@ import {
   onBeforeUnmount,
   watch,
 } from "vue";
-
+const LineChart = ref<HTMLElement | null>(null);
+interface gridType {
+  left: number;
+  right: number;
+  middle: number;
+  top: number;
+  bottom: number;
+}
 const props = defineProps({
   numSeconds: {
     type: Number,
-    required: true
+    required: true,
   },
+  id: {
+    type: String,
+    required: true,
+  },
+  isAutoScaleY: {
+    type: Boolean,
+    default: false,
+  }, // 是否自动缩放 y 轴
+  yMax: {
+    type: Number,
+    default: 1,
+  },
+  yMin: {
+    type: Number,
+    default: 0,
+  },
+  channel: {
+    type: Array,
+    required: true,
+  },
+  colors: {
+    type: Object,
+    required: true,
+  },
+  isShowName: {
+    type: Boolean,
+    default: true,
+  },
+  // 图像的缩放
+  scale: {
+    type: Number,
+    default: 1,
+  },
+  //清晰度
+  pixelRatio: {
+    type: Number,
+    default: 1,
+  },
+  autoDraw: {
+    type: Boolean,
+    default: true,
+  },
+  grid: {
+    type: Object as () => gridType,
+    default: () => ({
+      left: 60,
+      right: 20,
+      middle: 30,
+      top: 18,
+      bottom: 30,
+    })
+  }
 });
 
 let numSeconds = props.numSeconds;
-
-const BarnsTime = ref<HTMLElement | null>(null);
+const id = ref<string>(props.id);
 let maxSeconds = 20;
+
 let canvasP5: any;
 // 自定义绘制
 let customCanvas: any;
 let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
-let channel = ["EEG", "DELTA", "THETA", "ALPHA", "BETA", "GAMMA"];
+let channel = props.channel;
 let channelBars: any = [];
 let sketch: any = null;
 let timer: any = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
-const leftPadding = 70;
-const rightPadding = 10;
-const topPadding = 10;
-const middlePadding = 6;
-const bottomPadding = 30;
-const minGap = 0.01;
-const colors = {
-  EEG: "#737373",
-  DELTA: "#D5D5D6",
-  THETA: "#A4A4FF",
-  ALPHA: "#7BFFFF",
-  BETA: "#FF72FF",
-  GAMMA: "#E6E689",
-};
+const leftPadding = props.grid.left;
+const rightPadding = props.grid.right;
+const topPadding = props.grid.top;
+const middlePadding = props.grid.middle;
+const bottomPadding = props.grid.bottom;
+const minGap = 0.001;
+const colors = props.colors;
+
+import { eegInputMarkerList } from "../global";
 
 // 实例
 class ChannelBar {
@@ -65,13 +124,14 @@ class ChannelBar {
   lineColor: string;
   channelIndex: number;
   plot: any;
+  series: any[] = [];
 
-  autoscaleMax: number = minGap;
-  autoscaleMin: number = 0;
+  autoscaleMax: number = props.yMax;
+  autoscaleMin: number = props.yMin;
   yMax: number | undefined;
   yMin: number | undefined;
-  points: any[] = [];
-
+  xScalingFactor: number = 1;
+  yScalingFactor: number = 1;
   constructor(_channelIndex, _x, _y, _w, _h, _name, _lineColor) {
     this.x = _x;
     this.y = _y;
@@ -90,15 +150,23 @@ class ChannelBar {
     this.plot.setXLim(0, numSeconds);
     this.plot.setMar(0, 0, 0, 0);
     this.plot.setLineColor(this.lineColor);
-    // this.plot.setLineWidth(1);
+    // this.plot.setLineWidth(0.8);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
-    this.plot.getXAxis().setLineColor("#DDDDDD");
-    this.plot.getYAxis().setLineColor("#6E7079");
-    this.plot.getYAxis().getAxisLabel().setOffset(45);
-    this.plot.getXAxis().setFontColor("#787878");
-    this.plot.getYAxis().setTickLabelOffset(2.8);
-    this.plot.getYAxis().setFontColor("#787878");
-    this.plot.getYAxis().setAxisLabelText(this.name);
+    // this.plot.getXAxis().setLineColor("#DDDDDD");
+    // this.plot.getYAxis().setLineColor("#6E7079");
+    // this.plot.getXAxis().setFontColor("#787878");
+    // this.plot.getYAxis().setFontColor("#787878");
+    this.plot.getXAxis().setLineColor("#000");
+    this.plot.getYAxis().setLineColor("#000");
+    this.plot.getXAxis().setFontColor("#000");
+    this.plot.getYAxis().setFontColor("#000");
+    if (props.isShowName) {
+      this.plot.getYAxis().setAxisLabelText(this.name);
+    }
+    this.plot.getYAxis().getAxisLabel().setOffset(50);
+    this.plot.getYAxis().setTickLabelOffset(2.5);
+    this.calcScaling();
+    // this.plot.getYAxis().setRotate(false);
     offscreenCtx.lineWidth = 1;
   }
 
@@ -106,26 +174,35 @@ class ChannelBar {
     if (!series || !series.length) {
       return;
     }
+    this.series = series;
     let points: any = [];
-    if (this.yMin === undefined) {
-      this.autoscaleMin = Number.MAX_VALUE;
+    if (props.isAutoScaleY) {
+      if (this.yMin === undefined) {
+        this.autoscaleMin = Number.MAX_VALUE;
+      }
+      if (this.yMax === undefined) {
+        this.autoscaleMax = -Number.MAX_VALUE;
+      }
     }
-    if (this.yMax === undefined) {
-      this.autoscaleMax = -Number.MAX_VALUE;
-    }
+
     for (var i = 0; i < series.length; i++) {
-      if (series[i].value[1] > this.autoscaleMax) {
-        this.autoscaleMax = series[i].value[1];
+      if (props.isAutoScaleY) {
+        if (series[i].value[1] > this.autoscaleMax) {
+          this.autoscaleMax = series[i].value[1];
+        }
+        if (series[i].value[1] < this.autoscaleMin) {
+          this.autoscaleMin = series[i].value[1];
+        }
       }
-      if (series[i].value[1] < this.autoscaleMin) {
-        this.autoscaleMin = series[i].value[1];
-      }
+
       points[i] = new window.GPoint(
         series[i].value[0] / 1000,
         series[i].value[1]
       );
     }
-    this.setYLim();
+    if (props.isAutoScaleY) {
+      this.setYLim();
+    }
     this.plot.setPoints(points);
   }
 
@@ -153,14 +230,24 @@ class ChannelBar {
     }
     min = Number(min);
     max = Number(max);
+
     if (min == max) {
       max += minGap;
     }
     this.plot.setYLim(min, max);
+    this.calcScaling();
+  }
+
+  calcScaling() {
+    this.xScalingFactor =
+      this.plot.dim[0] / (this.plot.xLim[1] - this.plot.xLim[0]);
+    this.yScalingFactor =
+      -this.plot.dim[1] / (this.plot.yLim[1] - this.plot.yLim[0]);
   }
 
   customLines() {
     let plot = this.plot;
+
     let plotPoints = plot.mainLayer.plotPoints;
     if (plotPoints.length > 0) {
       offscreenCtx.save();
@@ -183,14 +270,13 @@ class ChannelBar {
   }
 
   draw() {
+    
     this.plot.beginDraw();
-    this.plot.drawYAxis();
-    this.plot.drawGridLines(window.GPlot.HORIZONTAL);
-    if (this.channelIndex == 5) {
+    if (this.channelIndex == channel.length - 1) {
       this.plot.drawXAxis();
     }
+    this.plot.drawYAxis();
     // this.plot.drawBox();
-
     // this.plot.drawLines();
     // 自定义画线
     this.customLines();
@@ -200,9 +286,10 @@ class ChannelBar {
 
 // 获取高度
 const getWH = () => {
-  if (BarnsTime.value) {
-    canvasWidth = BarnsTime.value.clientWidth;
-    canvasHeight = BarnsTime.value.clientHeight;
+  if (LineChart.value) {
+    // 图像缩放props.scale
+    canvasWidth = (LineChart.value.clientWidth * 1) / props.scale;
+    canvasHeight = (LineChart.value.clientHeight * 1) / props.scale;
   }
 };
 
@@ -238,9 +325,10 @@ const setOption = (option) => {
 // 更新布局
 const updatelayout = () => {
   getWH();
-  canvasP5.createCanvas(canvasWidth, canvasHeight);
-  offscreenCanvas.width = canvasWidth;
-  offscreenCanvas.height = canvasHeight;
+  // 画布缩放props.pixelRatio
+  canvasP5.createCanvas(canvasWidth * props.pixelRatio, canvasHeight * props.pixelRatio);
+  offscreenCanvas.width = canvasWidth  * props.pixelRatio;
+  offscreenCanvas.height = canvasHeight  * props.pixelRatio;
   let h =
     (canvasHeight -
       (topPadding + (channel.length - 1) * middlePadding + bottomPadding)) /
@@ -267,19 +355,28 @@ const resizeing = () => {
 // 创建p5
 const defaultPlotSketch = (p) => {
   p.setup = function () {
-    // p.frameRate(15);
     canvasP5 = p;
-    customCanvas = document
-      .getElementById("BarnsTime")
-      ?.querySelector("canvas");
+    // p.frameRate(15);
+    customCanvas = document.getElementById(id.value)?.querySelector("canvas");
+
     customCtx = customCanvas.getContext("2d");
     offscreenCanvas = document.createElement("canvas");
     offscreenCtx = offscreenCanvas.getContext("2d");
     updatelayout();
+    customCanvas.style.width = "100%";
+    customCanvas.style.height = "100%";
+    if (!props.autoDraw) {
+      p.noLoop();
+    }
   };
+
   p.draw = function () {
     p.background(255);
+    canvasP5.scale(props.pixelRatio); //画笔缩放
+    offscreenCtx.scale(props.pixelRatio, props.pixelRatio);//画笔缩放
     offscreenCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    // let fps = p.frameRate();
+    // p.text("FPS: " + fps.toFixed(2), canvasWidth - 85, 10);
     for (var i = 0; i < channel.length; i++) {
       channelBars[i].draw();
     }
@@ -287,31 +384,40 @@ const defaultPlotSketch = (p) => {
   };
 };
 
+
+const drawChart = () => {
+  canvasP5.background(255);
+  offscreenCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  for (var i = 0; i < channel.length; i++) {
+    channelBars[i].draw();
+  }
+  customCtx.drawImage(offscreenCanvas, 0, 0, canvasWidth  , canvasHeight );
+};
+
 onMounted(() => {
   sketch && sketch.remove();
-  sketch = new window.p5((p) => defaultPlotSketch(p), "BarnsTime");
+  sketch = new window.p5((p) => defaultPlotSketch(p), id.value);
   window.addEventListener("resize", resizeing);
- 
 });
 
 onBeforeUnmount(() => {
   sketch.remove();
   sketch.remove = null;
   sketch = null;
-  window.p5.prototype._registeredMethods.remove = []
+  window.p5.prototype._registeredMethods.remove = [];
+  channelBars = null;
   customCanvas = null;
   customCtx = null;
-  canvasP5 = null
   offscreenCanvas = null;
   offscreenCtx = null;
-  channel = [];
-  channelBars = null;
+  canvasP5 = null;
   timer && clearInterval(timer);
   window.removeEventListener("resize", resizeing);
 });
 
 defineExpose({
   setOption,
+  drawChart,
 });
 </script>
 <style scoped></style>

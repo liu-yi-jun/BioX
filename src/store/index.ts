@@ -34,6 +34,8 @@ export const useIndexStore = defineStore({
         fh: 100,
         bpType: 1,
         sample_rate: 250,
+        // minndfulness,restfulness步长
+        mindRestStep: 250 * 1,  //mindRestStep=step_time*sample_rate 等于1秒更新一次
         eeg_channel_count: 2,
         eegBands: {
           delta: {
@@ -71,6 +73,7 @@ export const useIndexStore = defineStore({
         fh: 5,
         bpType: 1,
         plotType: 1,
+        irStep: 50 * 1,  //irStep=step_time*sample_rate 等于1秒更新一次
         ir_sample_rate: 50,
         two_ir_sample_rate: 50,
         three_ir_sample_rate: 25,
