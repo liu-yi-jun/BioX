@@ -51,8 +51,9 @@ const props = defineProps({
     default: 0,
   },
   channel: {
-    type: Array,
+    type: Array as () => Array<string>,
     required: true,
+    default: () => ["#"],
   },
   colors: {
     type: Object,
@@ -84,8 +85,17 @@ const props = defineProps({
       middle: 30,
       top: 18,
       bottom: 30,
-    })
-  }
+    }),
+  },
+  isMerge: {
+    // 是否合并，线都在一个图表中
+    type: Boolean,
+    default: false,
+  },
+  seriesChannel: {
+    type: Array as () => Array<string>,
+    default: () => [],
+  },
 });
 
 let numSeconds = props.numSeconds;
@@ -99,6 +109,7 @@ let customCtx: any;
 let offscreenCanvas: any;
 let offscreenCtx: any;
 let channel = props.channel;
+let seriesChannel = props.seriesChannel;
 let channelBars: any = [];
 let sketch: any = null;
 let timer: any = null;
@@ -111,8 +122,6 @@ const middlePadding = props.grid.middle;
 const bottomPadding = props.grid.bottom;
 const minGap = 0.001;
 const colors = props.colors;
-
-import { eegInputMarkerList } from "../global";
 
 // 实例
 class ChannelBar {
@@ -149,7 +158,9 @@ class ChannelBar {
     this.plot.setDim(this.w, this.h);
     this.plot.setXLim(0, numSeconds);
     this.plot.setMar(0, 0, 0, 0);
-    this.plot.setLineColor(this.lineColor);
+    if (this.lineColor) {
+      this.plot.setLineColor(this.lineColor);
+    }
     // this.plot.setLineWidth(0.8);
     this.plot.setYLim(this.autoscaleMin, this.autoscaleMax);
     // this.plot.getXAxis().setLineColor("#DDDDDD");
@@ -168,9 +179,14 @@ class ChannelBar {
     this.calcScaling();
     // this.plot.getYAxis().setRotate(false);
     offscreenCtx.lineWidth = 1;
+    if (props.isMerge) {
+      for (var i = 0; i < seriesChannel.length; i++) {
+        this.plot.addLayer(seriesChannel[i], []);
+      }
+    }
   }
 
-  updateSeries(series) {
+  updateSeries(name, series) {
     if (!series || !series.length) {
       return;
     }
@@ -187,23 +203,30 @@ class ChannelBar {
 
     for (var i = 0; i < series.length; i++) {
       if (props.isAutoScaleY) {
-        if (series[i].value[1] > this.autoscaleMax) {
-          this.autoscaleMax = series[i].value[1];
+        if (series[i][1] > this.autoscaleMax) {
+          this.autoscaleMax = series[i][1];
         }
-        if (series[i].value[1] < this.autoscaleMin) {
-          this.autoscaleMin = series[i].value[1];
+        if (series[i][1] < this.autoscaleMin) {
+          this.autoscaleMin = series[i][1];
         }
       }
 
-      points[i] = new window.GPoint(
-        series[i].value[0] / 1000,
-        series[i].value[1]
-      );
+      points[i] = new window.GPoint(series[i][0] / 1000, series[i][1]);
     }
     if (props.isAutoScaleY) {
       this.setYLim();
     }
-    this.plot.setPoints(points);
+    if (props.isMerge) {
+      this.plot.getLayer(name).setPoints(points);
+    } else {
+      this.plot.setPoints(points);
+    }
+  }
+
+  clearPoints() {
+    for (let i = 0; i < seriesChannel.length; i++) {
+      this.plot.getLayer(seriesChannel[i]).setPoints([]);
+    }
   }
 
   updateXAxis(second) {
@@ -246,15 +269,25 @@ class ChannelBar {
   }
 
   customLines() {
-    let plot = this.plot;
+    if (!props.isMerge) {
+      let plotPoints = this.plot.mainLayer.plotPoints;
+      this.handleCustomLines(plotPoints, this.lineColor);
+    } else {
+      for (var i = 0; i < seriesChannel.length; i++) {
+        let plotPoints = this.plot.getLayer(seriesChannel[i]).plotPoints;
+        this.handleCustomLines(plotPoints, colors[seriesChannel[i]]);
+      }
+    }
+  }
 
-    let plotPoints = plot.mainLayer.plotPoints;
+  handleCustomLines(plotPoints, lineColor) {
     if (plotPoints.length > 0) {
       offscreenCtx.save();
-      offscreenCtx.strokeStyle = this.lineColor;
+      offscreenCtx.scale(props.pixelRatio, props.pixelRatio); //画笔缩放
+      offscreenCtx.strokeStyle = lineColor;
       offscreenCtx.translate(
-        plot.pos[0] + plot.mar[1],
-        plot.pos[1] + plot.mar[2] + plot.dim[1]
+        this.plot.pos[0] + this.plot.mar[1],
+        this.plot.pos[1] + this.plot.mar[2] + this.plot.dim[1]
       );
       offscreenCtx.beginPath();
       offscreenCtx.rect(0, -this.h, this.w, this.h);
@@ -270,8 +303,8 @@ class ChannelBar {
   }
 
   draw() {
-    
     this.plot.beginDraw();
+
     if (this.channelIndex == channel.length - 1) {
       this.plot.drawXAxis();
     }
@@ -296,8 +329,12 @@ const getWH = () => {
 // 更新配置/数据
 const setOption = (option) => {
   if (option.channel) {
-    channel = option.channel;
-    updatelayout();
+    if (props.isMerge) {
+      channelBars.clearPoints();
+    } else {
+      channel = option.channel;
+      updatelayout();
+    }
   }
 
   for (
@@ -315,9 +352,19 @@ const setOption = (option) => {
       channelBars[currentChannel].updateXAxis(option.xAxis[currentChannel].max);
     }
     if (option.series) {
-      channelBars[currentChannel].updateSeries(
-        option.series[currentChannel].data
-      );
+      if (props.isMerge) {
+        for (var i = 0; i < seriesChannel.length; i++) {
+          channelBars[currentChannel].updateSeries(
+            option.series[currentChannel][i].name,
+            option.series[currentChannel][i].data
+          );
+        }
+      } else {
+        channelBars[currentChannel].updateSeries(
+          option.series[currentChannel].name,
+          option.series[currentChannel].data
+        );
+      }
     }
   }
 };
@@ -326,9 +373,12 @@ const setOption = (option) => {
 const updatelayout = () => {
   getWH();
   // 画布缩放props.pixelRatio
-  canvasP5.createCanvas(canvasWidth * props.pixelRatio, canvasHeight * props.pixelRatio);
-  offscreenCanvas.width = canvasWidth  * props.pixelRatio;
-  offscreenCanvas.height = canvasHeight  * props.pixelRatio;
+  canvasP5.createCanvas(
+    canvasWidth * props.pixelRatio,
+    canvasHeight * props.pixelRatio
+  );
+  offscreenCanvas.width = canvasWidth * props.pixelRatio;
+  offscreenCanvas.height = canvasHeight * props.pixelRatio;
   let h =
     (canvasHeight -
       (topPadding + (channel.length - 1) * middlePadding + bottomPadding)) /
@@ -362,6 +412,7 @@ const defaultPlotSketch = (p) => {
     customCtx = customCanvas.getContext("2d");
     offscreenCanvas = document.createElement("canvas");
     offscreenCtx = offscreenCanvas.getContext("2d");
+
     updatelayout();
     customCanvas.style.width = "100%";
     customCanvas.style.height = "100%";
@@ -373,10 +424,15 @@ const defaultPlotSketch = (p) => {
   p.draw = function () {
     p.background(255);
     canvasP5.scale(props.pixelRatio); //画笔缩放
-    offscreenCtx.scale(props.pixelRatio, props.pixelRatio);//画笔缩放
-    offscreenCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-    // let fps = p.frameRate();
-    // p.text("FPS: " + fps.toFixed(2), canvasWidth - 85, 10);
+    offscreenCtx.clearRect(
+      0,
+      0,
+      canvasWidth * props.pixelRatio,
+      canvasHeight * props.pixelRatio
+    );
+
+    let fps = p.frameRate();
+    p.text("FPS: " + fps.toFixed(2), canvasWidth - 85, 10);
     for (var i = 0; i < channel.length; i++) {
       channelBars[i].draw();
     }
@@ -384,14 +440,18 @@ const defaultPlotSketch = (p) => {
   };
 };
 
-
 const drawChart = () => {
   canvasP5.background(255);
-  offscreenCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  offscreenCtx.clearRect(
+    0,
+    0,
+    canvasWidth * props.pixelRatio,
+    canvasHeight * props.pixelRatio
+  );
   for (var i = 0; i < channel.length; i++) {
     channelBars[i].draw();
   }
-  customCtx.drawImage(offscreenCanvas, 0, 0, canvasWidth  , canvasHeight );
+  customCtx.drawImage(offscreenCanvas, 0, 0, canvasWidth, canvasHeight);
 };
 
 onMounted(() => {

@@ -154,6 +154,13 @@ process.on("message", async function ({ type, data }) {
     }
   }
 
+  if (type === "calculate-hrv") {
+    let hrv = processing.calculateHrv();
+    process.send!({
+      type: "calculate-hrv-result",
+      data: hrv,
+    });
+  }
   if (type === "bluetooth-scan") {
     console.log("bluetooth-scan");
   }

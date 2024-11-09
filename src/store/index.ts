@@ -86,6 +86,7 @@ export const useIndexStore = defineStore({
       // 心率配置
       hrv: {
         current_channel: 1,
+        isAnalysis:false,
       },
       // 实验数据流配置
       lsl: {

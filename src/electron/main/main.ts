@@ -641,7 +641,7 @@ function createWindow() {
           );
           data.pkg.brain_elec_channel = [];
         }
-        
+
         logHrottle(
           `code:${data.pkg.time_mark},${data.pkg.pkglen},${data.pkg.pkgnum},${
             data.pkg.pkg_type
@@ -671,22 +671,24 @@ function createWindow() {
         client &&
           client.write &&
           isConnect &&
-          client.write(JSON.stringify({
-            ...data.pkg,
-            time_utc: data.time_utc,
-            brain_elec_channel: data.copy_brain_elec_channel,
-            ir_data_num: config.irFilter.is2wave
-              ? 2
-              : config.irFilter.is3wave
-              ? 3
-              : 4,
-            near_infrared: removWave(
-              data.copy_near_infrared,
-              data.pkg.ir_channel,
-              max__wave_channel
-            ),
-            isLosspkg: data.isLosspkg,
-          }) + "\n");
+          client.write(
+            JSON.stringify({
+              ...data.pkg,
+              time_utc: data.time_utc,
+              brain_elec_channel: data.copy_brain_elec_channel,
+              ir_data_num: config.irFilter.is2wave
+                ? 2
+                : config.irFilter.is3wave
+                ? 3
+                : 4,
+              near_infrared: removWave(
+                data.copy_near_infrared,
+                data.pkg.ir_channel,
+                max__wave_channel
+              ),
+              isLosspkg: data.isLosspkg,
+            }) + "\n"
+          );
 
         delete data.copy_brain_elec_channel;
         delete data.copy_near_infrared;
@@ -696,10 +698,18 @@ function createWindow() {
       if (type === "change-config-success") {
         event.sender.send("change-config-success", data);
       }
+      if (type === "calculate-hrv-result") {
+        event.sender.send("calculate-hrv-result", data);
+      }
       if (type === "change-config-field-success") {
         event.sender.send("change-config-field-success", data);
       }
     });
+  });
+
+  //  开始计算hrv
+  ipcMain.on("calculate-hrv", (event, data) => {
+    child && child.connected && child.send({ type: "calculate-hrv" });
   });
 
   //  开始蓝牙数据解码

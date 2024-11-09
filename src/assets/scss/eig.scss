@@ -1000,7 +1000,9 @@ $roundRadius: 18px;
     }
   }
   .pdf-line {
-    margin: 18px 0;
+
+    padding-top: 18px;
+    margin-bottom: 18px;
     width: 100%;
     border-bottom: 1px solid #282828;
   }
@@ -1029,5 +1031,16 @@ $roundRadius: 18px;
   .pdf-chart-box {
     border: 1px solid #000000;
     margin-bottom: 15px;
+  }
+}
+
+
+.time-indicator-table {
+  .ant-table-thead >tr>th,.ant-table-container table>thead>tr:first-child >*:last-child,.ant-table-container table>thead>tr:first-child >*:first-child ,.ant-table-thead{
+    background-color: #E1EAFF !important;
+  }
+  tr>th,
+  tr>td {
+    padding: 8px 16px !important;
   }
 }

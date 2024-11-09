@@ -9,6 +9,7 @@ const Int = ref.types.int;
 const Bool = ref.types.bool;
 const Double = ref.types.double;
 const DoubleArray = ArrayType(Double);
+const IntArray = ArrayType(Int);
 const FloatArray = ArrayType(Float);
 // 初始化参数
 const fftWindow = 512; //fft 窗长  实际应用中，为了保证计算精度，fft窗长至少为512,需为2的幂次
@@ -22,6 +23,11 @@ const fl = 0.01; //fl 下截至频率
 const fh = 0.5; //fh 上截止频率
 
 const L = [3.182, 2.515, 2.515, 0.795, 3.182, 2.515, 2.515, 0.795];
+
+// 实时显示中暂定step_time=5，window_time=10；
+// 报告计算中暂定step_time=1，window_time=10；
+const step_time = 5;
+const window_time = 10;
 
 let lossDataTemplate = {
   baseAdjustedTimestamps: 0, //基础某秒时间戳
@@ -69,6 +75,8 @@ function Processing(this: any, path: string, config: any) {
   this.baseline_ok = false;
   // 心率
   this.heart_rate = new DoubleArray(1);
+  // hrv输入的数据，缓存第一通道
+  this.bp_filter_data = [];
 
   // 这部分不能乱改，dll里面控制着
   this.ps_s = [
@@ -141,8 +149,8 @@ function Processing(this: any, path: string, config: any) {
     calc_hb_2wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
     //age:受试者年龄，input：0D数据数组，包含4个波长数据；L:发射到输出的距离(CM);Output:输出浓度数组，顺序为[hbo,hb,hbt],hbo:氧合血红蛋白浓度，hb：脱氧血红蛋白浓度，hbt：血红蛋白总浓度
     calc_hb_3wave: [Bool, [Int, Double, DoubleArray, DoubleArray]],
-  //channel：当前通道，sample_rate：采样率；x:当前通道的输入数据，step:步长，单位为点数，window：fft窗长，需要为2的幂次，推荐512；output:输出数组[mindfulness,restfulness];
-    Mindfulness_Restfulness: [Bool, [Int, Int, Double, Int, Int,DoubleArray]],
+    //channel：当前通道，sample_rate：采样率；x:当前通道的输入数据，step:步长，单位为点数，window：fft窗长，需要为2的幂次，推荐512；output:输出数组[mindfulness,restfulness];
+    Mindfulness_Restfulness: [Bool, [Int, Int, Double, Int, Int, DoubleArray]],
   });
 
   // 心率部分
@@ -150,14 +158,39 @@ function Processing(this: any, path: string, config: any) {
     //计算心率前的初始化
     init_heart_rate: ["void", []],
     //计算心率的函数，需要选择一个信号质量良好的通道
+    // bool get_heart_rate(int Fs, int step_time,int window_time,double data, double* heart_rate);/
     get_heart_rate: [Bool, [Int, Double, DoubleArray]],
+    hrv_spec: [
+      "void",
+      [
+        DoubleArray,
+        Int,
+        Int,
+        DoubleArray,
+        DoubleArray,
+        IntArray,
+        DoubleArray,
+        DoubleArray,
+        DoubleArray,
+        DoubleArray,
+        DoubleArray,
+        DoubleArray,
+        DoubleArray,
+      ],
+    ],
   });
 }
 Processing.prototype.init = function (this: any) {
   // this.signalProcess.init_filter(sample_rate, channel);
   // 脑电初始化
-  this.signalProcess.init_notch_filter(this.config.eegFilter.sample_rate, channel);
-  this.signalProcess.init_eegbp_filter_eegbands(this.config.eegFilter.sample_rate, channel);
+  this.signalProcess.init_notch_filter(
+    this.config.eegFilter.sample_rate,
+    channel
+  );
+  this.signalProcess.init_eegbp_filter_eegbands(
+    this.config.eegFilter.sample_rate,
+    channel
+  );
   this.signalProcess.init_eegbp_filter_draw(
     this.config.eegFilter.sample_rate,
     channel,
@@ -286,6 +319,48 @@ Processing.prototype.processData = function (this: any, pkg: any) {
   } catch (error) {
     console.error("processData", error);
   }
+};
+
+//计算HRV
+Processing.prototype.calculateHrv = function (this: any) {
+  let hr_time = new DoubleArray(2000); //用于存放心率横坐标（时间轴）的数组
+  let hr = new DoubleArray(2000); //用于存放心率纵坐标（心率）的数组；
+  let number_of_hr = new IntArray([0]);
+  let timedomain_NNI = new DoubleArray(10); //1、NNI 参数：RR间隔数量（NNI）、平均RR间隔时间(NNI_Average)、RR间隔最小值(NNI_Min)、RR间隔最大值(NNI_Max)、SDNN、RMSSD、NN20、NN50、pNN20、pNN50
+  let timedomain_NNI_diff = new DoubleArray(4); //2、NNI差值参数：相邻RR间隔平均值、相邻RR间隔最小值、相邻RR间隔最大值、相邻RR间隔标准差
+  let timedomain_HR = new DoubleArray(4); //3、HR参数：HR平均值、HR最小值、HR最大值、HR标准差
+  let hrv_fdomain_spec = new DoubleArray(6); //绝对ULF、VLF、LF、HF，TP、LF/HF，
+  let hrv_fdomain_percent = new DoubleArray(4); //相对功率：ULF、VLF、LF、HF
+  let hrv_fdomain_spec_db = new DoubleArray(5); //对数功率：ULF、VLF、LF、HF、TP
+  let hrv_fdomain_max_f = new DoubleArray(5); //功率最大频率点：ULF、VLF、LF、HF
+  this.hrvProcess.hrv_spec(
+    this.bp_filter_data,
+    this.bp_filter_data.length,
+    this.config.irFilter.ir_sample_rate,
+    hr_time,
+    hr,
+    number_of_hr,
+    timedomain_NNI,
+    timedomain_NNI_diff,
+    timedomain_HR,
+    hrv_fdomain_spec,
+    hrv_fdomain_percent,
+    hrv_fdomain_spec_db,
+    hrv_fdomain_max_f
+  );
+  this.bp_filter_data = []
+  return {
+    hr_time,
+    hr,
+    number_of_hr,
+    timedomain_NNI,
+    timedomain_NNI_diff,
+    timedomain_HR,
+    hrv_fdomain_spec,
+    hrv_fdomain_percent,
+    hrv_fdomain_spec_db,
+    hrv_fdomain_max_f,
+  };
 };
 
 Processing.prototype.setConfig = function (this: any, config: any) {
@@ -538,7 +613,6 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
             fftWindow,
             this.mindfulness_restfulness_s[current_channel]
           );
-
         }
 
         // 开启DC Remove（去基线），或者开启Notch 或者开启BP
@@ -580,11 +654,13 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
     if (pkg.pkg_type === 2) {
       // 获取心率数据
 
-      let flag = this.hrvProcess.get_heart_rate(
-        this.config.irFilter.ir_sample_rate,
-        pkg.near_infrared[this.config.hrv.current_channel][0], //先取原始数据的第一波长
-        this.heart_rate
-      );
+      // let flag = this.hrvProcess.get_heart_rate(
+      //   this.config.irFilter.ir_sample_rate,
+      //   // step_time,
+      //   // window_time,
+      //   pkg.near_infrared[this.config.hrv.current_channel][0], //先取原始数据的第一波长
+      //   this.heart_rate
+      // );
 
       // 其他部分
       for (
@@ -688,6 +764,10 @@ function processSend(this: any, pkg: any, LDInfoEl: typeof lossDataTemplate) {
         }
         if (this.config.irFilter.isBandPass) {
           pkg.near_infrared[current_channel] = arrayToJs(ir_raw_filter);
+          // 分析时，先缓存数据
+          if(this.config.hrv.isAnalysis && current_channel == this.config.hrv.current_channel) {
+            this.bp_filter_data.push(ir_raw_filter[0]);
+          }
         }
 
         this.ir_od_date[current_channel] = JSON.parse(JSON.stringify(ir_od));
